@@ -14,7 +14,7 @@
   },
   "autoload": {
     "psr-4": {
-      "Rabbit\\Data\\Pipeline": "src/"
+      "Rabbit\\Data\\Pipeline\\": "src/"
     }
   }
 }
