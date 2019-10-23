@@ -1,0 +1,20 @@
+{
+  "name": "rabbit/data-pipeline",
+  "description": "rabbit data pipeline",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "albert",
+      "email": "63851587@qq.com"
+    }
+  ],
+  "require": {
+    "rabbit/framework": "dev-master"
+  },
+  "autoload": {
+    "psr-4": {
+      "Rabbit\\Data\\Pipeline": "src/"
+    }
+  }
+}
