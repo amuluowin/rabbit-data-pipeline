@@ -7,6 +7,7 @@ use Exception;
 use rabbit\App;
 use rabbit\contract\InitInterface;
 use rabbit\core\BaseObject;
+use rabbit\redis\Redis;
 
 /**
  * Interface AbstractPlugin
@@ -26,6 +27,8 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected $start = false;
     /** @var string */
     protected $logKey = 'Plugin';
+    /** @var Redis */
+    protected $redis;
 
     /**
      * AbstractPlugin constructor.
@@ -39,6 +42,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
 
     public function init()
     {
+        $this->redis = getDI('redis');
     }
 
     /**
