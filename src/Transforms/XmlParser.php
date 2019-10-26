@@ -1,11 +1,9 @@
 <?php
-
+declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Transforms;
 
-use common\Helpers\XmlFormatHelper;
-use Exception;
-use rabbit\helper\ArrayHelper;
+use rabbit\App;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 
 /**
@@ -14,55 +12,18 @@ use Rabbit\Data\Pipeline\AbstractPlugin;
  */
 class XmlParser extends AbstractPlugin
 {
-    /** @var string */
-    protected $rootTag;
-    /** @var string */
-    protected $objectTag;
-    /** @var string */
-    protected $itemTag;
-    protected $version;
-    protected $charset;
-
-    /**
-     * @return mixed|void
-     */
-    public function init()
-    {
-        [
-            $this->rootTag,
-            $this->objectTag,
-            $this->itemTag,
-            $this->version,
-            $this->charset
-        ] = ArrayHelper::getValueByArray($this->config, [
-            'rootTag',
-            'objectTag',
-            'itemTag',
-            'version',
-            'charset',
-        ], null, [
-            'root',
-            '',
-            'item',
-            '1.0',
-            'utf-8'
-        ]);
-    }
-
     /**
      * @param null $input
-     * @throws Exception
      */
     public function input(&$input = null): void
     {
-        $data = XmlFormatHelper::format(
-            $input,
-            $this->rootTag,
-            $this->objectTag,
-            $this->itemTag,
-            $this->version,
-            $this->charset
-        );
-        $this->output($data);
+        if (!is_string($input)) {
+            App::warning("$this->taskName $this->key must input path or xml string");
+        }
+        if (is_file($input) && file_exists($input)) {
+            $this->output(simplexml_load_file($input));
+        } else {
+            $this->output(simplexml_load_string($input));
+        }
     }
 }

@@ -6,14 +6,13 @@ namespace Rabbit\Data\Pipeline\Sources;
 use DI\DependencyException;
 use DI\NotFoundException;
 use Exception;
-use Psr\SimpleCache\CacheInterface;
+use Rabbit\Data\Pipeline\AbstractPlugin;
 use rabbit\db\Connection;
 use rabbit\db\DBHelper;
 use rabbit\db\MakePdoConnection;
 use rabbit\db\Query;
 use rabbit\exception\InvalidConfigException;
 use rabbit\helper\ArrayHelper;
-use Rabbit\Data\Pipeline\AbstractPlugin;
 
 /**
  * Class Pdo
@@ -25,8 +24,6 @@ class Pdo extends AbstractPlugin
     protected $sql;
     /** @var string */
     protected $dbName;
-    /** @var CacheInterface */
-    protected $cache;
     /** @var int */
     protected $duration;
     /** @var string */
@@ -35,8 +32,6 @@ class Pdo extends AbstractPlugin
     protected $db;
     /** @var int */
     protected $each = false;
-
-    const CACHE_KEY = 'cache';
 
     /**
      * @param string $class
@@ -68,18 +63,19 @@ class Pdo extends AbstractPlugin
      */
     public function init()
     {
+        parent::init();
         [
             $class,
             $dsn,
             $pool,
-            $this->sql,
             $cache,
+            $this->sql,
             $this->duration,
             $this->query,
             $this->each
         ] = ArrayHelper::getValueByArray(
             $this->config,
-            ['class', 'dsn', 'pool', 'sql', self::CACHE_KEY, 'duration', 'query', 'each'],
+            ['class', 'dsn', 'pool', self::CACHE_KEY, 'sql', 'duration', 'query', 'each'],
             null,
             [
                 self::CACHE_KEY => 'memory',
@@ -90,10 +86,9 @@ class Pdo extends AbstractPlugin
             ]
         );
         if ($dsn === null || $class === null || $this->sql === null) {
-            throw new InvalidConfigException("class and dsn must be set in $this->key");
+            throw new InvalidConfigException("class, dsn and sql must be set in $this->key");
         }
         $this->dbName = md5($dsn);
-        $this->cache = getDI(self::CACHE_KEY)->getDriver($cache);
         $this->createConnection($class, $dsn, $pool);
         $this->db = getDI('db')->getConnection($this->dbName);
     }
@@ -106,12 +101,13 @@ class Pdo extends AbstractPlugin
     {
         if (is_array($this->sql)) {
             $batch = ArrayHelper::remove($this->sql, 'batch');
+            $this->sql = ArrayHelper::merge([self::CACHE_KEY => $this->duration], $this->sql);
             if ($batch) {
                 foreach (DBHelper::Search(new Query(), $this->sql)->batch($batch) as $batchList) {
                     $this->send($batchList);
                 }
             } else {
-                $data = DBHelper::PubSearch(new Query(), $this->sql, $this->query);
+                $data = DBHelper::PubSearch(new Query(), $this->sql, $this->query, $this->db);
                 $this->send($data);
             }
         } else {
@@ -128,9 +124,13 @@ class Pdo extends AbstractPlugin
     {
         if (ArrayHelper::isIndexed($data) && $this->each) {
             foreach ($data as $item) {
-                $this->output($item);
+                rgo(function () use (&$item) {
+                    $this->setTaskId((string)getDI('idGen')->create());
+                    $this->output($item);
+                });
             }
         } else {
+            $this->setTaskId((string)getDI('idGen')->create());
             $this->output($data);
         }
     }

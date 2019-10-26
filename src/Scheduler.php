@@ -12,7 +12,9 @@ use rabbit\contract\InitInterface;
 use rabbit\core\ObjectFactory;
 use rabbit\exception\InvalidConfigException;
 use rabbit\helper\ArrayHelper;
+use rabbit\helper\ExceptionHelper;
 use rabbit\httpserver\CoServer;
+use rabbit\redis\Redis;
 use rabbit\server\Server;
 use rabbit\server\Task\Task;
 
@@ -22,6 +24,8 @@ class Scheduler implements InitInterface
     protected $targets = [];
     /** @var ConfigParserInterface */
     protected $parser;
+    /** @var Redis */
+    protected $redis;
 
     /**
      * Scheduler constructor.
@@ -43,6 +47,7 @@ class Scheduler implements InitInterface
         foreach ($this->parser->parse() as $task => $config) {
             $this->build($task, $config);
         }
+        $this->redis = getDI('redis');
     }
 
 
@@ -92,6 +97,8 @@ class Scheduler implements InitInterface
             if (is_string($output)) {
                 $output = [$output => false];
             }
+            $lockKey = ArrayHelper::remove($params, 'lockKey');
+            $lockEx = ArrayHelper::remove($params, 'lockEx', 30);
             $this->targets[$name][$key] = ObjectFactory::createObject(
                 $class,
                 [
@@ -100,6 +107,8 @@ class Scheduler implements InitInterface
                     'output' => $output,
                     'start' => $start,
                     'taskName' => $name,
+                    'lockKey' => $lockKey,
+                    'lockEx' => $lockEx,
                     'init()' => [],
                 ],
                 false
@@ -116,7 +125,8 @@ class Scheduler implements InitInterface
         /** @var AbstractPlugin $target */
         foreach ($this->targets[$task] as $target) {
             if ($target->getStart()) {
-                $target->input($params);
+                $data = [(string)getDI('idGen')->create(), $params];
+                $target->process($data);
             }
         }
     }
@@ -128,38 +138,55 @@ class Scheduler implements InitInterface
      * @param bool $process
      * @throws Exception
      */
-    public function send(string $taskName, string $key, &$data, bool $process): void
+    public function send(string $taskName, string $key, ?string $task_id, &$data, bool $process, ?string $lockKey): void
     {
-        if (empty($data)) {
-            App::warning("$taskName $key input empty data,ignore!");
-            return;
-        }
-        /** @var CoServer $server */
-        $server = App::getServer();
-        if ($server instanceof CoServer) {
-            $socket = $server->getProcessSocket();
-            $workerId = array_rand($socket->getWorkerIds());
-            if (!$process || $socket->workerId === $workerId) {
-                $this->targets[$taskName][$key]->input($data);
-            } else {
-                App::info("Data from $socket->workerId to $workerId", 'Data');
-                $params = ['scheduler->send', [$taskName, $key, &$data, false]];
-                $socket->send($params, $workerId);
+        try {
+            if (!empty($lockKey)) {
+                foreach ($this->targets[$taskName] as $target) {
+                    $target->setLockKey($lockKey);
+                }
             }
-        } elseif ($server instanceof Server) {
-            $swooleServer = $server->getSwooleServer();
-            $workerId = array_rand(range(0, $swooleServer->setting['worker_num'] +
-            isset($swooleServer->setting['task_worker_num']) ? $swooleServer->setting['task_worker_num'] : 0));
-            if (!$process || $swooleServer->worker_id === $workerId) {
-                $this->targets[$taskName][$key]->input($data);
-            } else {
-                $server->getSwooleServer()->sendMessage([
-                    'scheduler->send',
-                    [$taskName, $key, &$data, false]
-                ], $workerId);
+            /** @var AbstractPlugin $target */
+            $target = $this->targets[$taskName][$key];
+            if (empty($data)) {
+                App::warning("$taskName $key input empty data,ignore!");
+                $this->redis->del($lockKey);
+                return;
             }
-        } else {
-            $this->targets[$taskName][$key]->input($data);
+
+            /** @var CoServer $server */
+            $server = App::getServer();
+            if ($server instanceof CoServer) {
+                $socket = $server->getProcessSocket();
+                $workerId = array_rand($socket->getWorkerIds());
+                if (!$process || $socket->workerId === $workerId) {
+                    $params = [$task_id, &$data];
+                    $target->process($params);
+                } else {
+                    App::info("Data from $socket->workerId to $workerId", 'Data');
+                    $params = ['scheduler->send', [$taskName, $key, $task_id, &$data, false, $lockKey]];
+                    $socket->send($params, $workerId);
+                }
+            } elseif ($server instanceof Server) {
+                $swooleServer = $server->getSwooleServer();
+                $workerId = array_rand(range(0, $swooleServer->setting['worker_num'] +
+                isset($swooleServer->setting['task_worker_num']) ? $swooleServer->setting['task_worker_num'] : 0));
+                if (!$process || $swooleServer->worker_id === $workerId) {
+                    $params = [$task_id, &$data];
+                    $target->process($params);
+                } else {
+                    $server->getSwooleServer()->sendMessage([
+                        'scheduler->send',
+                        [$taskName, $key, $task_id, &$data, false, $lockKey]
+                    ], $workerId);
+                }
+            } else {
+                $params = [$task_id, &$data];
+                $target->process($params);
+            }
+        } catch (\Throwable $exception) {
+            App::error(ExceptionHelper::dumpExceptionToString($exception));
+            $this->redis->del($lockKey);
         }
     }
 }

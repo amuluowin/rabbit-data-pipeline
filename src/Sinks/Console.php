@@ -23,6 +23,7 @@ class Console extends AbstractPlugin
 
     public function init()
     {
+        parent::init();
         [$this->encoding, $this->method] = ArrayHelper::getValueByArray($this->config, [
             'encoding',
             'method'

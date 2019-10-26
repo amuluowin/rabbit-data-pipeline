@@ -7,11 +7,11 @@ use common\Helpers\FileHelper;
 use common\Helpers\XmlFormatHelper;
 use rabbit\App;
 use rabbit\core\Exception;
+use Rabbit\Data\Pipeline\AbstractPlugin;
 use rabbit\exception\InvalidConfigException;
 use rabbit\helper\ArrayHelper;
 use rabbit\helper\ExceptionHelper;
 use rabbit\helper\VarDumper;
-use Rabbit\Data\Pipeline\AbstractPlugin;
 
 /**
  * Class File
@@ -30,10 +30,8 @@ class File extends AbstractPlugin
      */
     public function init()
     {
+        parent::init();
         [$configPath, $this->fileName] = ArrayHelper::getValueByArray($this->config, ['path', 'fileName']);
-        if (empty($configPath)) {
-            throw new InvalidConfigException("The path must be set in $this->key");
-        }
         $this->path = App::getAlias($configPath);
     }
 
@@ -48,7 +46,11 @@ class File extends AbstractPlugin
             $this->saveFile($this->fileName, $input);
         } else {
             foreach ($input as $fileName => $data) {
-                $this->saveFile(strtr($this->path, ['{fileName}' => $fileName]), $data);
+                if (pathinfo($fileName, PATHINFO_DIRNAME)) {
+                    $this->saveFile($fileName, $data);
+                } else {
+                    $this->saveFile(strtr($this->path, ['{fileName}' => $fileName]), $data);
+                }
             }
         }
     }
@@ -80,11 +82,24 @@ class File extends AbstractPlugin
                 }
                 break;
             case 'txt':
-                file_put_contents($fileName, VarDumper::getDumper()->dumpAsString($data));
+                $this->saveContents($fileName, VarDumper::getDumper()->dumpAsString($data));
                 break;
             case 'xml':
-                file_put_contents($fileName, XmlFormatHelper::format($data));
+                if (is_string($data)) {
+                    $this->saveContents($fileName, $data);
+                } else {
+                    $this->saveContents($fileName, XmlFormatHelper::format($data));
+                }
                 break;
+        }
+        $this->output($fileName);
+    }
+
+    protected function saveContents(string $fileName, string $data): void
+    {
+        $len = file_put_contents($fileName, $data);
+        if ($len !== strlen($data)) {
+            App::error("save to $fileName $len not enough");
         }
     }
 }
