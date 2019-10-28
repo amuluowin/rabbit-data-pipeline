@@ -8,6 +8,7 @@ use common\Helpers\XmlFormatHelper;
 use rabbit\App;
 use rabbit\core\Exception;
 use Rabbit\Data\Pipeline\AbstractPlugin;
+use rabbit\exception\InvalidArgumentException;
 use rabbit\exception\InvalidConfigException;
 use rabbit\helper\ArrayHelper;
 use rabbit\helper\ExceptionHelper;
@@ -23,6 +24,8 @@ class File extends AbstractPlugin
     protected $path;
     /** @var string */
     protected $fileName;
+    /** @var string */
+    protected $ext;
 
     /**
      * @return mixed|void
@@ -31,7 +34,7 @@ class File extends AbstractPlugin
     public function init()
     {
         parent::init();
-        [$configPath, $this->fileName] = ArrayHelper::getValueByArray($this->config, ['path', 'fileName']);
+        [$configPath, $this->fileName, $this->ext] = ArrayHelper::getValueByArray($this->config, ['path', 'fileName', 'ext']);
         $this->path = App::getAlias($configPath);
     }
 
@@ -42,9 +45,7 @@ class File extends AbstractPlugin
      */
     public function input(&$input = null): void
     {
-        if ($this->fileName) {
-            $this->saveFile($this->fileName, $input);
-        } else {
+        if (is_array($input)) {
             foreach ($input as $fileName => $data) {
                 if (pathinfo($fileName, PATHINFO_DIRNAME)) {
                     $this->saveFile($fileName, $data);
@@ -52,6 +53,24 @@ class File extends AbstractPlugin
                     $this->saveFile(strtr($this->path, ['{fileName}' => $fileName]), $data);
                 }
             }
+        } elseif (is_string($input)) {
+            if (is_callable($this->fileName)) {
+                $fileName = call_user_func($this->fileName);
+            } else {
+                switch ($this->fileName) {
+                    case "DateTime":
+                        $fileName = date('YmdHis', time());
+                        break;
+                    case "Timestamp":
+                        $fileName = time();
+                        break;
+                    default:
+                        $fileName = $this->fileName;
+                }
+            }
+            $this->saveFile($this->path . '/' . $fileName . ".$this->ext", $input);
+        } else {
+            throw new InvalidArgumentException("$this->taskName $this->key must input array or string");
         }
     }
 

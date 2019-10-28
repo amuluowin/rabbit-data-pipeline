@@ -32,6 +32,8 @@ class Pdo extends AbstractPlugin
     protected $db;
     /** @var int */
     protected $each = false;
+    /** @var array */
+    protected $params = [];
 
     /**
      * @param string $class
@@ -72,17 +74,19 @@ class Pdo extends AbstractPlugin
             $this->sql,
             $this->duration,
             $this->query,
-            $this->each
+            $this->each,
+            $this->params
         ] = ArrayHelper::getValueByArray(
             $this->config,
-            ['class', 'dsn', 'pool', self::CACHE_KEY, 'sql', 'duration', 'query', 'each'],
+            ['class', 'dsn', 'pool', self::CACHE_KEY, 'sql', 'duration', 'query', 'each', 'params'],
             null,
             [
                 self::CACHE_KEY => 'memory',
                 'query' => 'queryAll',
                 'duration' => null,
                 'pool' => [],
-                'each' => false
+                'each' => false,
+                'params' => []
             ]
         );
         if ($dsn === null || $class === null || $this->sql === null) {
@@ -111,7 +115,24 @@ class Pdo extends AbstractPlugin
                 $this->send($data);
             }
         } else {
-            $data = $this->db->createCommand($this->sql)->cache($this->duration, $this->cache)->{$this->query}();
+            $params = [];
+            foreach ($this->params as $key => $value) {
+                switch ($value) {
+                    case 'getFromInput':
+                        $params[] = $this->getFromInput($input, $key);
+                        break;
+                    case 'input':
+                        $params[] = json_encode($input, JSON_UNESCAPED_UNICODE);
+                        break;
+                    default:
+                        if (method_exists($this, $value)) {
+                            $params[] = $this->$value();
+                        } else {
+                            $params[] = $value;
+                        }
+                }
+            }
+            $data = $this->db->createCommand($this->sql, $params)->cache($this->duration, $this->cache)->{$this->query}();
             $this->send($data);
         }
     }

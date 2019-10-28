@@ -32,8 +32,6 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected $logKey = 'Plugin';
     /** @var Redis */
     protected $redis;
-    /** @var string */
-    protected $lockKey;
     /** @var int */
     protected $lockEx = 0;
     /** @var CacheInterface */
@@ -73,41 +71,14 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     }
 
     /**
-     * @param string|null $lockKey
-     */
-    public function setLockKey(?string $lockKey): void
-    {
-        $this->lockKey = $lockKey;
-    }
-
-    /**
-     * @return string|null
-     */
-    public function getLockKey(): ?string
-    {
-        return $this->lockKey;
-    }
-
-    /**
      * @return int
      */
     public function getLock(): bool
     {
-        if ($this->lockKey) {
-            return (bool)$this->redis->set($this->lockKey, true, ['nx', 'ex' => $this->lockEx]);
+        if ($key = $this->getTaskId()) {
+            return (bool)$this->redis->set($key, true, ['nx', 'ex' => $this->lockEx]);
         }
         return true;
-    }
-
-    /**
-     * @return |null
-     */
-    public function getLockData()
-    {
-        if (null !== $data = $this->redis->get($this->lockKey)) {
-            return \msgpack_unpack($data);
-        }
-        return null;
     }
 
     /**
@@ -116,7 +87,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      */
     public function deleteLock(string $lockKey): bool
     {
-        return $this->redis->del($this->lockKey);
+        return $this->redis->del($this->getTaskId());
     }
 
     /**
@@ -133,6 +104,17 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     public function getTaskId(): ?string
     {
         return Context::get($this->taskName);
+    }
+
+    /**
+     * @param array $input
+     * @param string $key
+     * @param null $default
+     * @return mixed|null
+     */
+    public function getFromInput(array $input, string $key, $default = null)
+    {
+        return ArrayHelper::getValue($input, $key, $default);
     }
 
     /**
@@ -159,7 +141,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
         $task_id = $this->getTaskId();
         foreach ($this->output as $output => $process) {
             App::info("Road from $this->key to $output", 'Data');
-            getDI('scheduler')->send($this->taskName, $output, $task_id, $data, $process, $this->lockKey);
+            getDI('scheduler')->send($this->taskName, $output, $task_id, $data, $process);
         }
     }
 }

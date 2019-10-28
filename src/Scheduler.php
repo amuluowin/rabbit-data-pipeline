@@ -138,19 +138,14 @@ class Scheduler implements InitInterface
      * @param bool $process
      * @throws Exception
      */
-    public function send(string $taskName, string $key, ?string $task_id, &$data, bool $process, ?string $lockKey): void
+    public function send(string $taskName, string $key, ?string $task_id, &$data, bool $process): void
     {
         try {
-            if (!empty($lockKey)) {
-                foreach ($this->targets[$taskName] as $target) {
-                    $target->setLockKey($lockKey);
-                }
-            }
             /** @var AbstractPlugin $target */
             $target = $this->targets[$taskName][$key];
             if (empty($data)) {
                 App::warning("$taskName $key input empty data,ignore!");
-                $this->redis->del($lockKey);
+                $this->redis->del($task_id);
                 return;
             }
 
@@ -164,7 +159,7 @@ class Scheduler implements InitInterface
                     $target->process($params);
                 } else {
                     App::info("Data from $socket->workerId to $workerId", 'Data');
-                    $params = ['scheduler->send', [$taskName, $key, $task_id, &$data, false, $lockKey]];
+                    $params = ['scheduler->send', [$taskName, $key, $task_id, &$data, false]];
                     $socket->send($params, $workerId);
                 }
             } elseif ($server instanceof Server) {
@@ -177,7 +172,7 @@ class Scheduler implements InitInterface
                 } else {
                     $server->getSwooleServer()->sendMessage([
                         'scheduler->send',
-                        [$taskName, $key, $task_id, &$data, false, $lockKey]
+                        [$taskName, $key, $task_id, &$data, false]
                     ], $workerId);
                 }
             } else {
@@ -186,7 +181,7 @@ class Scheduler implements InitInterface
             }
         } catch (\Throwable $exception) {
             App::error(ExceptionHelper::dumpExceptionToString($exception));
-            $this->redis->del($lockKey);
+            $this->redis->del($task_id);
         }
     }
 }

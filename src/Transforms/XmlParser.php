@@ -5,6 +5,7 @@ namespace Rabbit\Data\Pipeline\Transforms;
 
 use rabbit\App;
 use Rabbit\Data\Pipeline\AbstractPlugin;
+use rabbit\helper\ArrayHelper;
 
 /**
  * Class XmlParser
@@ -12,6 +13,15 @@ use Rabbit\Data\Pipeline\AbstractPlugin;
  */
 class XmlParser extends AbstractPlugin
 {
+    /** @var array */
+    protected $fields = [];
+
+    public function init()
+    {
+        parent::init();
+        $this->fields = ArrayHelper::getValue($this->config, 'fields', []);
+    }
+
     /**
      * @param null $input
      */
@@ -21,9 +31,20 @@ class XmlParser extends AbstractPlugin
             App::warning("$this->taskName $this->key must input path or xml string");
         }
         if (is_file($input) && file_exists($input)) {
-            $this->output(simplexml_load_file($input));
+            $xml = json_decode(json_encode(simplexml_load_file($input), JSON_UNESCAPED_UNICODE), true);
         } else {
-            $this->output(simplexml_load_string($input));
+            $xml = json_decode(json_encode(simplexml_load_string($input), JSON_UNESCAPED_UNICODE), true);
         }
+        $params = [];
+        foreach ($this->fields as $field => $item) {
+            if (is_array($item)) {
+                foreach ($item as $key) {
+                    $params[$field] = ArrayHelper::getValue($xml, $key, ArrayHelper::getValue($params, $field));
+                }
+            } else {
+                $params[$field] = ArrayHelper::getValue($xml, $item);
+            }
+        }
+        $this->output($params);
     }
 }
