@@ -97,7 +97,6 @@ class Scheduler implements InitInterface
             if (is_string($output)) {
                 $output = [$output => false];
             }
-            $lockKey = ArrayHelper::remove($params, 'lockKey');
             $lockEx = ArrayHelper::remove($params, 'lockEx', 30);
             $this->targets[$name][$key] = ObjectFactory::createObject(
                 $class,
@@ -107,7 +106,6 @@ class Scheduler implements InitInterface
                     'output' => $output,
                     'start' => $start,
                     'taskName' => $name,
-                    'lockKey' => $lockKey,
                     'lockEx' => $lockEx,
                     'init()' => [],
                 ],
@@ -156,7 +154,9 @@ class Scheduler implements InitInterface
                 $workerId = array_rand($socket->getWorkerIds());
                 if (!$process || $socket->workerId === $workerId) {
                     $params = [$task_id, &$data];
-                    $target->process($params);
+                    rgo(function () use (&$target, &$params) {
+                        $target->process($params);
+                    });
                 } else {
                     App::info("Data from $socket->workerId to $workerId", 'Data');
                     $params = ['scheduler->send', [$taskName, $key, $task_id, &$data, false]];
@@ -168,7 +168,9 @@ class Scheduler implements InitInterface
                 isset($swooleServer->setting['task_worker_num']) ? $swooleServer->setting['task_worker_num'] : 0));
                 if (!$process || $swooleServer->worker_id === $workerId) {
                     $params = [$task_id, &$data];
-                    $target->process($params);
+                    rgo(function () use (&$target, &$params) {
+                        $target->process($params);
+                    });
                 } else {
                     $server->getSwooleServer()->sendMessage([
                         'scheduler->send',
@@ -177,7 +179,9 @@ class Scheduler implements InitInterface
                 }
             } else {
                 $params = [$task_id, &$data];
-                $target->process($params);
+                rgo(function () use (&$target, &$params) {
+                    $target->process($params);
+                });
             }
         } catch (\Throwable $exception) {
             App::error(ExceptionHelper::dumpExceptionToString($exception));

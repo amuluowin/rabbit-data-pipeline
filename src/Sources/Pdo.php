@@ -146,12 +146,12 @@ class Pdo extends AbstractPlugin
         if (ArrayHelper::isIndexed($data) && $this->each) {
             foreach ($data as $item) {
                 rgo(function () use (&$item) {
-                    $this->setTaskId((string)getDI('idGen')->create());
+                    $this->setTaskId(uniqid());
                     $this->output($item);
                 });
             }
         } else {
-            $this->setTaskId((string)getDI('idGen')->create());
+            $this->setTaskId(uniqid());
             $this->output($data);
         }
     }

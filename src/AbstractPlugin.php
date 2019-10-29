@@ -73,9 +73,9 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     /**
      * @return int
      */
-    public function getLock(): bool
+    public function getLock(string $key = null): bool
     {
-        if ($key = $this->getTaskId()) {
+        if ($key || $key = $this->getTaskId()) {
             return (bool)$this->redis->set($key, true, ['nx', 'ex' => $this->lockEx]);
         }
         return true;
@@ -85,9 +85,9 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      * @param string $lockKey
      * @return bool
      */
-    public function deleteLock(string $lockKey): bool
+    public function deleteLock(string $key = null): int
     {
-        return $this->redis->del($this->getTaskId());
+        return $this->redis->del($key ?? $this->getTaskId());
     }
 
     /**
