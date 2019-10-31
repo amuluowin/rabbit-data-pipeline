@@ -107,17 +107,6 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     }
 
     /**
-     * @param array $input
-     * @param string $key
-     * @param null $default
-     * @return mixed|null
-     */
-    public function getFromInput(array $input, string $key, $default = null)
-    {
-        return ArrayHelper::getValue($input, $key, $default);
-    }
-
-    /**
      * @param array $data
      */
     public function process(array &$data): void
