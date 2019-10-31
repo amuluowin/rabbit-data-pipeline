@@ -107,6 +107,25 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     }
 
     /**
+     * @return mixed
+     * @throws \Psr\SimpleCache\InvalidArgumentException
+     */
+    public function getMatch()
+    {
+        return $this->cache->get($this->getTaskId());
+    }
+
+    /**
+     * @param $opt
+     * @return bool
+     * @throws \Psr\SimpleCache\InvalidArgumentException
+     */
+    public function setMatch($opt): bool
+    {
+        return $this->cache->set($this->getTaskId(), $opt);
+    }
+
+    /**
      * @param array $data
      */
     public function process(array &$data): void
