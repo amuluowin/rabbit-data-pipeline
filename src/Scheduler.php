@@ -44,9 +44,6 @@ class Scheduler implements InitInterface
      */
     public function init()
     {
-        foreach ($this->parser->parse() as $task => $config) {
-            $this->build($task, $config);
-        }
         $this->redis = getDI('redis');
     }
 
@@ -59,34 +56,24 @@ class Scheduler implements InitInterface
     public function run(array $params)
     {
         $key = ArrayHelper::remove($params, 'task');
-        if ($key === null) {
-            foreach (array_keys($this->targets) as $key) {
-                if (App::getServer() instanceof CoServer) {
-                    $this->process((string)$key);
-                } else {
-                    getDI(Task::class)->task(['scheduler->process', [$key]]);
-                }
-            }
-        } elseif (isset($this->targets[$key])) {
-            if (App::getServer() instanceof CoServer) {
-                $this->process((string)$key);
-            } else {
-                getDI(Task::class)->task(['scheduler->process', [$key]]);
-            }
+        if (App::getServer() instanceof CoServer) {
+            $this->process((string)$key);
         } else {
-            throw new InvalidArgumentException("No such target $key");
+            getDI(Task::class)->task(['scheduler->process', [$key]]);
         }
     }
 
     /**
      * @param string $name
      * @param array $config
+     * @return array
      * @throws DependencyException
      * @throws InvalidConfigException
      * @throws NotFoundException
      */
-    protected function build(string $name, array $config): void
+    protected function build(string $name, array $config): array
     {
+        $targets = [];
         foreach ($config as $key => $params) {
             $class = ArrayHelper::remove($params, 'type');
             if (!$class) {
@@ -98,7 +85,7 @@ class Scheduler implements InitInterface
                 $output = [$output => false];
             }
             $lockEx = ArrayHelper::remove($params, 'lockEx', 30);
-            $this->targets[$name][$key] = ObjectFactory::createObject(
+            $targets[$name][$key] = ObjectFactory::createObject(
                 $class,
                 [
                     'config' => $params,
@@ -112,20 +99,42 @@ class Scheduler implements InitInterface
                 false
             );
         }
+        return $targets;
     }
 
     /**
      * @param string $task
      * @param array|null $params
      */
-    public function process(string $task, array $params = []): void
+    public function process(string $task = null, array $params = []): void
     {
-        /** @var AbstractPlugin $target */
-        foreach ($this->targets[$task] as $target) {
-            if ($target->getStart()) {
-                $data = [(string)getDI('idGen')->create(), $params];
-                $target->process($data);
+        foreach ($this->parser->parse() as $task => $config) {
+            $tasks = $this->build($task, $config);
+        }
+        if ($key === null) {
+            /** @var AbstractPlugin $target */
+            foreach ($tasks as $targets) {
+                foreach ($targets as $target) {
+                    if ($target->getStart()) {
+                        $data = [(string)getDI('idGen')->create(), $params];
+                        $target->process($data);
+                    }
+                }
             }
+        } elseif (isset($tasks[$key])) {
+            if (App::getServer() instanceof CoServer) {
+                /** @var AbstractPlugin $target */
+                foreach ($tasks[$key] as $target) {
+                    if ($target->getStart()) {
+                        $data = [(string)getDI('idGen')->create(), $params];
+                        $target->process($data);
+                    }
+                }
+            } else {
+                getDI(Task::class)->task(['scheduler->process', [$key]]);
+            }
+        } else {
+            throw new InvalidArgumentException("No such target $key");
         }
     }
 
@@ -139,8 +148,11 @@ class Scheduler implements InitInterface
     public function send(string $taskName, string $key, ?string $task_id, &$data, bool $process): void
     {
         try {
+            foreach ($this->parser->parse() as $task => $config) {
+                $tasks = $this->build($task, $config);
+            }
             /** @var AbstractPlugin $target */
-            $target = $this->targets[$taskName][$key];
+            $target = $tasks[$taskName][$key];
             if (empty($data)) {
                 App::warning("$taskName $key input empty data,ignore!");
                 $this->redis->del($task_id);
