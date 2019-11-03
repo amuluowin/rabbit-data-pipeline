@@ -77,10 +77,10 @@ class HttpRequest extends AbstractPlugin
 
     /**
      * @param null $input
+     * @param array $opt
      * @throws Exception
-     * @throws \Exception
      */
-    public function input(&$input = null): void
+    public function input(&$input = null, &$opt = []): void
     {
         $path = ArrayHelper::remove($input, 'download_dir');
         $throttleTime = ArrayHelper::remove($input, 'throttleTime', 0);

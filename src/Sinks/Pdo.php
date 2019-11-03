@@ -78,8 +78,10 @@ class Pdo extends AbstractPlugin
 
     /**
      * @param null $input
+     * @param array $opt
+     * @throws Exception
      */
-    public function input(&$input = null)
+    public function input(&$input = null, &$opt = [])
     {
         $model = new class($this->tableName, $this->dbName) extends ActiveRecord {
             /**

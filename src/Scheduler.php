@@ -44,6 +44,9 @@ class Scheduler implements InitInterface
      */
     public function init()
     {
+        foreach ($this->parser->parse() as $task => $config) {
+            $this->build($task, $config);
+        }
         $this->redis = getDI('redis');
     }
 
@@ -56,24 +59,34 @@ class Scheduler implements InitInterface
     public function run(array $params)
     {
         $key = ArrayHelper::remove($params, 'task');
-        if (App::getServer() instanceof CoServer) {
-            $this->process((string)$key);
+        if ($key === null) {
+            foreach (array_keys($this->targets) as $key) {
+                if (App::getServer() instanceof CoServer) {
+                    $this->process((string)$key);
+                } else {
+                    getDI(Task::class)->task(['scheduler->process', [$key]]);
+                }
+            }
+        } elseif (isset($this->targets[$key])) {
+            if (App::getServer() instanceof CoServer) {
+                $this->process((string)$key);
+            } else {
+                getDI(Task::class)->task(['scheduler->process', [$key]]);
+            }
         } else {
-            getDI(Task::class)->task(['scheduler->process', [$key]]);
+            throw new InvalidArgumentException("No such target $key");
         }
     }
 
     /**
      * @param string $name
      * @param array $config
-     * @return array
      * @throws DependencyException
      * @throws InvalidConfigException
      * @throws NotFoundException
      */
-    protected function build(string $name, array $config): array
+    protected function build(string $name, array $config): void
     {
-        $targets = [];
         foreach ($config as $key => $params) {
             $class = ArrayHelper::remove($params, 'type');
             if (!$class) {
@@ -85,7 +98,7 @@ class Scheduler implements InitInterface
                 $output = [$output => false];
             }
             $lockEx = ArrayHelper::remove($params, 'lockEx', 30);
-            $targets[$name][$key] = ObjectFactory::createObject(
+            $this->targets[$name][$key] = ObjectFactory::createObject(
                 $class,
                 [
                     'config' => $params,
@@ -99,42 +112,20 @@ class Scheduler implements InitInterface
                 false
             );
         }
-        return $targets;
     }
 
     /**
      * @param string $task
      * @param array|null $params
      */
-    public function process(string $task = null, array $params = []): void
+    public function process(string $task, array $params = []): void
     {
-        foreach ($this->parser->parse() as $task => $config) {
-            $tasks = $this->build($task, $config);
-        }
-        if ($key === null) {
-            /** @var AbstractPlugin $target */
-            foreach ($tasks as $targets) {
-                foreach ($targets as $target) {
-                    if ($target->getStart()) {
-                        $data = [(string)getDI('idGen')->create(), $params];
-                        $target->process($data);
-                    }
-                }
+        /** @var AbstractPlugin $target */
+        foreach ($this->targets[$task] as $target) {
+            if ($target->getStart()) {
+                $data = [(string)getDI('idGen')->create(), [], $params];
+                (clone $target)->process($data);
             }
-        } elseif (isset($tasks[$key])) {
-            if (App::getServer() instanceof CoServer) {
-                /** @var AbstractPlugin $target */
-                foreach ($tasks[$key] as $target) {
-                    if ($target->getStart()) {
-                        $data = [(string)getDI('idGen')->create(), $params];
-                        $target->process($data);
-                    }
-                }
-            } else {
-                getDI(Task::class)->task(['scheduler->process', [$key]]);
-            }
-        } else {
-            throw new InvalidArgumentException("No such target $key");
         }
     }
 
@@ -145,14 +136,11 @@ class Scheduler implements InitInterface
      * @param bool $process
      * @throws Exception
      */
-    public function send(string $taskName, string $key, ?string $task_id, &$data, bool $process): void
+    public function send(string $taskName, string $key, ?string $task_id, &$data, bool $process, array &$opt = []): void
     {
         try {
-            foreach ($this->parser->parse() as $task => $config) {
-                $tasks = $this->build($task, $config);
-            }
             /** @var AbstractPlugin $target */
-            $target = $tasks[$taskName][$key];
+            $target = clone $this->targets[$taskName][$key];
             if (empty($data)) {
                 App::warning("$taskName $key input empty data,ignore!");
                 $this->redis->del($task_id);
@@ -165,13 +153,13 @@ class Scheduler implements InitInterface
                 $socket = $server->getProcessSocket();
                 $workerId = array_rand($socket->getWorkerIds());
                 if (!$process || $socket->workerId === $workerId) {
-                    $params = [$task_id, &$data];
+                    $params = [$task_id, &$data, &$opt];
                     rgo(function () use (&$target, &$params) {
                         $target->process($params);
                     });
                 } else {
                     App::info("Data from $socket->workerId to $workerId", 'Data');
-                    $params = ['scheduler->send', [$taskName, $key, $task_id, &$data, false]];
+                    $params = ['scheduler->send', [$taskName, $key, $task_id, &$data, false, &$opt]];
                     $socket->send($params, $workerId);
                 }
             } elseif ($server instanceof Server) {
@@ -179,18 +167,18 @@ class Scheduler implements InitInterface
                 $workerId = array_rand(range(0, $swooleServer->setting['worker_num'] +
                 isset($swooleServer->setting['task_worker_num']) ? $swooleServer->setting['task_worker_num'] : 0));
                 if (!$process || $swooleServer->worker_id === $workerId) {
-                    $params = [$task_id, &$data];
+                    $params = [$task_id, &$data, &$opt];
                     rgo(function () use (&$target, &$params) {
                         $target->process($params);
                     });
                 } else {
                     $server->getSwooleServer()->sendMessage([
                         'scheduler->send',
-                        [$taskName, $key, $task_id, &$data, false]
+                        [$taskName, $key, $task_id, &$data, false, &$opt]
                     ], $workerId);
                 }
             } else {
-                $params = [$task_id, &$data];
+                $params = [$task_id, &$data, &$opt];
                 rgo(function () use (&$target, &$params) {
                     $target->process($params);
                 });

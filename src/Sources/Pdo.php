@@ -98,10 +98,11 @@ class Pdo extends AbstractPlugin
     }
 
     /**
-     * @param $input
+     * @param null $input
+     * @param array $opt
      * @throws Exception
      */
-    public function input(&$input = null): void
+    public function input(&$input = null, &$opt = []): void
     {
         if (is_array($this->sql)) {
             $batch = ArrayHelper::remove($this->sql, 'batch');

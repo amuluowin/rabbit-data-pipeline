@@ -13,8 +13,10 @@ class RemoveFields extends AbstractPlugin
 
     /**
      * @param null $input
+     * @param array $opt
+     * @throws \Exception
      */
-    public function input(&$input = null)
+    public function input(&$input = null, &$opt = [])
     {
         $params = $input;
         $params = ArrayHelper::toArray($params);

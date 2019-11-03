@@ -35,8 +35,9 @@ class Console extends AbstractPlugin
 
     /**
      * @param null $input
+     * @param array $opt
      */
-    public function input(&$input = null): void
+    public function input(&$input = null, &$opt = []): void
     {
         switch ($this->encoding) {
             case 'json':

@@ -16,10 +16,11 @@ class Http extends AbstractPlugin
 {
 
     /**
-     * @param $input
+     * @param null $input
+     * @param array $opt
      * @throws Exception
      */
-    public function input(&$input = null): void
+    public function input(&$input = null, &$opt = []): void
     {
         $format = ArrayHelper::remove($input, 'format');
         $response = SaberGM::request(array_merge($this->config, ArrayHelper::toArray($input)));

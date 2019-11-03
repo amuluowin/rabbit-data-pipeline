@@ -15,9 +15,10 @@ class JsonFormat extends AbstractPlugin
 {
     /**
      * @param null $input
+     * @param array $opt
      * @throws Exception
      */
-    public function input(&$input = null): void
+    public function input(&$input = null, &$opt = []): void
     {
         $this->output(JsonHelper::encode($input));
     }

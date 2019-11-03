@@ -41,9 +41,10 @@ class File extends AbstractPlugin
 
     /**
      * @param null $input
-     * @throws \Exception
+     * @param array $opt
+     * @throws Exception
      */
-    public function input(&$input = null): void
+    public function input(&$input = null, &$opt = []): void
     {
         if (is_array($input)) {
             foreach ($input as $fileName => $data) {

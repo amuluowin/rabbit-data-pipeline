@@ -24,8 +24,10 @@ class XmlParser extends AbstractPlugin
 
     /**
      * @param null $input
+     * @param array $opt
+     * @throws \Exception
      */
-    public function input(&$input = null): void
+    public function input(&$input = null, &$opt = []): void
     {
         if (!is_string($input)) {
             App::warning("$this->taskName $this->key must input path or xml string");
