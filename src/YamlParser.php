@@ -12,7 +12,7 @@ use rabbit\helper\FileHelper;
  */
 class YamlParser implements ConfigParserInterface
 {
-    /** @var string  */
+    /** @var string */
     protected $path;
 
     /**
@@ -29,6 +29,14 @@ class YamlParser implements ConfigParserInterface
     }
 
     /**
+     * @return string
+     */
+    public function getPath(): string
+    {
+        return $this->path;
+    }
+
+    /**
      * @return array
      * @throws InvalidConfigException
      */
@@ -40,6 +48,9 @@ class YamlParser implements ConfigParserInterface
                 'filter' => function ($path) use (&$config) {
                     if (!is_file($path)) {
                         return true;
+                    }
+                    if (pathinfo($path, PATHINFO_EXTENSION) !== 'yaml') {
+                        return false;
                     }
                     $yaml = yaml_parse_file($path);
                     if ($yaml === false) {

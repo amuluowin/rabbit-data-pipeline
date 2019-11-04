@@ -26,6 +26,8 @@ class Scheduler implements InitInterface
     protected $parser;
     /** @var Redis */
     protected $redis;
+    /** @var bool */
+    protected $autoRefresh = false;
 
     /**
      * Scheduler constructor.
@@ -44,10 +46,30 @@ class Scheduler implements InitInterface
      */
     public function init()
     {
-        foreach ($this->parser->parse() as $task => $config) {
-            $this->build($task, $config);
-        }
+        $this->build();
         $this->redis = getDI('redis');
+        if ($this->autoRefresh) {
+            $this->refreshConfig();
+        }
+    }
+
+    protected function refreshConfig(): void
+    {
+        $fd = inotify_init();
+        $watch_descriptor = inotify_add_watch($fd, $this->parser->getPath(), IN_MODIFY);
+        swoole_event_add($fd, function ($fd) {
+            $events = inotify_read($fd);
+            if ($events) {
+                foreach ($events as $event) {
+                    if (pathinfo($event['name'], PATHINFO_EXTENSION) === 'yaml') {
+                        echo App::getServer()->getSwooleServer()->worker_id . " {$event['name']} modify..." . PHP_EOL;
+                    }
+                }
+                if (pathinfo($event['name'], PATHINFO_EXTENSION) === 'yaml') {
+                    $this->build();
+                }
+            }
+        });
     }
 
 
@@ -79,38 +101,38 @@ class Scheduler implements InitInterface
     }
 
     /**
-     * @param string $name
-     * @param array $config
      * @throws DependencyException
      * @throws InvalidConfigException
      * @throws NotFoundException
      */
-    protected function build(string $name, array $config): void
+    protected function build(): void
     {
-        foreach ($config as $key => $params) {
-            $class = ArrayHelper::remove($params, 'type');
-            if (!$class) {
-                throw new InvalidConfigException("The type must be set in $key");
+        foreach ($this->parser->parse() as $name => $config) {
+            foreach ($config as $key => $params) {
+                $class = ArrayHelper::remove($params, 'type');
+                if (!$class) {
+                    throw new InvalidConfigException("The type must be set in $key");
+                }
+                $output = ArrayHelper::remove($params, 'output', []);
+                $start = ArrayHelper::remove($params, 'start', false);
+                if (is_string($output)) {
+                    $output = [$output => false];
+                }
+                $lockEx = ArrayHelper::remove($params, 'lockEx', 30);
+                $this->targets[$name][$key] = ObjectFactory::createObject(
+                    $class,
+                    [
+                        'config' => $params,
+                        'key' => $key,
+                        'output' => $output,
+                        'start' => $start,
+                        'taskName' => $name,
+                        'lockEx' => $lockEx,
+                        'init()' => [],
+                    ],
+                    false
+                );
             }
-            $output = ArrayHelper::remove($params, 'output', []);
-            $start = ArrayHelper::remove($params, 'start', false);
-            if (is_string($output)) {
-                $output = [$output => false];
-            }
-            $lockEx = ArrayHelper::remove($params, 'lockEx', 30);
-            $this->targets[$name][$key] = ObjectFactory::createObject(
-                $class,
-                [
-                    'config' => $params,
-                    'key' => $key,
-                    'output' => $output,
-                    'start' => $start,
-                    'taskName' => $name,
-                    'lockEx' => $lockEx,
-                    'init()' => [],
-                ],
-                false
-            );
         }
     }
 

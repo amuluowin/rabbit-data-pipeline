@@ -19,7 +19,7 @@ use rabbit\helper\ArrayHelper;
  * Class Pdo
  * @package Rabbit\Data\Pipeline\Sinks
  */
-class Pdo extends AbstractPlugin
+class PdoSave extends AbstractPlugin
 {
     /** @var string */
     protected $tableName;
