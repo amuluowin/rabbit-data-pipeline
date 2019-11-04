@@ -16,14 +16,12 @@ class Http extends AbstractPlugin
 {
 
     /**
-     * @param null $input
-     * @param array $opt
      * @throws Exception
      */
-    public function input(&$input = null, &$opt = []): void
+    public function run(): void
     {
-        $format = ArrayHelper::remove($input, 'format');
-        $response = SaberGM::request(array_merge($this->config, ArrayHelper::toArray($input)));
+        $format = ArrayHelper::remove($this->input, 'format');
+        $response = SaberGM::request(array_merge($this->config, ArrayHelper::toArray($this->input)));
         $parseType = "getParsed$format";
         if (method_exists($response, $parseType)) {
             $result = $response->$parseType();

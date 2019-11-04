@@ -77,11 +77,9 @@ class PdoSave extends AbstractPlugin
     }
 
     /**
-     * @param null $input
-     * @param array $opt
      * @throws Exception
      */
-    public function input(&$input = null, &$opt = [])
+    public function run(): void
     {
         $model = new class($this->tableName, $this->dbName) extends ActiveRecord {
             /**
@@ -91,8 +89,8 @@ class PdoSave extends AbstractPlugin
              */
             public function __construct(string $tableName, string $dbName)
             {
-                Context::set(__CLASS__ . 'tableName', $tableName);
-                Context::set(__CLASS__ . 'dbName', $tableName);
+                Context::set(md5(get_called_class() . 'tableName'), $tableName);
+                Context::set(md5(get_called_class() . 'dbName'), $dbName);
             }
 
             /**
@@ -100,7 +98,7 @@ class PdoSave extends AbstractPlugin
              */
             public static function tableName()
             {
-                return Context::get(__CLASS__ . 'tableName');
+                return Context::get(md5(get_called_class() . 'tableName'));
             }
 
             /**
@@ -108,14 +106,14 @@ class PdoSave extends AbstractPlugin
              */
             public static function getDb(): ConnectionInterface
             {
-                return getDI('db')->getConnection(Context::get(__CLASS__ . 'dbName'));
+                return getDI('db')->getConnection(Context::get(md5(get_called_class() . 'dbName')));
             }
         };
 
-        if (!CreateExt::create($model, $input)) {
+        if (!CreateExt::create($model, $this->input)) {
             throw new Exception("save to " . $model::tableName() . ' failed!');
         }
-
-        $this->output($model->toArray());
+        $output = $model->toArray();
+        $this->output($output);
     }
 }

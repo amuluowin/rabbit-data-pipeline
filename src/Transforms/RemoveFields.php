@@ -12,14 +12,11 @@ class RemoveFields extends AbstractPlugin
     protected $fields = [];
 
     /**
-     * @param null $input
-     * @param array $opt
      * @throws \Exception
      */
-    public function input(&$input = null, &$opt = [])
+    public function run(): void
     {
-        $params = $input;
-        $params = ArrayHelper::toArray($params);
+        $params = ArrayHelper::toArray($this->input);
         foreach ($this->fields as $key) {
             unset($params[$key]);
         }

@@ -145,8 +145,10 @@ class Scheduler implements InitInterface
         /** @var AbstractPlugin $target */
         foreach ($this->targets[$task] as $target) {
             if ($target->getStart()) {
-                $data = [(string)getDI('idGen')->create(), [], $params];
-                (clone $target)->process($data);
+                $current = clone $target;
+                $current->task_id = (string)getDI('idGen')->create();
+                $current->input = $params;
+                $current->run();
             }
         }
     }
@@ -154,11 +156,13 @@ class Scheduler implements InitInterface
     /**
      * @param string $taskName
      * @param string $key
+     * @param string|null $task_id
      * @param $data
-     * @param bool $process
+     * @param bool $transfer
+     * @param array $opt
      * @throws Exception
      */
-    public function send(string $taskName, string $key, ?string $task_id, &$data, bool $process, array &$opt = []): void
+    public function send(string $taskName, string $key, ?string $task_id, &$data, bool $transfer, array &$opt = []): void
     {
         try {
             /** @var AbstractPlugin $target */
@@ -171,13 +175,15 @@ class Scheduler implements InitInterface
 
             /** @var CoServer $server */
             $server = App::getServer();
+            $target->task_id = $task_id;
+            $target->input =& $data;
+            $target->opt =& $opt;
             if ($server instanceof CoServer) {
                 $socket = $server->getProcessSocket();
                 $workerId = array_rand($socket->getWorkerIds());
-                if (!$process || $socket->workerId === $workerId) {
-                    $params = [$task_id, &$data, &$opt];
-                    rgo(function () use (&$target, &$params) {
-                        $target->process($params);
+                if (!$transfer || $socket->workerId === $workerId) {
+                    rgo(function () use ($target) {
+                        $target->run();
                     });
                 } else {
                     App::info("Data from $socket->workerId to $workerId", 'Data');
@@ -188,10 +194,9 @@ class Scheduler implements InitInterface
                 $swooleServer = $server->getSwooleServer();
                 $workerId = array_rand(range(0, $swooleServer->setting['worker_num'] +
                 isset($swooleServer->setting['task_worker_num']) ? $swooleServer->setting['task_worker_num'] : 0));
-                if (!$process || $swooleServer->worker_id === $workerId) {
-                    $params = [$task_id, &$data, &$opt];
-                    rgo(function () use (&$target, &$params) {
-                        $target->process($params);
+                if (!$transfer || $swooleServer->worker_id === $workerId) {
+                    rgo(function () use ($target) {
+                        $target->run();
                     });
                 } else {
                     $server->getSwooleServer()->sendMessage([
@@ -201,8 +206,8 @@ class Scheduler implements InitInterface
                 }
             } else {
                 $params = [$task_id, &$data, &$opt];
-                rgo(function () use (&$target, &$params) {
-                    $target->process($params);
+                rgo(function () use ($target) {
+                    $target->run();
                 });
             }
         } catch (\Throwable $exception) {

@@ -4,8 +4,8 @@ declare(strict_types=1);
 namespace Rabbit\Data\Pipeline\Transforms;
 
 use Exception;
-use rabbit\helper\JsonHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
+use rabbit\helper\JsonHelper;
 
 /**
  * Class JsonFormat
@@ -14,12 +14,11 @@ use Rabbit\Data\Pipeline\AbstractPlugin;
 class JsonFormat extends AbstractPlugin
 {
     /**
-     * @param null $input
-     * @param array $opt
      * @throws Exception
      */
-    public function input(&$input = null, &$opt = []): void
+    public function run(): void
     {
-        $this->output(JsonHelper::encode($input));
+        $output = JsonHelper::encode($this->input);
+        $this->output($output);
     }
 }

@@ -76,20 +76,18 @@ class HttpRequest extends AbstractPlugin
     }
 
     /**
-     * @param null $input
-     * @param array $opt
      * @throws Exception
      */
-    public function input(&$input = null, &$opt = []): void
+    public function run(): void
     {
-        $path = ArrayHelper::remove($input, 'download_dir');
-        $throttleTime = ArrayHelper::remove($input, 'throttleTime', 0);
+        $path = ArrayHelper::remove($this->input, 'download_dir');
+        $throttleTime = ArrayHelper::remove($this->input, 'throttleTime', 0);
         while (true) {
             try {
                 $request_id = uniqid();
                 if ($this->download && $path) {
                     FileHelper::createDirectory(dirname($path), 777);
-                    $input += ['download_dir' => $path];
+                    $this->input += ['download_dir' => $path];
                 }
                 $options = [
                     'use_pool' => $this->usePool,
@@ -116,7 +114,7 @@ class HttpRequest extends AbstractPlugin
                         return call_user_func($this->retry, $request, $this->throttleTime === null ? $throttleTime : $this->throttleTime);
                     };
                 }
-                $response = SaberGM::request(array_merge($input, $options));
+                $response = SaberGM::request(array_merge($this->input, $options));
                 if (!$this->download) {
                     $format = 'getParsed' . $this->format;
                     if (method_exists($response, $format)) {
@@ -130,7 +128,7 @@ class HttpRequest extends AbstractPlugin
                 }
                 return;
             } catch (TransferException $exception) {
-                if (call_user_func($this->error, $exception, $input['body'], $this->throttleTime === null ? $throttleTime : $this->throttleTime)) {
+                if (call_user_func($this->error, $exception, $this->input['body'], $this->throttleTime === null ? $throttleTime : $this->throttleTime)) {
                     return;
                 }
             }

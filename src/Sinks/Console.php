@@ -33,29 +33,26 @@ class Console extends AbstractPlugin
         ]);
     }
 
-    /**
-     * @param null $input
-     * @param array $opt
-     */
-    public function input(&$input = null, &$opt = []): void
+
+    public function run(): void
     {
         switch ($this->encoding) {
             case 'json':
                 if ($this->method === 'echo') {
-                    echo JsonHelper::encode(VarDumper::getDumper()->dumpAsString($input)) . PHP_EOL;
+                    echo JsonHelper::encode(VarDumper::getDumper()->dumpAsString($this->input)) . PHP_EOL;
                 } elseif (is_callable($this->method)) {
-                    call_user_func($this->method, JsonHelper::encode(VarDumper::getDumper()->dumpAsString($input)));
+                    call_user_func($this->method, JsonHelper::encode(VarDumper::getDumper()->dumpAsString($this->input)));
                 } else {
                     throw new InvalidCallException("$this->method not callable!");
                 }
                 break;
             case 'html':
                 if ($this->method === 'echo') {
-                    echo htmlspecialchars_decode(VarDumper::getDumper()->dumpAsString($input)) . PHP_EOL;
+                    echo htmlspecialchars_decode(VarDumper::getDumper()->dumpAsString($this->input)) . PHP_EOL;
                 } elseif (is_callable($this->method)) {
                     call_user_func(
                         $this->method,
-                        htmlspecialchars_decode(VarDumper::getDumper()->dumpAsString($input))
+                        htmlspecialchars_decode(VarDumper::getDumper()->dumpAsString($this->input))
                     );
                 } else {
                     throw new InvalidCallException("$this->method not callable!");
@@ -63,11 +60,11 @@ class Console extends AbstractPlugin
                 break;
             case 'xml':
                 if ($this->method === 'echo') {
-                    echo XmlFormatHelper::format(VarDumper::getDumper()->dumpAsString($input)) . PHP_EOL;
+                    echo XmlFormatHelper::format(VarDumper::getDumper()->dumpAsString($this->input)) . PHP_EOL;
                 } elseif (is_callable($this->method)) {
                     call_user_func(
                         $this->method,
-                        XmlFormatHelper::format(VarDumper::getDumper()->dumpAsString($input))
+                        XmlFormatHelper::format(VarDumper::getDumper()->dumpAsString($this->input))
                     );
                 } else {
                     throw new InvalidCallException("$this->method not callable!");
@@ -76,9 +73,9 @@ class Console extends AbstractPlugin
             case 'text':
             default:
                 if ($this->method === 'echo') {
-                    echo VarDumper::getDumper()->dumpAsString($input) . PHP_EOL;
+                    echo VarDumper::getDumper()->dumpAsString($this->input) . PHP_EOL;
                 } elseif (is_callable($this->method)) {
-                    call_user_func($this->method, VarDumper::getDumper()->dumpAsString($input));
+                    call_user_func($this->method, VarDumper::getDumper()->dumpAsString($this->input));
                 } else {
                     throw new InvalidCallException("$this->method not callable!");
                 }

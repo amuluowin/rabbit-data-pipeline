@@ -13,13 +13,11 @@ use Rabbit\Data\Pipeline\AbstractPlugin;
 class ArrayFormat extends AbstractPlugin
 {
     /**
-     * @param null $input
-     * @param array $opt
      * @throws \Exception
      */
-    public function input(&$input = null, &$opt = []): void
+    public function run(): void
     {
-        $input = ArrayHelper::toArray($input);
-        $this->output($input);
+        $output = ArrayHelper::toArray($this->input);
+        $this->output($output);
     }
 }

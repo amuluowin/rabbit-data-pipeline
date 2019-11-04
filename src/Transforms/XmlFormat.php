@@ -51,14 +51,12 @@ class XmlFormat extends AbstractPlugin
     }
 
     /**
-     * @param null $input
-     * @param array $opt
      * @throws Exception
      */
-    public function input(&$input = null, &$opt = []): void
+    public function run(): void
     {
         $data = XmlFormatHelper::format(
-            $input,
+            $this->input,
             $this->rootTag,
             $this->objectTag,
             $this->itemTag,

@@ -8,7 +8,6 @@ use Psr\SimpleCache\CacheInterface;
 use rabbit\App;
 use rabbit\contract\InitInterface;
 use rabbit\core\BaseObject;
-use rabbit\core\Context;
 use rabbit\helper\ArrayHelper;
 use rabbit\redis\Redis;
 
@@ -19,11 +18,17 @@ use rabbit\redis\Redis;
 abstract class AbstractPlugin extends BaseObject implements InitInterface
 {
     /** @var string */
-    protected $taskName;
+    public $taskName;
     /** @var string */
-    protected $key;
+    public $task_id;
+    /** @var string */
+    public $key;
     /** @var array */
     protected $config = [];
+    /** @var mixed */
+    public $input;
+    /** @var array */
+    public $opt = [];
     /** @var array */
     protected $output = [];
     /** @var bool */
@@ -36,6 +41,8 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected $lockEx = 0;
     /** @var CacheInterface */
     protected $cache;
+    /** @var mixed */
+    public $result;
     /** @var string */
     const CACHE_KEY = 'cache';
 
@@ -75,10 +82,28 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      */
     public function getLock(string $key = null): bool
     {
-        if ($key || $key = $this->getTaskId()) {
+        if ($key || $key = $this->task_id) {
             return (bool)$this->redis->set($key, true, ['nx', 'ex' => $this->lockEx]);
         }
         return true;
+    }
+
+    /**
+     * @param string $key
+     * @return mixed|null
+     */
+    public function getFromInput(string $key)
+    {
+        return ArrayHelper::getValue($this->input, $key);
+    }
+
+    /**
+     * @param string $key
+     * @return mixed|null
+     */
+    public function getFromOpt(string $key)
+    {
+        return ArrayHelper::getValue($this->opt, $key);
     }
 
     /**
@@ -87,39 +112,10 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      */
     public function deleteLock(string $key = null): int
     {
-        return $this->redis->del($key ?? $this->getTaskId());
+        return $this->redis->del($key ?? $this->task_id);
     }
 
-    /**
-     * @param string $task_id
-     */
-    public function setTaskId(string $task_id): void
-    {
-        Context::set($this->taskName, $task_id);
-    }
-
-    /**
-     * @return string
-     */
-    public function getTaskId(): ?string
-    {
-        return Context::get($this->taskName);
-    }
-
-    /**
-     * @param array $data
-     */
-    public function process(array &$data): void
-    {
-        [$task_id, &$data, &$opt] = $data;
-        $this->setTaskId($task_id);
-        $this->input($data, $opt);
-    }
-
-    /**
-     * @param $input
-     */
-    abstract public function input(&$input = null, &$opt = []);
+    abstract public function run();
 
     /**
      * @param $data
@@ -127,10 +123,9 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      */
     public function output(&$data): void
     {
-        $task_id = $this->getTaskId();
-        foreach ($this->output as $output => $process) {
+        foreach ($this->output as $output => $transfer) {
             App::info("Road from $this->key to $output", 'Data');
-            getDI('scheduler')->send($this->taskName, $output, $task_id, $data, $process);
+            getDI('scheduler')->send($this->taskName, $output, $this->task_id, $data, $transfer, $this->opt);
         }
     }
 }

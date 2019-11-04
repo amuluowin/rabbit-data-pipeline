@@ -97,11 +97,9 @@ class Pdo extends AbstractPlugin
     }
 
     /**
-     * @param null $input
-     * @param array $opt
      * @throws Exception
      */
-    public function input(&$input = null, &$opt = []): void
+    public function run(): void
     {
         if (is_array($this->sql)) {
             $batch = ArrayHelper::remove($this->sql, 'batch');
@@ -119,10 +117,10 @@ class Pdo extends AbstractPlugin
             foreach ($this->params as $key => $value) {
                 switch ($value) {
                     case 'getFromInput':
-                        $params[] = $this->getFromInput($input, $key);
+                        $params[] = ArrayHelper::getValue($this->input, $key);
                         break;
                     case 'input':
-                        $params[] = json_encode($input, JSON_UNESCAPED_UNICODE);
+                        $params[] = json_encode($this->input, JSON_UNESCAPED_UNICODE);
                         break;
                     default:
                         if (method_exists($this, $value)) {
@@ -146,12 +144,10 @@ class Pdo extends AbstractPlugin
         if (ArrayHelper::isIndexed($data) && $this->each) {
             foreach ($data as $item) {
                 rgo(function () use (&$item) {
-                    $this->setTaskId(uniqid());
                     $this->output($item);
                 });
             }
         } else {
-            $this->setTaskId(uniqid());
             $this->output($data);
         }
     }
