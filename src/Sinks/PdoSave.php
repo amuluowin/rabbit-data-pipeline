@@ -60,16 +60,17 @@ class PdoSave extends AbstractPlugin
         [
             $class,
             $dsn,
-            $pool
+            $pool,
+            $this->tableName
         ] = ArrayHelper::getValueByArray(
             $this->config,
-            ['class', 'dsn', 'pool'],
+            ['class', 'dsn', 'pool', 'tableName'],
             null,
             [
                 'pool' => [],
             ]
         );
-        if ($dsn === null || $class === null) {
+        if ($dsn === null || $class === null || $this->taskName === null) {
             throw new InvalidConfigException("class, dsn must be set in $this->key");
         }
         $this->dbName = md5($dsn);

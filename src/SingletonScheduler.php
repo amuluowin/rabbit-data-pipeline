@@ -1,12 +1,11 @@
 <?php
-declare(strict_types=1);
+
 
 namespace Rabbit\Data\Pipeline;
 
 use common\Exception\InvalidArgumentException;
 use DI\DependencyException;
 use DI\NotFoundException;
-use Exception;
 use rabbit\App;
 use rabbit\contract\InitInterface;
 use rabbit\core\ObjectFactory;
@@ -17,7 +16,11 @@ use rabbit\httpserver\CoServer;
 use rabbit\redis\Redis;
 use rabbit\server\Task\Task;
 
-class Scheduler implements InitInterface
+/**
+ * Class SingletonScheduler
+ * @package Rabbit\Data\Pipeline
+ */
+class SingletonScheduler implements InitInterface
 {
     /** @var array */
     protected $targets = [];
@@ -25,10 +28,8 @@ class Scheduler implements InitInterface
     protected $parser;
     /** @var Redis */
     protected $redis;
-    /** @var bool */
-    protected $autoRefresh = false;
     /** @var string */
-    protected $name = 'scheduler';
+    protected $name = 'singletonscheduler';
 
     /**
      * Scheduler constructor.
@@ -49,28 +50,6 @@ class Scheduler implements InitInterface
     {
         $this->build();
         $this->redis = getDI('redis');
-        if ($this->autoRefresh) {
-            $this->refreshConfig();
-        }
-    }
-
-    protected function refreshConfig(): void
-    {
-        $fd = inotify_init();
-        $watch_descriptor = inotify_add_watch($fd, $this->parser->getPath(), IN_MODIFY);
-        swoole_event_add($fd, function ($fd) {
-            $events = inotify_read($fd);
-            if ($events) {
-                foreach ($events as $event) {
-                    if (pathinfo($event['name'], PATHINFO_EXTENSION) === 'yaml') {
-                        echo App::getServer()->getSwooleServer()->worker_id . " {$event['name']} modify..." . PHP_EOL;
-                    }
-                }
-                if (pathinfo($event['name'], PATHINFO_EXTENSION) === 'yaml') {
-                    $this->build();
-                }
-            }
-        });
     }
 
 
@@ -143,13 +122,12 @@ class Scheduler implements InitInterface
      */
     public function process(string $task, array $params = []): void
     {
-        /** @var AbstractPlugin $target */
+        /** @var AbstractSingletonPlugin $target */
         foreach ($this->targets[$task] as $target) {
             if ($target->getStart()) {
-                $current = clone $target;
-                $current->task_id = (string)getDI('idGen')->create();
-                $current->input = $params;
-                $current->run();
+                $target->task_id = (string)getDI('idGen')->create();
+                $opt = [];
+                $target->process($params, $opt);
             }
         }
     }
@@ -159,31 +137,27 @@ class Scheduler implements InitInterface
      * @param string $key
      * @param string|null $task_id
      * @param $data
-     * @param int|null $transfer
+     * @param bool $transfer
      * @param array $opt
      * @throws Exception
      */
     public function send(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = []): void
     {
         try {
-            /** @var AbstractPlugin $target */
-            $target = clone $this->targets[$taskName][$key];
+            /** @var AbstractSingletonPlugin $target */
+            $target = $this->targets[$taskName][$key];
             if (empty($data)) {
                 App::warning("$taskName $key input empty data,ignore!");
                 $this->redis->del($task_id);
                 return;
             }
 
-            $target->task_id = $task_id;
-            $target->input =& $data;
-            $target->opt =& $opt;
-
-            /** @var CoServer $server */
             if ($transfer === null) {
-                rgo(function () use ($target) {
-                    $target->run();
+                rgo(function () use ($target, &$data, &$opt) {
+                    $target->process($data, $opt);
                 });
             } else {
+                /** @var CoServer $server */
                 $server = App::getServer();
                 if ($server === null || $server instanceof CoServer) {
                     if ($server === null) {
@@ -192,6 +166,7 @@ class Scheduler implements InitInterface
                         $socket = $server->getProcessSocket();
                     }
                     $ids = $socket->getWorkerIds();
+                    $socket->workerId === $transfer && $transfer++;
                     if ($transfer > -1) {
                         $workerId = $transfer % count($ids);
                     } else {
@@ -204,6 +179,7 @@ class Scheduler implements InitInterface
                     $swooleServer = $server->getSwooleServer();
                     $ids = range(0, $swooleServer->setting['worker_num'] +
                     isset($swooleServer->setting['task_worker_num']) ? $swooleServer->setting['task_worker_num'] : 0);
+                    $swooleServer->worker_id === $transfer && $transfer++;
                     if ($transfer > -1) {
                         $workerId = $transfer % count($ids);
                     } else {
