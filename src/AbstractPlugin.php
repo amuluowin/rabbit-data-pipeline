@@ -36,13 +36,15 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     /** @var string */
     protected $logKey = 'Plugin';
     /** @var Redis */
-    protected $redis;
+    public $redis;
     /** @var int */
     protected $lockEx = 0;
     /** @var CacheInterface */
     protected $cache;
     /** @var string */
     const CACHE_KEY = 'cache';
+    /** @var string */
+    protected $schedulerName = 'schedule';
 
     /**
      * AbstractPlugin constructor.
@@ -57,14 +59,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
 
     public function init()
     {
-        [
-            $cache
-        ] = ArrayHelper::getValueByArray($this->config, [
-            self::CACHE_KEY
-        ], null, [
-            'memory'
-        ]);
-        $this->cache = getDI(self::CACHE_KEY)->getDriver($cache);
+        $this->cache = getDI(self::CACHE_KEY);
     }
 
     /**
@@ -130,7 +125,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
                 }
             }
             App::info("Road from $this->key to $output", 'Data');
-            getDI('scheduler')->send($this->taskName, $output, $this->task_id, $data, $workerId ?? $transfer, $this->opt);
+            getDI($this->schedulerName)->send($this->taskName, $output, $this->task_id, $data, $workerId ?? $transfer, $this->opt);
         }
     }
 }

@@ -34,6 +34,8 @@ class Pdo extends AbstractPlugin
     protected $each = false;
     /** @var array */
     protected $params = [];
+    /** @var string */
+    protected $cacheDriver = 'memory';
 
     /**
      * @param string $class
@@ -70,7 +72,7 @@ class Pdo extends AbstractPlugin
             $class,
             $dsn,
             $pool,
-            $cache,
+            $this->cacheDriver,
             $this->sql,
             $this->duration,
             $this->query,
@@ -130,7 +132,7 @@ class Pdo extends AbstractPlugin
                         }
                 }
             }
-            $data = getDI('db')->getConnection($this->dbName)->createCommand($this->sql, $params)->cache($this->duration, $this->cache)->{$this->query}();
+            $data = getDI('db')->getConnection($this->dbName)->createCommand($this->sql, $params)->cache($this->duration, $this->cache->getDriver($this->cacheDriver))->{$this->query}();
             $this->send($data);
         }
     }

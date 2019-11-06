@@ -31,13 +31,15 @@ abstract class AbstractSingletonPlugin extends BaseObject implements InitInterfa
     /** @var string */
     protected $logKey = 'Plugin';
     /** @var Redis */
-    protected $redis;
+    public $redis;
     /** @var int */
     protected $lockEx = 0;
     /** @var CacheInterface */
     protected $cache;
     /** @var string */
     const CACHE_KEY = 'cache';
+    /** @var string */
+    protected $scheduleName = 'singletonscheduler';
 
     /**
      * AbstractPlugin constructor.
@@ -52,14 +54,7 @@ abstract class AbstractSingletonPlugin extends BaseObject implements InitInterfa
 
     public function init()
     {
-        [
-            $cache
-        ] = ArrayHelper::getValueByArray($this->config, [
-            self::CACHE_KEY
-        ], null, [
-            'memory'
-        ]);
-        $this->cache = getDI(self::CACHE_KEY)->getDriver($cache);
+        $this->cache = getDI(self::CACHE_KEY);
     }
 
     /**
@@ -172,7 +167,7 @@ abstract class AbstractSingletonPlugin extends BaseObject implements InitInterfa
                 }
             }
             App::info("Road from $this->key to $output", 'Data');
-            getDI('singletonscheduler')->send($this->taskName, $output, $this->getTask_id(), $data, $workerId ?? $transfer, $this->getOpt());
+            getDI($this->scheduleName)->send($this->taskName, $output, $this->getTask_id(), $data, $workerId ?? $transfer, $this->getOpt());
         }
     }
 }

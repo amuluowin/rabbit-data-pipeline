@@ -64,16 +64,16 @@ class SingletonScheduler implements InitInterface
         if ($key === null) {
             foreach (array_keys($this->targets) as $key) {
                 if ($server === null || $server instanceof CoServer) {
-                    $this->process((string)$key);
+                    $this->process((string)$key, $params);
                 } else {
-                    getDI(Task::class)->task(["{$this->name}->process", [$key]]);
+                    getDI(Task::class)->task(["{$this->name}->process", [$key, $params]]);
                 }
             }
         } elseif (isset($this->targets[$key])) {
             if ($server === null || $server instanceof CoServer) {
-                $this->process((string)$key);
+                $this->process((string)$key, $params);
             } else {
-                getDI(Task::class)->task(["{$this->name}->process", [$key]]);
+                getDI(Task::class)->task(["{$this->name}->process", [$key, $params]]);
             }
         } else {
             throw new InvalidArgumentException("No such target $key");
