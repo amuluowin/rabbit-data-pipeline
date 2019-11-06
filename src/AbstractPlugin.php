@@ -44,7 +44,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     /** @var string */
     const CACHE_KEY = 'cache';
     /** @var string */
-    protected $schedulerName = 'schedule';
+    protected $schedulerName = 'scheduler';
 
     /**
      * AbstractPlugin constructor.

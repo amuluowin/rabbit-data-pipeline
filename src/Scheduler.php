@@ -26,7 +26,7 @@ class Scheduler implements InitInterface
     /** @var Redis */
     protected $redis;
     /** @var bool */
-    protected $autoRefresh = false;
+    private $autoRefresh = false;
     /** @var string */
     protected $name = 'scheduler';
 
@@ -184,40 +184,58 @@ class Scheduler implements InitInterface
                     $target->run();
                 });
             } else {
-                $server = App::getServer();
-                if ($server === null || $server instanceof CoServer) {
-                    if ($server === null) {
-                        $socket = getDI('socketHandle');
-                    } else {
-                        $socket = $server->getProcessSocket();
-                    }
-                    $ids = $socket->getWorkerIds();
-                    if ($transfer > -1) {
-                        $workerId = $transfer % count($ids);
-                    } else {
-                        $workerId = array_rand($ids);
-                    }
-                    App::info("Data from $socket->workerId to $workerId", 'Data');
-                    $params = ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt]];
-                    $socket->send($params, $workerId);
-                } else {
-                    $swooleServer = $server->getSwooleServer();
-                    $ids = range(0, $swooleServer->setting['worker_num'] +
-                    isset($swooleServer->setting['task_worker_num']) ? $swooleServer->setting['task_worker_num'] : 0);
-                    if ($transfer > -1) {
-                        $workerId = $transfer % count($ids);
-                    } else {
-                        $workerId = array_rand($ids);
-                    }
-                    $server->getSwooleServer()->sendMessage([
-                        "{$this->name}->send",
-                        [$taskName, $key, $task_id, &$data, null, &$opt]
-                    ], $workerId);
-                }
+                $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt);
             }
         } catch (\Throwable $exception) {
             App::error(ExceptionHelper::dumpExceptionToString($exception));
             $this->redis->del($task_id);
+        }
+    }
+
+    /**
+     * @param string $taskName
+     * @param string $key
+     * @param string|null $task_id
+     * @param $data
+     * @param int|null $transfer
+     * @param array $opt
+     * @throws Exception
+     */
+    protected function transSend(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = []): void
+    {
+        $server = App::getServer();
+        if ($server === null || $server instanceof CoServer) {
+            if ($server === null) {
+                $socket = getDI('socketHandle');
+            } else {
+                $socket = $server->getProcessSocket();
+            }
+            $ids = $socket->getWorkerIds();
+            if ($transfer > -1) {
+                $transfer++;
+                $workerId = $transfer % count($ids);
+            } else {
+                unset($ids[$socket->workerId]);
+                $workerId = array_rand($ids);
+            }
+            App::info("Data from $socket->workerId to $workerId", 'Data');
+            $params = ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt]];
+            $socket->send($params, $workerId);
+        } else {
+            $swooleServer = $server->getSwooleServer();
+            $ids = range(0, $swooleServer->setting['worker_num'] +
+            isset($swooleServer->setting['task_worker_num']) ? $swooleServer->setting['task_worker_num'] : 0);
+            if ($transfer > -1) {
+                $transfer++;
+                $workerId = $transfer % count($ids);
+            } else {
+                unset($ids[$swooleServer->worker_id]);
+                $workerId = array_rand($ids);
+            }
+            $server->getSwooleServer()->sendMessage([
+                "{$this->name}->send",
+                [$taskName, $key, $task_id, &$data, null, &$opt]
+            ], $workerId);
         }
     }
 }

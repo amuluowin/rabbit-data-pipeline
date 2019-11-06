@@ -20,101 +20,10 @@ use rabbit\server\Task\Task;
  * Class SingletonScheduler
  * @package Rabbit\Data\Pipeline
  */
-class SingletonScheduler implements InitInterface
+class SingletonScheduler extends Scheduler
 {
-    /** @var array */
-    protected $targets = [];
-    /** @var ConfigParserInterface */
-    protected $parser;
-    /** @var Redis */
-    protected $redis;
     /** @var string */
     protected $name = 'singletonscheduler';
-
-    /**
-     * Scheduler constructor.
-     * @param ConfigParserInterface $parser
-     */
-    public function __construct(ConfigParserInterface $parser)
-    {
-        $this->parser = $parser;
-    }
-
-    /**
-     * @return mixed|void
-     * @throws DependencyException
-     * @throws InvalidConfigException
-     * @throws NotFoundException
-     */
-    public function init()
-    {
-        $this->build();
-        $this->redis = getDI('redis');
-    }
-
-
-    /**
-     * @param string|null $key
-     * @param array $params
-     * @throws InvalidArgumentException
-     */
-    public function run(string $key = null, array $params = [])
-    {
-        $server = App::getServer();
-        if ($key === null) {
-            foreach (array_keys($this->targets) as $key) {
-                if ($server === null || $server instanceof CoServer) {
-                    $this->process((string)$key, $params);
-                } else {
-                    getDI(Task::class)->task(["{$this->name}->process", [$key, $params]]);
-                }
-            }
-        } elseif (isset($this->targets[$key])) {
-            if ($server === null || $server instanceof CoServer) {
-                $this->process((string)$key, $params);
-            } else {
-                getDI(Task::class)->task(["{$this->name}->process", [$key, $params]]);
-            }
-        } else {
-            throw new InvalidArgumentException("No such target $key");
-        }
-    }
-
-    /**
-     * @throws DependencyException
-     * @throws InvalidConfigException
-     * @throws NotFoundException
-     */
-    protected function build(): void
-    {
-        foreach ($this->parser->parse() as $name => $config) {
-            foreach ($config as $key => $params) {
-                $class = ArrayHelper::remove($params, 'type');
-                if (!$class) {
-                    throw new InvalidConfigException("The type must be set in $key");
-                }
-                $output = ArrayHelper::remove($params, 'output', []);
-                $start = ArrayHelper::remove($params, 'start', false);
-                if (is_string($output)) {
-                    $output = [$output => false];
-                }
-                $lockEx = ArrayHelper::remove($params, 'lockEx', 30);
-                $this->targets[$name][$key] = ObjectFactory::createObject(
-                    $class,
-                    [
-                        'config' => $params,
-                        'key' => $key,
-                        'output' => $output,
-                        'start' => $start,
-                        'taskName' => $name,
-                        'lockEx' => $lockEx,
-                        'init()' => [],
-                    ],
-                    false
-                );
-            }
-        }
-    }
 
     /**
      * @param string $task
@@ -157,39 +66,7 @@ class SingletonScheduler implements InitInterface
                     $target->process($data, $opt);
                 });
             } else {
-                /** @var CoServer $server */
-                $server = App::getServer();
-                if ($server === null || $server instanceof CoServer) {
-                    if ($server === null) {
-                        $socket = getDI('socketHandle');
-                    } else {
-                        $socket = $server->getProcessSocket();
-                    }
-                    $ids = $socket->getWorkerIds();
-                    $socket->workerId === $transfer && $transfer++;
-                    if ($transfer > -1) {
-                        $workerId = $transfer % count($ids);
-                    } else {
-                        $workerId = array_rand($ids);
-                    }
-                    App::info("Data from $socket->workerId to $workerId", 'Data');
-                    $params = ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt]];
-                    $socket->send($params, $workerId);
-                } else {
-                    $swooleServer = $server->getSwooleServer();
-                    $ids = range(0, $swooleServer->setting['worker_num'] +
-                    isset($swooleServer->setting['task_worker_num']) ? $swooleServer->setting['task_worker_num'] : 0);
-                    $swooleServer->worker_id === $transfer && $transfer++;
-                    if ($transfer > -1) {
-                        $workerId = $transfer % count($ids);
-                    } else {
-                        $workerId = array_rand($ids);
-                    }
-                    $server->getSwooleServer()->sendMessage([
-                        "{$this->name}->send",
-                        [$taskName, $key, $task_id, &$data, null, &$opt]
-                    ], $workerId);
-                }
+                $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt);
             }
         } catch (\Throwable $exception) {
             App::error(ExceptionHelper::dumpExceptionToString($exception));
