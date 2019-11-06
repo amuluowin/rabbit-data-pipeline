@@ -212,8 +212,8 @@ class Scheduler implements InitInterface
             }
             $ids = $socket->getWorkerIds();
             if ($transfer > -1) {
-                $transfer++;
                 $workerId = $transfer % count($ids);
+                $workerId === $socket->workerId && $workerId++;
             } else {
                 unset($ids[$socket->workerId]);
                 $workerId = array_rand($ids);
@@ -226,8 +226,8 @@ class Scheduler implements InitInterface
             $ids = range(0, $swooleServer->setting['worker_num'] +
             isset($swooleServer->setting['task_worker_num']) ? $swooleServer->setting['task_worker_num'] : 0);
             if ($transfer > -1) {
-                $transfer++;
                 $workerId = $transfer % count($ids);
+                $workerId === $swooleServer->worker_id && $workerId++;
             } else {
                 unset($ids[$swooleServer->worker_id]);
                 $workerId = array_rand($ids);
