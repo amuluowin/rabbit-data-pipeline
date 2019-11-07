@@ -15,7 +15,6 @@ use rabbit\helper\ArrayHelper;
 use rabbit\helper\ExceptionHelper;
 use rabbit\httpserver\CoServer;
 use rabbit\redis\Redis;
-use rabbit\server\Server;
 use rabbit\server\Task\Task;
 
 class Scheduler implements InitInterface
@@ -27,7 +26,9 @@ class Scheduler implements InitInterface
     /** @var Redis */
     protected $redis;
     /** @var bool */
-    protected $autoRefresh = false;
+    private $autoRefresh = false;
+    /** @var string */
+    protected $name = 'scheduler';
 
     /**
      * Scheduler constructor.
@@ -74,26 +75,26 @@ class Scheduler implements InitInterface
 
 
     /**
+     * @param string|null $key
      * @param array $params
      * @throws InvalidArgumentException
-     * @throws Exception
      */
-    public function run(array $params)
+    public function run(string $key = null, array $params = [])
     {
-        $key = ArrayHelper::remove($params, 'task');
+        $server = App::getServer();
         if ($key === null) {
             foreach (array_keys($this->targets) as $key) {
-                if (App::getServer() instanceof CoServer) {
-                    $this->process((string)$key);
+                if ($server === null || $server instanceof CoServer) {
+                    $this->process((string)$key, $params);
                 } else {
-                    getDI(Task::class)->task(['scheduler->process', [$key]]);
+                    getDI(Task::class)->task(["{$this->name}->process", [$key, $params]]);
                 }
             }
         } elseif (isset($this->targets[$key])) {
-            if (App::getServer() instanceof CoServer) {
-                $this->process((string)$key);
+            if ($server === null || $server instanceof CoServer) {
+                $this->process((string)$key, $params);
             } else {
-                getDI(Task::class)->task(['scheduler->process', [$key]]);
+                getDI(Task::class)->task(["{$this->name}->process", [$key, $params]]);
             }
         } else {
             throw new InvalidArgumentException("No such target $key");
@@ -158,11 +159,11 @@ class Scheduler implements InitInterface
      * @param string $key
      * @param string|null $task_id
      * @param $data
-     * @param bool $transfer
+     * @param int|null $transfer
      * @param array $opt
      * @throws Exception
      */
-    public function send(string $taskName, string $key, ?string $task_id, &$data, bool $transfer, array &$opt = []): void
+    public function send(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = []): void
     {
         try {
             /** @var AbstractPlugin $target */
@@ -173,46 +174,68 @@ class Scheduler implements InitInterface
                 return;
             }
 
-            /** @var CoServer $server */
-            $server = App::getServer();
             $target->task_id = $task_id;
             $target->input =& $data;
             $target->opt =& $opt;
-            if ($server instanceof CoServer) {
-                $socket = $server->getProcessSocket();
-                $workerId = array_rand($socket->getWorkerIds());
-                if (!$transfer || $socket->workerId === $workerId) {
-                    rgo(function () use ($target) {
-                        $target->run();
-                    });
-                } else {
-                    App::info("Data from $socket->workerId to $workerId", 'Data');
-                    $params = ['scheduler->send', [$taskName, $key, $task_id, &$data, false, &$opt]];
-                    $socket->send($params, $workerId);
-                }
-            } elseif ($server instanceof Server) {
-                $swooleServer = $server->getSwooleServer();
-                $workerId = array_rand(range(0, $swooleServer->setting['worker_num'] +
-                isset($swooleServer->setting['task_worker_num']) ? $swooleServer->setting['task_worker_num'] : 0));
-                if (!$transfer || $swooleServer->worker_id === $workerId) {
-                    rgo(function () use ($target) {
-                        $target->run();
-                    });
-                } else {
-                    $server->getSwooleServer()->sendMessage([
-                        'scheduler->send',
-                        [$taskName, $key, $task_id, &$data, false, &$opt]
-                    ], $workerId);
-                }
-            } else {
-                $params = [$task_id, &$data, &$opt];
+
+            /** @var CoServer $server */
+            if ($transfer === null) {
                 rgo(function () use ($target) {
                     $target->run();
                 });
+            } else {
+                $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt);
             }
         } catch (\Throwable $exception) {
             App::error(ExceptionHelper::dumpExceptionToString($exception));
             $this->redis->del($task_id);
+        }
+    }
+
+    /**
+     * @param string $taskName
+     * @param string $key
+     * @param string|null $task_id
+     * @param $data
+     * @param int|null $transfer
+     * @param array $opt
+     * @throws Exception
+     */
+    protected function transSend(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = []): void
+    {
+        $server = App::getServer();
+        if ($server === null || $server instanceof CoServer) {
+            if ($server === null) {
+                $socket = getDI('socketHandle');
+            } else {
+                $socket = $server->getProcessSocket();
+            }
+            $ids = $socket->getWorkerIds();
+            if ($transfer > -1) {
+                $workerId = $transfer % count($ids);
+                $workerId === $socket->workerId && $workerId++;
+            } else {
+                unset($ids[$socket->workerId]);
+                $workerId = array_rand($ids);
+            }
+            App::info("Data from $socket->workerId to $workerId", 'Data');
+            $params = ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt]];
+            $socket->send($params, $workerId);
+        } else {
+            $swooleServer = $server->getSwooleServer();
+            $ids = range(0, $swooleServer->setting['worker_num'] +
+            isset($swooleServer->setting['task_worker_num']) ? $swooleServer->setting['task_worker_num'] : 0);
+            if ($transfer > -1) {
+                $workerId = $transfer % count($ids);
+                $workerId === $swooleServer->worker_id && $workerId++;
+            } else {
+                unset($ids[$swooleServer->worker_id]);
+                $workerId = array_rand($ids);
+            }
+            $server->getSwooleServer()->sendMessage([
+                "{$this->name}->send",
+                [$taskName, $key, $task_id, &$data, null, &$opt]
+            ], $workerId);
         }
     }
 }

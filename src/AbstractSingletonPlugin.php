@@ -8,27 +8,22 @@ use Psr\SimpleCache\CacheInterface;
 use rabbit\App;
 use rabbit\contract\InitInterface;
 use rabbit\core\BaseObject;
+use rabbit\core\Context;
 use rabbit\helper\ArrayHelper;
 use rabbit\redis\Redis;
 
 /**
- * Interface AbstractPlugin
+ * Class AbstractSingletonPlugin
  * @package Rabbit\Data\Pipeline
  */
-abstract class AbstractPlugin extends BaseObject implements InitInterface
+abstract class AbstractSingletonPlugin extends BaseObject implements InitInterface
 {
     /** @var string */
     public $taskName;
     /** @var string */
-    public $task_id;
-    /** @var string */
     public $key;
     /** @var array */
     protected $config = [];
-    /** @var mixed */
-    public $input;
-    /** @var array */
-    public $opt = [];
     /** @var array */
     protected $output = [];
     /** @var bool */
@@ -44,7 +39,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     /** @var string */
     const CACHE_KEY = 'cache';
     /** @var string */
-    protected $schedulerName = 'scheduler';
+    protected $scheduleName = 'singletonscheduler';
 
     /**
      * AbstractPlugin constructor.
@@ -71,23 +66,40 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     }
 
     /**
+     * @return string
+     */
+    public function getTask_id(): string
+    {
+        return (string)Context::get($this->taskName . $this->key . 'task_id');
+    }
+
+    /**
+     * @param string $task_id
+     */
+    public function setTask_id(string $task_id): void
+    {
+        Context::set($this->taskName . $this->key . 'task_id', $task_id);
+    }
+
+    /**
      * @return int
      */
     public function getLock(string $key = null): bool
     {
-        if ($key || $key = $this->task_id) {
+        if ($key || $key = $this->getTask_id()) {
             return (bool)$this->redis->set($key, true, ['nx', 'ex' => $this->lockEx]);
         }
         return true;
     }
 
     /**
+     * @param array $input
      * @param string $key
      * @return mixed|null
      */
-    public function getFromInput(string $key)
+    public function getFromInput(array &$input, string $key)
     {
-        return ArrayHelper::getValue($this->input, $key);
+        return ArrayHelper::getValue($input, $key);
     }
 
     /**
@@ -96,7 +108,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      */
     public function getFromOpt(string $key)
     {
-        return ArrayHelper::getValue($this->opt, $key);
+        return ArrayHelper::getValue($this->getOpt(), $key);
     }
 
     /**
@@ -105,10 +117,40 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      */
     public function deleteLock(string $key = null): int
     {
-        return $this->redis->del($key ?? $this->task_id);
+        return $this->redis->del($key ?? $this->getTask_id());
     }
 
-    abstract public function run();
+    /**
+     * @param array $opt
+     */
+    public function setOpt(array $opt): void
+    {
+        Context::set($this->getTask_id() . 'opt', $opt);
+    }
+
+    /**
+     * @return array
+     */
+    public function getOpt(): array
+    {
+        return (array)Context::get($this->getTask_id() . 'opt');
+    }
+
+    /**
+     * @param $input
+     * @param array $opt
+     */
+    public function process(&$input, array &$opt)
+    {
+        $this->setOpt($opt);
+        $this->run($input);
+    }
+
+    /**
+     * @param $input
+     * @return mixed
+     */
+    abstract public function run(&$input);
 
     /**
      * @param $data
@@ -125,7 +167,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
                 }
             }
             App::info("Road from $this->key to $output", 'Data');
-            getDI($this->schedulerName)->send($this->taskName, $output, $this->task_id, $data, $workerId ?? $transfer, $this->opt);
+            getDI($this->scheduleName)->send($this->taskName, $output, $this->getTask_id(), $data, $workerId ?? $transfer, $this->getOpt());
         }
     }
 }

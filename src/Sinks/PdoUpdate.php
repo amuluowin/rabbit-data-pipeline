@@ -1,25 +1,26 @@
 <?php
-
+declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
 
 use DI\DependencyException;
 use DI\NotFoundException;
 use rabbit\activerecord\ActiveRecord;
+use rabbit\App;
 use rabbit\core\Context;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 use rabbit\db\ConnectionInterface;
 use rabbit\db\Exception;
 use rabbit\db\MakePdoConnection;
-use rabbit\db\mysql\CreateExt;
+use rabbit\exception\InvalidArgumentException;
 use rabbit\exception\InvalidConfigException;
 use rabbit\helper\ArrayHelper;
 
 /**
- * Class Pdo
+ * Class PdoUpdate
  * @package Rabbit\Data\Pipeline\Sinks
  */
-class PdoSave extends AbstractPlugin
+class PdoUpdate extends AbstractPlugin
 {
     /** @var string */
     protected $tableName;
@@ -82,6 +83,13 @@ class PdoSave extends AbstractPlugin
      */
     public function run(): void
     {
+        [
+            $condition,
+            $updates
+        ] = ArrayHelper::getValueByArray($this->input, ['where', 'updates']);
+        if (empty($updates)) {
+            throw new InvalidArgumentException("updates can not empty");
+        }
         $model = new class($this->tableName, $this->dbName) extends ActiveRecord {
             /**
              *  constructor.
@@ -110,11 +118,10 @@ class PdoSave extends AbstractPlugin
                 return getDI('db')->getConnection(Context::get(md5(get_called_class() . 'dbName')));
             }
         };
-
-        if (!CreateExt::create($model, $this->input)) {
-            throw new Exception("save to " . $model::tableName() . ' failed!');
+        $res = $model::updateAll($updates, $condition);
+        if (!$res) {
+            App::warning("$this->tableName update failed");
         }
-        $output = $model->toArray();
-        $this->output($output);
+        $this->output($res);
     }
 }
