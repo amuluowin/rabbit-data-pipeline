@@ -97,9 +97,6 @@ class File extends AbstractPlugin
                     fclose($fp);
                 }
                 break;
-            case 'txt':
-                $this->saveContents($fileName, VarDumper::getDumper()->dumpAsString($this->input));
-                break;
             case 'xml':
                 if (is_string($this->input)) {
                     $this->saveContents($fileName, $this->input);
@@ -107,6 +104,9 @@ class File extends AbstractPlugin
                     $this->saveContents($fileName, XmlFormatHelper::format($this->input));
                 }
                 break;
+            case 'txt':
+            default:
+                $this->saveContents($fileName, VarDumper::getDumper()->dumpAsString($this->input));
         }
         $this->output($fileName);
     }
