@@ -5,18 +5,19 @@ namespace Rabbit\Data\Pipeline;
 
 use rabbit\exception\InvalidConfigException;
 use rabbit\helper\FileHelper;
+use rabbit\helper\JsonHelper;
 
 /**
- * Class YamlParser
+ * Class JsonParser
  * @package Rabbit\Data\Pipeline
  */
-class YamlParser implements ConfigParserInterface
+class JsonParser implements ConfigParserInterface
 {
     /** @var string */
     protected $path;
 
     /**
-     * YamlParser constructor.
+     * JsonParser constructor.
      * @param string $path
      * @throws InvalidConfigException
      */
@@ -52,20 +53,21 @@ class YamlParser implements ConfigParserInterface
                     if (pathinfo($path, PATHINFO_EXTENSION) !== 'yaml') {
                         return false;
                     }
-                    $yaml = yaml_parse_file($path);
-                    if ($yaml === false) {
+                    $json = file_get_contents($path);
+                    if ($json === false) {
                         throw new InvalidConfigException(error_get_last()['message'] . " path=$path");
                     }
-                    $config[pathinfo($path, PATHINFO_FILENAME)] = $yaml;
+                    $json = JsonHelper::decode($json, true);
+                    $config[pathinfo($path, PATHINFO_FILENAME)] = $json;
                     return true;
                 }
             ]);
         } else {
-            $item = yaml_parse_file($this->path);
-            if ($item === false) {
+            $json = file_get_contents($this->path);
+            if ($json === false) {
                 throw new InvalidConfigException(error_get_last()['message'] . " path=$this->path");
             }
-            $config[pathinfo($this->path, PATHINFO_FILENAME)] = $item;
+            $config[pathinfo($this->path, PATHINFO_FILENAME)] = JsonHelper::decode($json, true);
         }
         return $config;
     }

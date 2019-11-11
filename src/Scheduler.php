@@ -47,7 +47,7 @@ class Scheduler implements InitInterface
      */
     public function init()
     {
-        $this->build();
+        $this->build($this->parser->parse());
         $this->redis = getDI('redis');
         if ($this->autoRefresh) {
             $this->refreshConfig();
@@ -67,12 +67,11 @@ class Scheduler implements InitInterface
                     }
                 }
                 if (pathinfo($event['name'], PATHINFO_EXTENSION) === 'yaml') {
-                    $this->build();
+                    $this->build($this->parser->parse());
                 }
             }
         });
     }
-
 
     /**
      * @param string|null $key
@@ -102,13 +101,14 @@ class Scheduler implements InitInterface
     }
 
     /**
+     * @param array $configs
      * @throws DependencyException
      * @throws InvalidConfigException
      * @throws NotFoundException
      */
-    protected function build(): void
+    public function build(array $configs): void
     {
-        foreach ($this->parser->parse() as $name => $config) {
+        foreach ($configs as $name => $config) {
             foreach ($config as $key => $params) {
                 $class = ArrayHelper::remove($params, 'type');
                 if (!$class) {
