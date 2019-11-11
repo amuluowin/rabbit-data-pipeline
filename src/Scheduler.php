@@ -218,7 +218,7 @@ class Scheduler implements InitInterface
                 unset($ids[$socket->workerId]);
                 $workerId = array_rand($ids);
             }
-            App::info("Data from $socket->workerId to $workerId", 'Data');
+            App::info("Data from worker $socket->workerId to $workerId", 'Data');
             $params = ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt]];
             $socket->send($params, $workerId);
         } else {
@@ -232,6 +232,7 @@ class Scheduler implements InitInterface
                 unset($ids[$swooleServer->worker_id]);
                 $workerId = array_rand($ids);
             }
+            App::info("Data from worker $socket->workerId to $workerId", 'Data');
             $server->getSwooleServer()->sendMessage([
                 "{$this->name}->send",
                 [$taskName, $key, $task_id, &$data, null, &$opt]

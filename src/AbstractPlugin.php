@@ -9,6 +9,7 @@ use rabbit\App;
 use rabbit\contract\InitInterface;
 use rabbit\core\BaseObject;
 use rabbit\helper\ArrayHelper;
+use rabbit\helper\VarDumper;
 use rabbit\redis\Redis;
 
 /**
@@ -17,6 +18,8 @@ use rabbit\redis\Redis;
  */
 abstract class AbstractPlugin extends BaseObject implements InitInterface
 {
+    const LOG_SIMPLE = 0;
+    const LOG_INFO = 1;
     /** @var string */
     public $taskName;
     /** @var string */
@@ -45,6 +48,8 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     const CACHE_KEY = 'cache';
     /** @var string */
     protected $schedulerName = 'scheduler';
+    /** @var int */
+    protected $logInfo = self::LOG_SIMPLE;
 
     /**
      * AbstractPlugin constructor.
@@ -124,7 +129,11 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
                     $transfer = -1;
                 }
             }
-            App::info("Road from $this->key to $output", 'Data');
+            if ($this->logInfo === self::LOG_SIMPLE) {
+                App::info("Road from $this->key to $output", 'Data');
+            } else {
+                App::info("Road from $this->key to $output with data " . VarDumper::getDumper()->dumpAsString($data), 'Data');
+            }
             getDI($this->schedulerName)->send($this->taskName, $output, $this->task_id, $data, $workerId ?? $transfer, $this->opt);
         }
     }
