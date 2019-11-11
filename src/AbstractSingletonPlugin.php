@@ -44,7 +44,7 @@ abstract class AbstractSingletonPlugin extends BaseObject implements InitInterfa
     /** @var string */
     protected $scheduleName = 'singletonscheduler';
     /** @var int */
-    protected $logInfo = LOG_SIMPLE;
+    protected $logInfo = self::LOG_SIMPLE;
 
     /**
      * AbstractPlugin constructor.

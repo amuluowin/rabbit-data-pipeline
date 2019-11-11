@@ -49,7 +49,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     /** @var string */
     protected $schedulerName = 'scheduler';
     /** @var int */
-    protected $logInfo = LOG_SIMPLE;
+    protected $logInfo = self::LOG_SIMPLE;
 
     /**
      * AbstractPlugin constructor.
