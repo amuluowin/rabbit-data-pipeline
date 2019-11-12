@@ -180,9 +180,7 @@ class Scheduler implements InitInterface
 
             /** @var CoServer $server */
             if ($transfer === null) {
-                rgo(function () use ($target) {
-                    $target->run();
-                });
+                $target->run();
             } else {
                 $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt);
             }

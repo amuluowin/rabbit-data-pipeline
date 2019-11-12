@@ -62,9 +62,7 @@ class SingletonScheduler extends Scheduler
             }
 
             if ($transfer === null) {
-                rgo(function () use ($target, &$data, &$opt) {
-                    $target->process($data, $opt);
-                });
+                $target->process($data, $opt);
             } else {
                 $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt);
             }
