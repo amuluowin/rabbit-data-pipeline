@@ -29,6 +29,8 @@ class Scheduler implements InitInterface
     private $autoRefresh = false;
     /** @var string */
     protected $name = 'scheduler';
+    /** @var array */
+    protected $tasks = [];
 
     /**
      * Scheduler constructor.
@@ -71,6 +73,26 @@ class Scheduler implements InitInterface
                 }
             }
         });
+    }
+
+    /**
+     * @return array
+     */
+    public function getTasks(): array
+    {
+        return $this->tasks;
+    }
+
+    /**
+     * @param AbstractPlugin $target
+     */
+    protected function setTask(AbstractPlugin $target): void
+    {
+        $this->tasks[$target->task_id] = [
+            'taskName' => $target->taskName,
+            'key' => $target->key,
+            'request' => $target->request
+        ];
     }
 
     /**
@@ -148,7 +170,8 @@ class Scheduler implements InitInterface
             if ($target->getStart()) {
                 $current = clone $target;
                 $current->task_id = (string)getDI('idGen')->create();
-                $current->input = $params;
+                $current->request = $params;
+                $this->setTask($current);
                 $current->run();
             }
         }
@@ -163,20 +186,21 @@ class Scheduler implements InitInterface
      * @param array $opt
      * @throws Exception
      */
-    public function send(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = []): void
+    public function send(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = [], array $request = []): void
     {
+        /** @var AbstractPlugin $target */
+        $target = clone $this->targets[$taskName][$key];
         try {
-            /** @var AbstractPlugin $target */
-            $target = clone $this->targets[$taskName][$key];
             if (empty($data)) {
                 App::warning("$taskName $key input empty data,ignore!");
-                $this->redis->del($task_id);
+                $target->deleteLock(ArrayHelper::getValue($target->opt[$target::LOCK_KEY]));
                 return;
             }
-
+            $this->setTask($current);
             $target->task_id = $task_id;
             $target->input =& $data;
             $target->opt =& $opt;
+            $target->request & $request;
 
             /** @var CoServer $server */
             if ($transfer === null) {
@@ -186,7 +210,7 @@ class Scheduler implements InitInterface
             }
         } catch (\Throwable $exception) {
             App::error(ExceptionHelper::dumpExceptionToString($exception));
-            $this->redis->del($task_id);
+            $target->deleteLock(ArrayHelper::getValue($target->opt[$target::LOCK_KEY]));
         }
     }
 

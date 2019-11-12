@@ -31,13 +31,13 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     /** @var mixed */
     public $input;
     /** @var array */
+    public $request = [];
+    /** @var array */
     public $opt = [];
     /** @var array */
     protected $output = [];
     /** @var bool */
     protected $start = false;
-    /** @var string */
-    protected $logKey = 'Plugin';
     /** @var Redis */
     public $redis;
     /** @var int */
@@ -46,6 +46,8 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected $cache;
     /** @var string */
     const CACHE_KEY = 'cache';
+    /** @var string */
+    const LOCK_KEY = 'Plugin';
     /** @var string */
     protected $schedulerName = 'scheduler';
     /** @var int */
@@ -134,7 +136,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
             } else {
                 App::info("Road from $this->key to $output with data " . VarDumper::getDumper()->dumpAsString($data), 'Data');
             }
-            getDI($this->schedulerName)->send($this->taskName, $output, $this->task_id, $data, $workerId ?? $transfer, $this->opt);
+            getDI($this->schedulerName)->send($this->taskName, $output, $this->task_id, $data, $workerId ?? $transfer, $this->opt, $this->request);
         }
     }
 }
