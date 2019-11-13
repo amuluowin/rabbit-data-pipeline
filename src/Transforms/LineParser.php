@@ -97,7 +97,7 @@ class LineParser extends AbstractPlugin
                     if ($this->fileType === 'txt') {
                         $line = fgets($fp);
                     } elseif ($this->fileType === 'csv') {
-                        $line = fgetcsv($fp);
+                        $line = fgetcsv($fp, $this->delimiter, $this->enclosure, $this->escape);
                     }
                     if ($line) {
                         $i++;
