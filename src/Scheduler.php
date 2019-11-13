@@ -16,6 +16,7 @@ use rabbit\helper\ExceptionHelper;
 use rabbit\httpserver\CoServer;
 use rabbit\redis\Redis;
 use rabbit\server\Task\Task;
+use Swoole\Table;
 
 class Scheduler implements InitInterface
 {
@@ -29,8 +30,8 @@ class Scheduler implements InitInterface
     private $autoRefresh = false;
     /** @var string */
     protected $name = 'scheduler';
-    /** @var array */
-    protected $tasks = [];
+    /** @var Table */
+    protected $taskTable;
 
     /**
      * Scheduler constructor.
@@ -39,6 +40,12 @@ class Scheduler implements InitInterface
     public function __construct(ConfigParserInterface $parser)
     {
         $this->parser = $parser;
+        $this->taskTable = new Table();
+        $this->taskTable->column('taskName', Table::TYPE_STRING, 64);
+        $this->taskTable->column('key', Table::TYPE_STRING, 64);
+        $this->taskTable->column('request', Table::TYPE_STRING, 1024);
+        $this->taskTable->column('stop', Table::TYPE_INT, 1);
+        $this->taskTable->create();
     }
 
     /**
@@ -65,7 +72,7 @@ class Scheduler implements InitInterface
             if ($events) {
                 foreach ($events as $event) {
                     if (pathinfo($event['name'], PATHINFO_EXTENSION) === 'yaml') {
-                        echo App::getServer()->getSwooleServer()->worker_id . " {$event['name']} modify..." . PHP_EOL;
+                        App::info(App::getServer()->getSwooleServer()->worker_id . " {$event['name']} modify...");
                     }
                 }
                 if (pathinfo($event['name'], PATHINFO_EXTENSION) === 'yaml') {
@@ -80,7 +87,12 @@ class Scheduler implements InitInterface
      */
     public function getTasks(): array
     {
-        return $this->tasks;
+        $table = [];
+        foreach ($this->taskTable as $key => $item) {
+            $item['request'] = \msgpack_unpack($item['request']);
+            $table[$key] = $item;
+        }
+        return $table;
     }
 
     /**
@@ -88,11 +100,20 @@ class Scheduler implements InitInterface
      */
     protected function setTask(AbstractPlugin $target): void
     {
-        $this->tasks[$target->task_id] = [
+        $this->taskTable->set($target->task_id, [
             'taskName' => $target->taskName,
             'key' => $target->key,
-            'request' => $target->request
-        ];
+            'request' => \msgpack_pack($target->request),
+            'stop' => 0
+        ]);
+    }
+
+    /**
+     * @param string $task_id
+     */
+    public function stopTask(string $task_id): void
+    {
+        $this->taskTable->set($task_id, ['stop' => 1]);
     }
 
     /**
@@ -191,17 +212,21 @@ class Scheduler implements InitInterface
         /** @var AbstractPlugin $target */
         $target = clone $this->targets[$taskName][$key];
         try {
-            $this->setTask($current);
+            if ($this->taskTable->get($task_id, 'stop') === 1) {
+                $this->taskTable->del($task_id);
+                App::warning("$target->taskName $task_id stoped by user!");
+                return;
+            }
             $target->task_id = $task_id;
             $target->input =& $data;
             $target->opt =& $opt;
             $target->request & $request;
-
+            $this->setTask($current);
             /** @var CoServer $server */
             if ($transfer === null) {
                 $target->run();
             } else {
-                $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt);
+                $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt, $request);
             }
         } catch (\Throwable $exception) {
             App::error(ExceptionHelper::dumpExceptionToString($exception));
@@ -218,7 +243,7 @@ class Scheduler implements InitInterface
      * @param array $opt
      * @throws Exception
      */
-    protected function transSend(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = []): void
+    protected function transSend(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array &$opt = [], array &$request = []): void
     {
         $server = App::getServer();
         if ($server === null || $server instanceof CoServer) {
@@ -236,7 +261,7 @@ class Scheduler implements InitInterface
                 $workerId = array_rand($ids);
             }
             App::info("Data from worker $socket->workerId to $workerId", 'Data');
-            $params = ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt]];
+            $params = ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt, &$request]];
             $socket->send($params, $workerId);
         } else {
             $swooleServer = $server->getSwooleServer();
@@ -252,7 +277,7 @@ class Scheduler implements InitInterface
             App::info("Data from worker $socket->workerId to $workerId", 'Data');
             $server->getSwooleServer()->sendMessage([
                 "{$this->name}->send",
-                [$taskName, $key, $task_id, &$data, null, &$opt]
+                [$taskName, $key, $task_id, &$data, null, &$opt, &$request]
             ], $workerId);
         }
     }
