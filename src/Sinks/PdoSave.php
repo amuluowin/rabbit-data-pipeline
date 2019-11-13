@@ -8,6 +8,7 @@ use DI\NotFoundException;
 use rabbit\activerecord\ActiveRecord;
 use rabbit\core\Context;
 use Rabbit\Data\Pipeline\AbstractPlugin;
+use rabbit\db\BatchInsert;
 use rabbit\db\ConnectionInterface;
 use rabbit\db\Exception;
 use rabbit\db\MakePdoConnection;
@@ -25,6 +26,10 @@ class PdoSave extends AbstractPlugin
     protected $tableName;
     /** @var string */
     protected $dbName;
+    /** @var bool */
+    private $isLine = false;
+    /** @var BatchInsert */
+    private $batch;
 
     /**
      * @param string $class
@@ -82,7 +87,38 @@ class PdoSave extends AbstractPlugin
      */
     public function run(): void
     {
-        $model = new class($this->tableName, $this->dbName) extends ActiveRecord {
+        if (isset($this->input['columns'])) {
+            $this->isLine = true;
+        }
+        if ($this->isLine) {
+            $this->saveWithLine();
+        } else {
+            $this->saveWithModel();
+        }
+    }
+
+    /**
+     * @throws Exception
+     */
+    protected function saveWithLine(): void
+    {
+        $this->batch === null && ($this->batch = new BatchInsert($this->tableName, getDI('db')->getConnection($this->dbName)));
+        if (isset($this->input['columns'])) {
+            $this->batch->addColumns($this->input['columns']);
+        } elseif ($this->input) {
+            $this->batch->addRow($this->input);
+        } else {
+            $this->batch->execute();
+        }
+    }
+
+    /**
+     * @throws Exception
+     */
+    protected function saveWithModel(): void
+    {
+        $model = new class($this->tableName, $this->dbName) extends ActiveRecord
+        {
             /**
              *  constructor.
              * @param string $tableName

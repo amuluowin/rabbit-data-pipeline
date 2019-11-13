@@ -191,11 +191,6 @@ class Scheduler implements InitInterface
         /** @var AbstractPlugin $target */
         $target = clone $this->targets[$taskName][$key];
         try {
-            if (empty($data)) {
-                App::warning("$taskName $key input empty data,ignore!");
-                $target->deleteLock(ArrayHelper::getValue($target->opt[$target::LOCK_KEY]));
-                return;
-            }
             $this->setTask($current);
             $target->task_id = $task_id;
             $target->input =& $data;
