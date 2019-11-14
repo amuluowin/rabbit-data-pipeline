@@ -40,7 +40,7 @@ class Scheduler implements InitInterface
     public function __construct(ConfigParserInterface $parser)
     {
         $this->parser = $parser;
-        $this->taskTable = new Table();
+        $this->taskTable = new Table(1024);
         $this->taskTable->column('taskName', Table::TYPE_STRING, 64);
         $this->taskTable->column('key', Table::TYPE_STRING, 64);
         $this->taskTable->column('request', Table::TYPE_STRING, 1024);
