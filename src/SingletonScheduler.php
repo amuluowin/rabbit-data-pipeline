@@ -3,18 +3,8 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
 
-use common\Exception\InvalidArgumentException;
-use DI\DependencyException;
-use DI\NotFoundException;
 use rabbit\App;
-use rabbit\contract\InitInterface;
-use rabbit\core\ObjectFactory;
-use rabbit\exception\InvalidConfigException;
-use rabbit\helper\ArrayHelper;
 use rabbit\helper\ExceptionHelper;
-use rabbit\httpserver\CoServer;
-use rabbit\redis\Redis;
-use rabbit\server\Task\Task;
 
 /**
  * Class SingletonScheduler
@@ -36,7 +26,8 @@ class SingletonScheduler extends Scheduler
             if ($target->getStart()) {
                 $target->task_id = (string)getDI('idGen')->create();
                 $opt = [];
-                $target->process($params, $opt);
+                $input = [];
+                $target->process($input, $opt, $params);
             }
         }
     }
@@ -50,7 +41,7 @@ class SingletonScheduler extends Scheduler
      * @param array $opt
      * @throws Exception
      */
-    public function send(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = []): void
+    public function send(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = [], array $request = []): void
     {
         try {
             /** @var AbstractSingletonPlugin $target */
