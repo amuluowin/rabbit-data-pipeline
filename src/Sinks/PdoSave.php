@@ -8,7 +8,7 @@ use DI\NotFoundException;
 use rabbit\activerecord\ActiveRecord;
 use rabbit\core\Context;
 use Rabbit\Data\Pipeline\AbstractPlugin;
-use rabbit\db\BatchInsert;
+use rabbit\db\Connection;
 use rabbit\db\ConnectionInterface;
 use rabbit\db\Exception;
 use rabbit\db\MakePdoConnection;
@@ -26,10 +26,6 @@ class PdoSave extends AbstractPlugin
     protected $tableName;
     /** @var string */
     protected $dbName;
-    /** @var bool */
-    private $isLine = false;
-    /** @var BatchInsert */
-    private $batch;
 
     /**
      * @param string $class
@@ -88,9 +84,6 @@ class PdoSave extends AbstractPlugin
     public function run(): void
     {
         if (isset($this->input['columns'])) {
-            $this->isLine = true;
-        }
-        if ($this->isLine) {
             $this->saveWithLine();
         } else {
             $this->saveWithModel();
@@ -102,14 +95,12 @@ class PdoSave extends AbstractPlugin
      */
     protected function saveWithLine(): void
     {
-        $this->batch === null && ($this->batch = new BatchInsert($this->tableName, getDI('db')->getConnection($this->dbName)));
-        if (isset($this->input['columns'])) {
-            $this->batch->addColumns($this->input['columns']);
-        } elseif ($this->input) {
-            $this->batch->addRow($this->input);
-        } else {
-            $this->batch->execute();
+        /** @var Connection $db */
+        $db = getDI('db')->getConnection($this->dbName);
+        if ($db->createCommand()->batchInsert($this->tableName, $this->input['columns'], $this->input['data'])->execute()) {
+            return ArrayHelper::getColumn($this->input['data'], $this->primaryKey, []);
         }
+        return [];
     }
 
     /**

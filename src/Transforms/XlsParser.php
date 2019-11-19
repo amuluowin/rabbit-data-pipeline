@@ -54,12 +54,16 @@ class XlsParser extends AbstractPlugin
         $excel->openFile(pathinfo($this->input, PATHINFO_FILENAME))
             ->openSheet();
         $i = 0;
+        $columns = [];
+        $rows = [];
         while ($row = $excel->nextRow()) {
             if ($i === $this->columnLine) {
-                $this->output(['columns' => $row]);
+                $columns = $row;
             } elseif ($i >= $this->dataLine) {
-                $this->output($row);
+                $rows[] = $row;
             }
         }
+        $output = ['columns' => &$columns, 'data' => &$rows];
+        $this->output($output);
     }
 }

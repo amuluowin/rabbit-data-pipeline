@@ -93,6 +93,7 @@ class LineParser extends AbstractPlugin
                 $i = 0;
                 $field = [];
                 $columns = [];
+                $rows = [];
                 while (!feof($fp)) {
                     if ($this->fileType === 'txt') {
                         $line = fgets($fp);
@@ -103,8 +104,7 @@ class LineParser extends AbstractPlugin
                         $i++;
                         $data = explode($this->explode, $line);
                         if ($i === $this->columnLine) {
-                            $columns = ['columns' => $data];
-                            $this->output($columns);
+                            $columns = $data;
                         } elseif ($this->fieldLine && $this->field && $i === $this->fieldLine) {
                             foreach ($this->field as $key => $index) {
                                 $field[array_search($key, $columns)] = $value[$index];
@@ -113,18 +113,18 @@ class LineParser extends AbstractPlugin
                             foreach ($field as $index => $value) {
                                 $data = array_splice($data, $index, 1, $value);
                             }
-                            $this->output($data);
+                            $rows[] = $data;
                         }
                     }
                 }
-                $output = null;
+                $output = ['columns' => &$columns, 'data' => &$rows];
                 $this->output($output);
             });
         } else {
             /** @var  $data */
             $data = explode($this->split, $this->input);
             $columns = ArrayHelper::remove($data, $this->columnLine);
-            $output = [];
+            $rows = [];
             foreach ($data as &$item) {
                 if ($this->field && $this->fieldLine) {
                     $fields = ArrayHelper::remove($data, $this->fieldLine);
@@ -132,8 +132,9 @@ class LineParser extends AbstractPlugin
                         $item = array_splice($item[array_search($key, $columns)], $fields[$index]);
                     }
                 }
-                $output[] = array_combine($columns, $data);
+                $rows[] = $data;
             }
+            $output = ['columns' => &$columns, 'data' => &$rows];
             $this->output($output);
         }
     }

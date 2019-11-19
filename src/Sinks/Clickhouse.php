@@ -28,12 +28,6 @@ class Clickhouse extends AbstractPlugin
     protected $primaryKey;
     /** @var string */
     protected $flagField;
-    /** @var array */
-    private $ids = [];
-    /** @var bool */
-    private $isLine = false;
-    /** @var BatchInsert */
-    private $batch;
 
     /**
      * @return mixed|void
@@ -63,8 +57,8 @@ class Clickhouse extends AbstractPlugin
             throw new InvalidConfigException("class, dsn must be set in $this->key");
         }
         $dbName = md5($dsn);
-        MakeCKConnection::addConnection($class, $dbName, $dsn, $config);
-        $this->db = getDI('clickhouse')->getConnection($dbName);
+        $driver = MakeCKConnection::addConnection($class, $dbName, $dsn, $config);
+        $this->db = getDI($driver)->getConnection($dbName);
     }
 
     /**
@@ -73,52 +67,41 @@ class Clickhouse extends AbstractPlugin
     public function run()
     {
         if (isset($this->input['columns'])) {
-            $this->isLine = true;
-        }
-        if ($this->isLine) {
-            $this->saveWithLine();
+            $ids = $this->saveWithLine();
         } else {
-            $this->saveWithRows();
+            $ids = $this->saveWithRows();
         }
         if ($this->primaryKey && $this->ids) {
             $sql = <<<'SQL'
 ALTER TABLE {$this->tableName} UPDATE {$this->flagField}={$this->flagField}+1 
-WHERE ({$this->flagField}=0 or {$this->flagField}=1) AND {$this->primaryKey} in ({$this->ids})
+WHERE ({$this->flagField}=0 or {$this->flagField}=1) AND {$this->primaryKey} in ({$ids})
 SQL;
             $this->db->createCommand($sql)->execute();
         }
     }
 
     /**
-     * @throws \Exception
+     * @return array
+     * @throws DependencyException
+     * @throws NotFoundException
+     * @throws \rabbit\db\Exception
      */
-    protected function saveWithLine(): void
+    protected function saveWithLine(): array
     {
-        $this->batch === null && ($this->batch = new BatchInsert($this->tableName, getDI('db')->getConnection($this->dbName)));
-        if (isset($this->input['columns'])) {
-            $this->batch->addColumns($this->input['columns']);
-        } elseif ($this->input) {
-            if ($this->primaryKey) {
-                $this->ids[] = $this->input[array_search($this->batch->getColumns()[$this->primaryKey])];
-            }
-            $this->batch->addRow($this->input);
-        } else {
-            $this->batch->execute();
-            $this->batch->clearData();
+        if ($this->db->createCommand()->batchInsert($this->tableName, $this->input['columns'], $this->input['data'])->execute()) {
+            return ArrayHelper::getColumn($this->input['data'], $this->primaryKey, []);
         }
+        return [];
     }
 
     protected function saveWithRows(): void
     {
-        $this->batch === null && ($this->batch = new BatchInsertJsonRows($this->tableName, $this->db));
-        if ($this->input) {
-            if ($this->primaryKey) {
-                $this->ids[] = $this->input[$this->primaryKey];
-            }
-            $this->batch->addRow($this->input);
-        } else {
-            $this->batch->execute();
-            $this->batch->clearData();
+        $batch = new BatchInsertJsonRows($this->tableName, $this->db);
+        $batch->addColumns($this->input['columns']);
+        $batch->addRow($this->input['data']);
+        if ($batch->execute()) {
+            return ArrayHelper::getColumn($this->input['data'], $this->primaryKey, []);
         }
+        return [];
     }
 }
