@@ -45,6 +45,7 @@ class XmlParser extends AbstractPlugin
                 $params[$field] = ArrayHelper::getValue($xml, $item);
             }
         }
+        empty($params) && ($params = $xml);
         $this->output($params);
     }
 }
