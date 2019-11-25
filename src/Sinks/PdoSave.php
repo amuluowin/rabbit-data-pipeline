@@ -97,10 +97,8 @@ class PdoSave extends AbstractPlugin
     {
         /** @var Connection $db */
         $db = getDI('db')->getConnection($this->dbName);
-        if ($db->createCommand()->batchInsert($this->tableName, $this->input['columns'], $this->input['data'])->execute()) {
-            return ArrayHelper::getColumn($this->input['data'], $this->primaryKey, []);
-        }
-        return [];
+        $res = $db->createCommand()->batchInsert($this->tableName, $this->input['columns'], $this->input['data'])->execute();
+        $this->output($res);
     }
 
     /**

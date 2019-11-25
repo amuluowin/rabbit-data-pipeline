@@ -94,7 +94,7 @@ SQL;
         return [];
     }
 
-    protected function saveWithRows(): void
+    protected function saveWithRows(): array
     {
         $batch = new BatchInsertJsonRows($this->tableName, $this->db);
         $batch->addColumns($this->input['columns']);
