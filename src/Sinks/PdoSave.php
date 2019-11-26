@@ -136,10 +136,10 @@ class PdoSave extends AbstractPlugin
             }
         };
 
-        if (!CreateExt::create($model, $this->input)) {
+        $res = CreateExt::create($model, $this->input);
+        if (empty($res)) {
             throw new Exception("save to " . $model::tableName() . ' failed!');
         }
-        $output = $model->toArray();
-        $this->output($output);
+        $this->output($res);
     }
 }
