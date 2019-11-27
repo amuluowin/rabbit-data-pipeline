@@ -220,7 +220,7 @@ class Scheduler implements InitInterface
             $target->task_id = $task_id;
             $target->input =& $data;
             $target->opt =& $opt;
-            $target->request & $request;
+            $target->request =& $request;
             $this->setTask($target);
             /** @var CoServer $server */
             if ($transfer === null) {
