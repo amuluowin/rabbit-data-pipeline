@@ -9,7 +9,10 @@ use rabbit\App;
 use rabbit\contract\InitInterface;
 use rabbit\core\BaseObject;
 use rabbit\helper\ArrayHelper;
+use rabbit\helper\ExceptionHelper;
 use rabbit\helper\VarDumper;
+use rabbit\memory\atomic\AtomicLock;
+use rabbit\memory\atomic\LockInterface;
 use rabbit\redis\Redis;
 
 /**
@@ -52,6 +55,8 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected $schedulerName = 'scheduler';
     /** @var int */
     protected $logInfo = self::LOG_SIMPLE;
+    /** @var LockInterface */
+    protected $atomicLock;
 
     /**
      * AbstractPlugin constructor.
@@ -62,6 +67,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     {
         $this->config = $config;
         $this->redis = getDI('redis');
+        $this->atomicLock = new AtomicLock();
     }
 
     public function init()
@@ -86,6 +92,25 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
             return (bool)$this->redis->set($key, true, ['nx', 'ex' => $this->lockEx]);
         }
         return true;
+    }
+
+    /**
+     * @param \Closure $function
+     * @param array $params
+     * @throws Exception
+     */
+    public function redisLock(string $key, \Closure $function, array $params)
+    {
+        try {
+            if ($this->redis->setnx($key, true)) {
+                return call_user_func_array($function, $params);
+            }
+            return null;
+        } catch (\Throwable $exception) {
+            App::error(ExceptionHelper::dumpExceptionToString($exception));
+        } finally {
+            $this->redis->del($key);
+        }
     }
 
     /**
