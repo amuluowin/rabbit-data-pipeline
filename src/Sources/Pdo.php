@@ -85,7 +85,7 @@ class Pdo extends AbstractPlugin
             [
                 self::CACHE_KEY => 'memory',
                 'query' => 'queryAll',
-                'duration' => null,
+                'duration' => -1,
                 'pool' => [],
                 'each' => false,
                 'params' => []
