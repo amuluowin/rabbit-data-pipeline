@@ -17,7 +17,7 @@ class LineParser extends AbstractPlugin
     /** @var string */
     protected $split = PHP_EOL;
     /** @var string */
-    protected $explode = '\t';
+    protected $explode = "\t";
     /** @var int */
     protected $columnLine = 0;
     /** @var int */
@@ -34,6 +34,8 @@ class LineParser extends AbstractPlugin
     protected $enclosure = '"';
     /** @var string */
     protected $escape = '\\';
+    /** @var string */
+    protected $idKey = 'id';
 
     /**
      * @return mixed|void
@@ -50,7 +52,8 @@ class LineParser extends AbstractPlugin
             $this->fileType,
             $this->delimiter,
             $this->enclosure,
-            $this->escape
+            $this->escape,
+            $this->idKey
         ] = ArrayHelper::getValueByArray(
             $this->config,
             [
@@ -62,7 +65,8 @@ class LineParser extends AbstractPlugin
                 'fileType',
                 'delimiter',
                 'enclosure',
-                'escape'
+                'escape',
+                'idKey'
             ],
             null,
             [
@@ -74,7 +78,8 @@ class LineParser extends AbstractPlugin
                 null,
                 ',',
                 '"',
-                '\\'
+                '\\',
+                'id'
             ]
         );
         if (!$this->fileType) {
@@ -88,12 +93,14 @@ class LineParser extends AbstractPlugin
      */
     public function run()
     {
+        $comField = [];
+        if (isset($this->opt['comField']) && is_array($this->opt['comField'])) {
+            $comField = $this->opt['comField'];
+        }
         if (is_file($this->input)) {
-            FileHelper::fgetsExt($this->input, function ($fp) {
+            FileHelper::fgetsExt($this->input, function ($fp) use ($comField) {
                 $i = 0;
-                $field = [];
-                $columns = [];
-                $rows = [];
+                $columns = $rows = $field = [];
                 while (!feof($fp)) {
                     if ($this->fileType === 'txt') {
                         $line = fgets($fp);
@@ -103,20 +110,24 @@ class LineParser extends AbstractPlugin
                     if ($line) {
                         $i++;
                         $data = explode($this->explode, $line);
+                        $data[] = trim(array_pop($data));
                         if ($i === $this->columnLine) {
-                            $columns = $data;
+                            $columns = explode($this->explode, str_replace('-','_', trim($line)));
                         } elseif ($this->fieldLine && $this->field && $i === $this->fieldLine) {
                             foreach ($this->field as $key => $index) {
-                                $field[array_search($key, $columns)] = $value[$index];
+                                $field[array_search($key, $columns)] = $data[$index];
                             }
+                            array_splice($columns, 0, 0, array_keys($field));
                         } else {
-                            foreach ($field as $index => $value) {
-                                $data = array_splice($data, $index, 1, $value);
-                            }
+                            array_splice($data, 0, 0, array_values($field));
+                            $data = array_merge($data, array_values($comField));
+                            $data[] = getDI('idGen')->create();
                             $rows[] = $data;
                         }
                     }
                 }
+                $columns = array_merge($columns, array_keys($comField));
+                $columns[] = $this->idKey;
                 $output = ['columns' => &$columns, 'data' => &$rows];
                 $this->output($output);
             });

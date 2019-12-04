@@ -83,6 +83,9 @@ class PdoSave extends AbstractPlugin
      */
     public function run(): void
     {
+        if (empty($this->tableName) && isset($this->opt['tableName'])) {
+            $this->tableName = $this->opt['tableName'];
+        }
         if (isset($this->input['columns'])) {
             $this->saveWithLine();
         } else {
