@@ -193,7 +193,7 @@ class Scheduler implements InitInterface
                 $current->task_id = (string)getDI('idGen')->create();
                 $current->request = $params;
                 $this->setTask($current);
-                $current->run();
+                $current->process();
             }
         }
     }
@@ -224,7 +224,7 @@ class Scheduler implements InitInterface
             $this->setTask($target);
             /** @var CoServer $server */
             if ($transfer === null) {
-                $target->run();
+                $target->process();
             } else {
                 $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt, $request);
             }

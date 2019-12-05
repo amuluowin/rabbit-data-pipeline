@@ -57,6 +57,8 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected $logInfo = self::LOG_SIMPLE;
     /** @var LockInterface */
     protected $atomicLock;
+    /** @var callable */
+    protected $errHandler;
 
     /**
      * AbstractPlugin constructor.
@@ -73,6 +75,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     public function init()
     {
         $this->cache = getDI(self::CACHE_KEY);
+        $this->errHandler = ArrayHelper::getValue($this->config, 'errHandler');
     }
 
     /**
@@ -138,6 +141,30 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     public function deleteLock(string $key = null): int
     {
         return $this->redis->del($key ?? $this->task_id);
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function process(): void
+    {
+        try {
+            $this->run();
+        } catch (\Throwable $exception) {
+            if (!is_array($this->errHandler)) {
+                $this->errHandler = [$this->errHandler];
+            }
+            foreach ($this->errHandler as $handle) {
+                if (is_callable($handle)) {
+                    call_user_func($handle, $this, $exception);
+                } elseif ($handle instanceof ErrorHandleInterface) {
+                    $handle->handle($this, $exception);
+                } else {
+                    App::error(ExceptionHelper::dumpExceptionToString($exception));
+                }
+            }
+            throw $exception;
+        }
     }
 
     abstract public function run();
