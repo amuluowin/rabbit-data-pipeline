@@ -3,14 +3,15 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
 
-
 use DI\DependencyException;
 use DI\NotFoundException;
+use rabbit\core\Context;
 use Rabbit\Data\Pipeline\AbstractPlugin;
-use rabbit\db\clickhouse\BatchInsert;
 use rabbit\db\clickhouse\BatchInsertJsonRows;
 use rabbit\db\clickhouse\Connection;
 use rabbit\db\clickhouse\MakeCKConnection;
+use rabbit\db\ConnectionInterface;
+use rabbit\db\Expression;
 use rabbit\exception\InvalidConfigException;
 use rabbit\helper\ArrayHelper;
 
@@ -24,7 +25,7 @@ class Clickhouse extends AbstractPlugin
     protected $db;
     /** @var string */
     protected $tableName;
-    /** @var string */
+    /** @var array */
     protected $primaryKey;
     /** @var string */
     protected $flagField;
@@ -43,18 +44,19 @@ class Clickhouse extends AbstractPlugin
             $dsn,
             $config,
             $this->tableName,
-            $this->flagField
+            $this->flagField,
+            $this->primaryKey
         ] = ArrayHelper::getValueByArray(
             $this->config,
-            ['class', 'dsn', 'config', 'tableName', 'flagField'],
+            ['class', 'dsn', 'config', 'tableName', 'flagField', 'primaryKey'],
             null,
             [
                 'config' => [],
                 'flagField' => 'flag'
             ]
         );
-        if ($dsn === null || $class === null) {
-            throw new InvalidConfigException("class, dsn must be set in $this->key");
+        if ($dsn === null || $class === null || $this->primaryKey === null) {
+            throw new InvalidConfigException("class, dsn, primaryKey must be set in $this->key");
         }
         $dbName = md5($dsn);
         $driver = MakeCKConnection::addConnection($class, $dbName, $dsn, $config);
@@ -74,13 +76,10 @@ class Clickhouse extends AbstractPlugin
         } else {
             $ids = $this->saveWithRows();
         }
-        if ($this->primaryKey && $this->ids) {
-            $sql = <<<'SQL'
-ALTER TABLE {$this->tableName} UPDATE {$this->flagField}={$this->flagField}+1 
-WHERE ({$this->flagField}=0 or {$this->flagField}=1) AND {$this->primaryKey} in ({$ids})
-SQL;
-            $this->db->createCommand($sql)->execute();
+        if ($this->primaryKey && $ids) {
+            $this->updateFlag($ids);
         }
+        $this->output($ids);
     }
 
     /**
@@ -91,10 +90,18 @@ SQL;
      */
     protected function saveWithLine(): array
     {
-        if ($this->db->createCommand()->batchInsert($this->tableName, $this->input['columns'], $this->input['data'])->execute()) {
-            return ArrayHelper::getColumn($this->input['data'], $this->primaryKey, []);
+        $result = [];
+        if ($this->db->createCommand()->batchInsert($this->tableName, $this->input['columns'], $this->input['data'])->execute() !== '') {
+            return $result;
         }
-        return [];
+        if (is_array($this->primaryKey)) {
+            foreach ($this->primaryKey as $key => $type) {
+                $result[$key] = array_unique(ArrayHelper::getColumn($this->input['data'], array_search($key, $this->input['columns']), []));
+            }
+        } else {
+            $result[$this->primaryKey] = array_unique(ArrayHelper::getColumn($this->input['data'], array_search($this->primaryKey, $this->input['columns']), []));
+        }
+        return $result;
     }
 
     protected function saveWithRows(): array
@@ -106,5 +113,77 @@ SQL;
             return ArrayHelper::getColumn($this->input['data'], $this->primaryKey, []);
         }
         return [];
+    }
+
+    protected function updateFlag($ids)
+    {
+        if ($this->db instanceof Connection) {
+            $model = new class($this->tableName, $this->db) extends \rabbit\db\clickhouse\ActiveRecord
+            {
+                /**
+                 *  constructor.
+                 * @param string $tableName
+                 * @param string $dbName
+                 */
+                public function __construct(string $tableName, ConnectionInterface $db)
+                {
+                    Context::set(md5(get_called_class() . 'tableName'), $tableName);
+                    Context::set(md5(get_called_class() . 'db'), $db);
+                }
+
+                /**
+                 * @return mixed|string
+                 */
+                public static function tableName()
+                {
+                    return Context::get(md5(get_called_class() . 'tableName'));
+                }
+
+                /**
+                 * @return ConnectionInterface
+                 */
+                public static function getDb(): ConnectionInterface
+                {
+                    return Context::get(md5(get_called_class() . 'db'));
+                }
+            };
+        } else {
+            $model = new class($this->tableName, $this->db) extends \rabbit\db\click\ActiveRecord
+            {
+                /**
+                 *  constructor.
+                 * @param string $tableName
+                 * @param string $dbName
+                 */
+                public function __construct(string $tableName, ConnectionInterface $db)
+                {
+                    Context::set(md5(get_called_class() . 'tableName'), $tableName);
+                    Context::set(md5(get_called_class() . 'db'), $db);
+                }
+
+                /**
+                 * @return mixed|string
+                 */
+                public static function tableName()
+                {
+                    return Context::get(md5(get_called_class() . 'tableName'));
+                }
+
+                /**
+                 * @return ConnectionInterface
+                 */
+                public static function getDb(): ConnectionInterface
+                {
+                    return Context::get(md5(get_called_class() . 'db'));
+                }
+            };
+        }
+
+        $res = $model::updateAll([$this->flagField => new Expression("{$this->flagField}+1")], array_merge([
+            $this->flagField => [0, 1]
+        ], $ids));
+        if (!empty($res)) {
+            throw new Exception($res);
+        }
     }
 }
