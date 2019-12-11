@@ -53,7 +53,7 @@ class Clickhouse extends AbstractPlugin
                 'flagField' => 'flag'
             ]
         );
-        if ($dsn === null || $class === null || $this->tableName === null) {
+        if ($dsn === null || $class === null) {
             throw new InvalidConfigException("class, dsn must be set in $this->key");
         }
         $dbName = md5($dsn);
@@ -66,6 +66,9 @@ class Clickhouse extends AbstractPlugin
      */
     public function run()
     {
+        if (empty($this->tableName) && isset($this->opt['tableName'])) {
+            $this->tableName = $this->opt['tableName'];
+        }
         if (isset($this->input['columns'])) {
             $ids = $this->saveWithLine();
         } else {

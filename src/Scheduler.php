@@ -228,6 +228,9 @@ class Scheduler implements InitInterface
             } else {
                 $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt, $request);
             }
+            if (end($this->targets[$taskName])->key === $key) {
+                App::info("$taskName finished!");
+            }
         } catch (\Throwable $exception) {
             App::error(ExceptionHelper::dumpExceptionToString($exception));
             $target->deleteLock(ArrayHelper::getValue($target->opt, $target::LOCK_KEY));

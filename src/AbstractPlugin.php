@@ -183,7 +183,9 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
                     $transfer = -1;
                 }
             }
-            if ($this->logInfo === self::LOG_SIMPLE) {
+            if (empty($data)) {
+                App::warning("Road from $this->key to $output with empty data", 'Data');
+            } elseif ($this->logInfo === self::LOG_SIMPLE) {
                 App::info("Road from $this->key to $output", 'Data');
             } else {
                 App::info("Road from $this->key to $output with data " . VarDumper::getDumper()->dumpAsString($data), 'Data');
