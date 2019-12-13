@@ -45,7 +45,7 @@ class Pdo extends AbstractPlugin
      * @throws NotFoundException
      * @throws Exception
      */
-    private function createConnection(string $class, string $dsn, array $pool): void
+    private function createConnection(string $class, string $dsn, array $pool, array $retryHandler): void
     {
         [
             $poolConfig['min'],
@@ -58,7 +58,7 @@ class Pdo extends AbstractPlugin
             null,
             [10, 13, 0, 3]
         );
-        MakePdoConnection::addConnection($class, $this->dbName, $dsn, $poolConfig);
+        MakePdoConnection::addConnection($class, $this->dbName, $dsn, $retryHandler, $poolConfig);
     }
 
     /**
@@ -72,6 +72,7 @@ class Pdo extends AbstractPlugin
             $class,
             $dsn,
             $pool,
+            $retryHandler,
             $this->cacheDriver,
             $this->sql,
             $this->duration,
@@ -80,13 +81,14 @@ class Pdo extends AbstractPlugin
             $this->params
         ] = ArrayHelper::getValueByArray(
             $this->config,
-            ['class', 'dsn', 'pool', self::CACHE_KEY, 'sql', 'duration', 'query', 'each', 'params'],
+            ['class', 'dsn', 'pool', 'retryHandler', self::CACHE_KEY, 'sql', 'duration', 'query', 'each', 'params'],
             null,
             [
                 self::CACHE_KEY => 'memory',
                 'query' => 'queryAll',
                 'duration' => -1,
                 'pool' => [],
+                'retryHandler' => [],
                 'each' => false,
                 'params' => []
             ]
@@ -95,7 +97,7 @@ class Pdo extends AbstractPlugin
             throw new InvalidConfigException("class, dsn and sql must be set in $this->key");
         }
         $this->dbName = md5($dsn);
-        $this->createConnection($class, $dsn, $pool);
+        $this->createConnection($class, $dsn, $pool, $retryHandler);
     }
 
     /**
