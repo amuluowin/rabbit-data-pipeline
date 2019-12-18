@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
 
+use common\Exception\IgnoreException;
 use Exception;
 use Psr\SimpleCache\CacheInterface;
 use rabbit\App;
@@ -151,19 +152,35 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
         try {
             $this->run();
         } catch (\Throwable $exception) {
+            if (empty($this->errHandler)) {
+                throw $exception;
+            }
             if (!is_array($this->errHandler)) {
                 $this->errHandler = [$this->errHandler];
             }
-            foreach ($this->errHandler as $handle) {
+            //删除锁
+            $lock =ArrayHelper::getValue($this->opt, self::LOCK_KEY);
+            $this->deleteLock($lock);
+            App::warning("「{$this->taskName}」 Delete Lock:" . $lock);
+
+            $errerrHandler = $this->errHandler;
+            self::dealException($errerrHandler, $exception);
+        }
+    }
+
+    public function dealException(&$errerrHandler, $exception)
+    {
+        while (!empty($errerrHandler)) {
+            try {
+                $handle = array_shift($errerrHandler);
                 if (is_callable($handle)) {
                     call_user_func($handle, $this, $exception);
-                } elseif ($handle instanceof ErrorHandleInterface) {
-                    $handle->handle($this, $exception);
                 } else {
-                    App::error(ExceptionHelper::dumpExceptionToString($exception));
+                    throw $exception;
                 }
+            } catch (\Throwable $exception) {
+                throw $exception;
             }
-            throw $exception;
         }
     }
 
@@ -184,11 +201,11 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
                 }
             }
             if (empty($data)) {
-                App::warning("Road from $this->key to $output with empty data", 'Data');
+                App::warning("「{$this->taskName}」 $this->key -> $output; data is empty", 'Data');
             } elseif ($this->logInfo === self::LOG_SIMPLE) {
-                App::info("Road from $this->key to $output", 'Data');
+                App::info("「{$this->taskName}」 $this->key -> $output;", 'Data');
             } else {
-                App::info("Road from $this->key to $output with data " . VarDumper::getDumper()->dumpAsString($data), 'Data');
+                App::info("「{$this->taskName}」 $this->key -> $output; data: " . VarDumper::getDumper()->dumpAsString($data), 'Data');
             }
             getDI($this->schedulerName)->send($this->taskName, $output, $this->task_id, $data, $workerId ?? $transfer, $this->opt, $this->request);
         }

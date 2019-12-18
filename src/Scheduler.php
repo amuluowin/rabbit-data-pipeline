@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
 
+use Co\System;
 use common\Exception\InvalidArgumentException;
 use DI\DependencyException;
 use DI\NotFoundException;
@@ -32,6 +33,8 @@ class Scheduler implements InitInterface
     protected $name = 'scheduler';
     /** @var Table */
     protected $taskTable;
+    /** @var int */
+    protected $waitTimes = 3;
 
     /**
      * Scheduler constructor.
@@ -209,12 +212,17 @@ class Scheduler implements InitInterface
      */
     public function send(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = [], array $request = []): void
     {
+        $wait = 0;
         /** @var AbstractPlugin $target */
+        while ((empty($this->targets) || !isset($this->targets[$taskName]) || !isset($this->targets[$taskName][$key])) && (++$wait <= $this->waitTimes)) {
+            App::warning("The $taskName is building wait {$this->waitTimes}s");
+            System::sleep($wait * 3);
+        }
         $target = clone $this->targets[$taskName][$key];
         try {
             if ($this->taskTable->get($task_id, 'stop') === 1) {
                 $this->taskTable->del($task_id);
-                App::warning("$target->taskName $task_id stoped by user!");
+                App::warning("「{$target->taskName}」 $task_id stoped by user!");
                 return;
             }
             $target->task_id = $task_id;
@@ -229,10 +237,10 @@ class Scheduler implements InitInterface
                 $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt, $request);
             }
             if (end($this->targets[$taskName])->key === $key) {
-                App::info("$taskName finished!");
+                App::info("「{$taskName}」 finished!");
             }
         } catch (\Throwable $exception) {
-            App::error(ExceptionHelper::dumpExceptionToString($exception));
+            App::error("「{$target->taskName}」 " . ExceptionHelper::dumpExceptionToString($exception));
             $target->deleteLock(ArrayHelper::getValue($target->opt, $target::LOCK_KEY));
         }
     }

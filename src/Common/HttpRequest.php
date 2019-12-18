@@ -9,6 +9,7 @@ use Rabbit\Data\Pipeline\AbstractPlugin;
 use rabbit\exception\InvalidConfigException;
 use rabbit\helper\ArrayHelper;
 use rabbit\helper\FileHelper;
+use Swlib\Http\Exception\RequestException;
 use Swlib\Http\Exception\TransferException;
 use Swlib\Saber\Request;
 use Swlib\Saber\Response;
@@ -34,6 +35,8 @@ class HttpRequest extends AbstractPlugin
     protected $format;
     /** @var bool */
     protected $download;
+    /** @var string */
+    protected $checkResponseFunc;
 
     /**
      * @return mixed|void
@@ -49,7 +52,8 @@ class HttpRequest extends AbstractPlugin
             $this->retry,
             $this->format,
             $this->download,
-            $this->throttleTime
+            $this->throttleTime,
+            $this->checkResponseFunc,
         ] = ArrayHelper::getValueByArray($this->config, [
             'usePool',
             'timeout',
@@ -57,7 +61,8 @@ class HttpRequest extends AbstractPlugin
             'retry',
             'format',
             'download',
-            'throttleTime'
+            'throttleTime',
+            'checkResponseFunc'
         ], null, [
             true,
             60,
@@ -65,6 +70,7 @@ class HttpRequest extends AbstractPlugin
             null,
             'string',
             false,
+            null,
             null
         ]);
 //        if ($this->error && !is_callable($this->error)) {
@@ -89,7 +95,7 @@ class HttpRequest extends AbstractPlugin
         }
         $options = [
             'use_pool' => $this->usePool,
-            'timeout' => $this->timeout,
+            'timeout' => ArrayHelper::getValue($this->opt, 'requestTimeOut', $this->timeout),
             "before" => function (Request $request) use ($request_id) {
                 $uri = $request->getUri();
                 App::info(
@@ -116,13 +122,16 @@ class HttpRequest extends AbstractPlugin
         if (!$this->download) {
             $format = 'getParsed' . $this->format;
             if (method_exists($response, $format)) {
-                $result = $response->$format();
+                $outPutData = $response->$format();
             } else {
-                $result = (string)$response->getBody();
+                $outPutData = (string)$response->getBody();
             }
-            $this->output($result);
         } else {
-            $this->output($path);
+            $outPutData = $path;
         }
+        if(is_callable($this->checkResponseFunc)){
+            call_user_func_array($this->checkResponseFunc, [&$outPutData]);
+        }
+        $this->output($outPutData);
     }
 }
