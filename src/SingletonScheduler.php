@@ -41,7 +41,7 @@ class SingletonScheduler extends Scheduler
      * @param array $opt
      * @throws Exception
      */
-    public function send(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = [], array $request = []): void
+    public function send(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = [], array $request = [], bool $wait = false): void
     {
         try {
             /** @var AbstractSingletonPlugin $target */
@@ -53,9 +53,9 @@ class SingletonScheduler extends Scheduler
             }
 
             if ($transfer === null) {
-                $target->process($data, $opt);
+                $target->process($data, $opt, $request);
             } else {
-                $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt);
+                $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt, $request, $wait);
             }
         } catch (\Throwable $exception) {
             App::error(ExceptionHelper::dumpExceptionToString($exception));

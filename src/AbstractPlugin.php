@@ -39,6 +39,8 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     /** @var array */
     public $opt = [];
     /** @var array */
+    public $locks = [];
+    /** @var array */
     protected $output = [];
     /** @var bool */
     protected $start = false;
@@ -60,6 +62,8 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected $atomicLock;
     /** @var callable */
     protected $errHandler;
+    /** @var bool */
+    protected $wait = false;
 
     /**
      * AbstractPlugin constructor.
@@ -93,9 +97,34 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     public function getLock(string $key = null): bool
     {
         if ($key || $key = $this->task_id) {
-            return (bool)$this->redis->set($key, true, ['nx', 'ex' => $this->lockEx]);
+            if ((bool)$this->redis->set($key, true, ['nx', 'ex' => $this->lockEx])) {
+                $this->opt['Locks'][] = $key;
+                return true;
+            }
         }
         return true;
+    }
+
+    public function deleteAllLock()
+    {
+        isset($this->opt['Locks']) && $locks = $this->opt['Locks'];
+        foreach ($locks as $lock) {
+            $this->deleteLock($lock);
+        }
+    }
+
+    /**
+     * @param string $lockKey
+     * @return bool
+     */
+    public function deleteLock(string $key = null): int
+    {
+        ($key === null) && $key = $this->task_id;
+        if($flag = $this->redis->del($key)){
+            App::warning("「{$this->taskName}」 Delete Lock:" . $key);
+        }
+        return $flag;
+
     }
 
     /**
@@ -136,15 +165,6 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     }
 
     /**
-     * @param string $lockKey
-     * @return bool
-     */
-    public function deleteLock(string $key = null): int
-    {
-        return $this->redis->del($key ?? $this->task_id);
-    }
-
-    /**
      * @throws Exception
      */
     public function process(): void
@@ -159,9 +179,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
                 $this->errHandler = [$this->errHandler];
             }
             //删除锁
-            $lock =ArrayHelper::getValue($this->opt, self::LOCK_KEY);
-            $this->deleteLock($lock);
-            App::warning("「{$this->taskName}」 Delete Lock:" . $lock);
+            $this->deleteAllLock();
 
             $errerrHandler = $this->errHandler;
             self::dealException($errerrHandler, $exception);
@@ -207,7 +225,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
             } else {
                 App::info("「{$this->taskName}」 $this->key -> $output; data: " . VarDumper::getDumper()->dumpAsString($data), 'Data');
             }
-            getDI($this->schedulerName)->send($this->taskName, $output, $this->task_id, $data, $workerId ?? $transfer, $this->opt, $this->request);
+            getDI($this->schedulerName)->send($this->taskName, $output, $this->task_id, $data, $workerId ?? $transfer, $this->opt, $this->request, $this->wait);
         }
     }
 }

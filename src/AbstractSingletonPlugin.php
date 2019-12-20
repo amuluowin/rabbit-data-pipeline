@@ -45,6 +45,8 @@ abstract class AbstractSingletonPlugin extends BaseObject implements InitInterfa
     protected $scheduleName = 'singletonscheduler';
     /** @var int */
     protected $logInfo = self::LOG_SIMPLE;
+    /** @var bool */
+    protected $wait = false;
 
     /**
      * AbstractPlugin constructor.
@@ -136,6 +138,22 @@ abstract class AbstractSingletonPlugin extends BaseObject implements InitInterfa
     /**
      * @return array
      */
+    public function getRequest(): array
+    {
+        return (array)Context::get($this->getTask_id() . 'request');
+    }
+
+    /**
+     * @param array $opt
+     */
+    public function setRequest(array $request): void
+    {
+        Context::set($this->getTask_id() . 'request', $request);
+    }
+
+    /**
+     * @return array
+     */
     public function getOpt(): array
     {
         return (array)Context::get($this->getTask_id() . 'opt');
@@ -145,9 +163,10 @@ abstract class AbstractSingletonPlugin extends BaseObject implements InitInterfa
      * @param $input
      * @param array $opt
      */
-    public function process(&$input, array &$opt)
+    public function process(&$input, array &$opt, array &$request)
     {
         $this->setOpt($opt);
+        $this->setRequest($request);
         $this->run($input);
     }
 
@@ -176,7 +195,7 @@ abstract class AbstractSingletonPlugin extends BaseObject implements InitInterfa
             } else {
                 App::info("Road from $this->key to $output with data " . VarDumper::getDumper()->dumpAsString($data), 'Data');
             }
-            getDI($this->scheduleName)->send($this->taskName, $output, $this->getTask_id(), $data, $workerId ?? $transfer, $this->getOpt());
+            getDI($this->scheduleName)->send($this->taskName, $output, $this->getTask_id(), $data, $workerId ?? $transfer, $this->getOpt(), $this->getRequest(), $this->wait);
         }
     }
 }

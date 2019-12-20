@@ -12,11 +12,11 @@ use rabbit\App;
 use rabbit\contract\InitInterface;
 use rabbit\core\ObjectFactory;
 use rabbit\exception\InvalidConfigException;
+use rabbit\exception\NotSupportedException;
 use rabbit\helper\ArrayHelper;
 use rabbit\helper\ExceptionHelper;
 use rabbit\httpserver\CoServer;
 use rabbit\redis\Redis;
-use rabbit\server\Task\Task;
 use Swoole\Table;
 
 class Scheduler implements InitInterface
@@ -132,14 +132,14 @@ class Scheduler implements InitInterface
                 if ($server === null || $server instanceof CoServer) {
                     $this->process((string)$key, $params);
                 } else {
-                    getDI(Task::class)->task(["{$this->name}->process", [$key, $params]]);
+                    throw new NotSupportedException("Do not support Swoole\Server");
                 }
             }
         } elseif (isset($this->targets[$key])) {
             if ($server === null || $server instanceof CoServer) {
                 $this->process((string)$key, $params);
             } else {
-                getDI(Task::class)->task(["{$this->name}->process", [$key, $params]]);
+                throw new NotSupportedException("Do not support Swoole\Server");
             }
         } else {
             throw new InvalidArgumentException("No such target $key");
@@ -162,8 +162,9 @@ class Scheduler implements InitInterface
                 }
                 $output = ArrayHelper::remove($params, 'output', []);
                 $start = ArrayHelper::remove($params, 'start', false);
+                $wait = ArrayHelper::remove($params, 'wait', false);
                 if (is_string($output)) {
-                    $output = [$output => false];
+                    $output = [$output => true];
                 }
                 $lockEx = ArrayHelper::remove($params, 'lockEx', 30);
                 $this->targets[$name][$key] = ObjectFactory::createObject(
@@ -175,6 +176,7 @@ class Scheduler implements InitInterface
                         'start' => $start,
                         'taskName' => $name,
                         'lockEx' => $lockEx,
+                        'wait' => $wait,
                         'init()' => [],
                     ],
                     false
@@ -210,13 +212,13 @@ class Scheduler implements InitInterface
      * @param array $opt
      * @throws Exception
      */
-    public function send(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = [], array $request = []): void
+    public function send(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = [], array $request = [], bool $wait = false): void
     {
-        $wait = 0;
+        $waitTime = 0;
         /** @var AbstractPlugin $target */
-        while ((empty($this->targets) || !isset($this->targets[$taskName]) || !isset($this->targets[$taskName][$key])) && (++$wait <= $this->waitTimes)) {
+        while ((empty($this->targets) || !isset($this->targets[$taskName]) || !isset($this->targets[$taskName][$key])) && (++$waitTime <= $this->waitTimes)) {
             App::warning("The $taskName is building wait {$this->waitTimes}s");
-            System::sleep($wait * 3);
+            System::sleep($waitTime * 3);
         }
         $target = clone $this->targets[$taskName][$key];
         try {
@@ -227,14 +229,14 @@ class Scheduler implements InitInterface
             }
             $target->task_id = $task_id;
             $target->input =& $data;
-            $target->opt =& $opt;
+            $target->opt = $opt;
             $target->request =& $request;
             $this->setTask($target);
             /** @var CoServer $server */
             if ($transfer === null) {
                 $target->process();
             } else {
-                $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt, $request);
+                $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt, $request, $wait);
             }
             if (end($this->targets[$taskName])->key === $key) {
                 App::info("「{$taskName}」 finished!");
@@ -254,7 +256,7 @@ class Scheduler implements InitInterface
      * @param array $opt
      * @throws Exception
      */
-    protected function transSend(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array &$opt = [], array &$request = []): void
+    protected function transSend(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array &$opt = [], array &$request = [], bool $wait = false): void
     {
         $server = App::getServer();
         if ($server === null || $server instanceof CoServer) {
@@ -272,24 +274,10 @@ class Scheduler implements InitInterface
                 $workerId = array_rand($ids);
             }
             App::info("Data from worker $socket->workerId to $workerId", 'Data');
-            $params = ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt, &$request]];
+            $params = ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt, &$request, $wait]];
             $socket->send($params, $workerId);
         } else {
-            $swooleServer = $server->getSwooleServer();
-            $ids = range(0, $swooleServer->setting['worker_num'] +
-            isset($swooleServer->setting['task_worker_num']) ? $swooleServer->setting['task_worker_num'] : 0);
-            if ($transfer > -1) {
-                $workerId = $transfer % count($ids);
-                $workerId === $swooleServer->worker_id && $workerId++;
-            } else {
-                unset($ids[$swooleServer->worker_id]);
-                $workerId = array_rand($ids);
-            }
-//            App::info("Data from worker $socket->workerId to $workerId", 'Data');
-            $server->getSwooleServer()->sendMessage([
-                "{$this->name}->send",
-                [$taskName, $key, $task_id, &$data, null, &$opt, &$request]
-            ], $workerId);
+            throw new NotSupportedException("Do not support Swoole\Server");
         }
     }
 }
