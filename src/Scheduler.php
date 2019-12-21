@@ -243,7 +243,7 @@ class Scheduler implements InitInterface
             }
         } catch (\Throwable $exception) {
             App::error("「{$target->taskName}」 " . ExceptionHelper::dumpExceptionToString($exception));
-            $target->deleteLock(ArrayHelper::getValue($target->opt, $target::LOCK_KEY));
+            $target->deleteAllLock();
         }
     }
 

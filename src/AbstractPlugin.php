@@ -97,12 +97,25 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     public function getLock(string $key = null): bool
     {
         if ($key || $key = $this->task_id) {
-            if ((bool)$this->redis->set($key, true, ['nx', 'ex' => $this->lockEx])) {
-                $this->opt['Locks'][] = $key;
+            if ((bool)$this->redis->set('Locks:' . $key, true, ['nx', 'ex' => $this->lockEx])) {
+                $this->opt['Locks'][] = 'Locks:' . $key;
                 return true;
             }
         }
         return true;
+    }
+
+    /**
+     * @param $key
+     * @return string
+     */
+    public function makeLockKey($key): string
+    {
+        is_array($key) && $key = implode('_', $key);
+        if(!is_string($key)){
+            throw new Exception("lockKey Must be string or array");
+        }
+        return 'Locks:' . $key;
     }
 
     public function deleteAllLock()
@@ -120,8 +133,8 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     public function deleteLock(string $key = null): int
     {
         ($key === null) && $key = $this->task_id;
-        if($flag = $this->redis->del($key)){
-            App::warning("「{$this->taskName}」 Delete Lock:" . $key);
+        if ($flag = $this->redis->del($key)) {
+            App::warning("「{$this->taskName}」 Delete Lock: " . $key);
         }
         return $flag;
 
