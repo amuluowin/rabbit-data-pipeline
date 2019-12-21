@@ -102,7 +102,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
                 return true;
             }
         }
-        return true;
+        return false;
     }
 
     /**
