@@ -3,73 +3,27 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
 
-use Exception;
-use Psr\SimpleCache\CacheInterface;
 use rabbit\App;
 use rabbit\contract\InitInterface;
-use rabbit\core\BaseObject;
 use rabbit\core\Context;
 use rabbit\helper\ArrayHelper;
 use rabbit\helper\VarDumper;
-use rabbit\redis\Redis;
 
 /**
  * Class AbstractSingletonPlugin
  * @package Rabbit\Data\Pipeline
  */
-abstract class AbstractSingletonPlugin extends BaseObject implements InitInterface
+abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInterface
 {
-    const LOG_SIMPLE = 0;
-    const LOG_INFO = 1;
-    /** @var string */
-    public $taskName;
-    /** @var string */
-    public $key;
-    /** @var array */
-    protected $config = [];
-    /** @var array */
-    protected $output = [];
-    /** @var bool */
-    protected $start = false;
-    /** @var string */
-    protected $logKey = 'Plugin';
-    /** @var Redis */
-    public $redis;
-    /** @var int */
-    protected $lockEx = 0;
-    /** @var CacheInterface */
-    protected $cache;
-    /** @var string */
-    const CACHE_KEY = 'cache';
-    /** @var string */
-    protected $scheduleName = 'singletonscheduler';
-    /** @var int */
-    protected $logInfo = self::LOG_SIMPLE;
-    /** @var bool */
-    protected $wait = false;
-
     /**
-     * AbstractPlugin constructor.
+     * AbstractSingletonPlugin constructor.
      * @param array $config
-     * @throws Exception
+     * @throws \Exception
      */
     public function __construct(array $config)
     {
-        $this->config = $config;
-        $this->redis = getDI('redis');
-    }
-
-    public function init()
-    {
-        $this->cache = getDI(self::CACHE_KEY);
-    }
-
-    /**
-     * @return bool
-     */
-    public function getStart(): bool
-    {
-        return $this->start;
+        parent::__construct($config);
+        $this->schedulerName = 'singletonscheduler';
     }
 
     /**
@@ -89,24 +43,12 @@ abstract class AbstractSingletonPlugin extends BaseObject implements InitInterfa
     }
 
     /**
-     * @return int
-     */
-    public function getLock(string $key = null): bool
-    {
-        if ($key || $key = $this->getTask_id()) {
-            return (bool)$this->redis->set($key, true, ['nx', 'ex' => $this->lockEx]);
-        }
-        return true;
-    }
-
-    /**
-     * @param array $input
      * @param string $key
      * @return mixed|null
      */
-    public function getFromInput(array &$input, string $key)
+    public function getFromInput(string $key)
     {
-        return ArrayHelper::getValue($input, $key);
+        return ArrayHelper::getValue($this->getInput(), $key);
     }
 
     /**
@@ -116,23 +58,6 @@ abstract class AbstractSingletonPlugin extends BaseObject implements InitInterfa
     public function getFromOpt(string $key)
     {
         return ArrayHelper::getValue($this->getOpt(), $key);
-    }
-
-    /**
-     * @param string $lockKey
-     * @return bool
-     */
-    public function deleteLock(string $key = null): int
-    {
-        return $this->redis->del($key ?? $this->getTask_id());
-    }
-
-    /**
-     * @param array $opt
-     */
-    public function setOpt(array $opt): void
-    {
-        Context::set($this->getTask_id() . 'opt', $opt);
     }
 
     /**
@@ -146,9 +71,22 @@ abstract class AbstractSingletonPlugin extends BaseObject implements InitInterfa
     /**
      * @param array $opt
      */
-    public function setRequest(array $request): void
+    public function setRequest(array &$request): void
     {
         Context::set($this->getTask_id() . 'request', $request);
+    }
+
+    public function getInput()
+    {
+        return Context::get($this->getTask_id() . 'input');
+    }
+
+    /**
+     * @param $input
+     */
+    public function setInput(&$input)
+    {
+        Context::set($this->getTask_id() . 'input', $input);
     }
 
     /**
@@ -160,21 +98,47 @@ abstract class AbstractSingletonPlugin extends BaseObject implements InitInterfa
     }
 
     /**
-     * @param $input
      * @param array $opt
      */
-    public function process(&$input, array &$opt, array &$request)
+    public function setOpt(array &$opt): void
     {
-        $this->setOpt($opt);
-        $this->setRequest($request);
-        $this->run($input);
+        Context::set($this->getTask_id() . 'opt', $opt);
     }
 
     /**
-     * @param $input
-     * @return mixed
+     * @return int
      */
-    abstract public function run(&$input);
+    public function getLock(string $key = null): bool
+    {
+        if ($key || $key = $this->getTask_id()) {
+            if ((bool)$this->redis->set('Locks:' . $key, true, ['nx', 'ex' => $this->lockEx])) {
+                $this->getOpt()['Locks'][] = 'Locks:' . $key;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @param string $lockKey
+     * @return bool
+     */
+    public function deleteLock(string $key = null): int
+    {
+        ($key === null) && $key = $this->getTask_id();
+        if ($flag = $this->redis->del($key)) {
+            App::warning("「{$this->taskName}」 Delete Lock: " . $key);
+        }
+        return $flag;
+    }
+
+    public function deleteAllLock()
+    {
+        isset($this->getOpt()['Locks']) && $locks = $this->getOpt()['Locks'];
+        foreach ($locks as $lock) {
+            $this->deleteLock($lock);
+        }
+    }
 
     /**
      * @param $data
@@ -190,12 +154,14 @@ abstract class AbstractSingletonPlugin extends BaseObject implements InitInterfa
                     $transfer = -1;
                 }
             }
-            if ($this->logInfo === self::LOG_SIMPLE) {
-                App::info("Road from $this->key to $output", 'Data');
+            if (empty($data)) {
+                App::warning("「{$this->taskName}」 $this->key -> $output; data is empty", 'Data');
+            } elseif ($this->logInfo === self::LOG_SIMPLE) {
+                App::info("「{$this->taskName}」 $this->key -> $output;", 'Data');
             } else {
-                App::info("Road from $this->key to $output with data " . VarDumper::getDumper()->dumpAsString($data), 'Data');
+                App::info("「{$this->taskName}」 $this->key -> $output; data: " . VarDumper::getDumper()->dumpAsString($data), 'Data');
             }
-            getDI($this->scheduleName)->send($this->taskName, $output, $this->getTask_id(), $data, $workerId ?? $transfer, $this->getOpt(), $this->getRequest(), $this->wait);
+            getDI($this->schedulerName)->send($this->taskName, $output, $this->getTask_id(), $data, $workerId ?? $transfer, $this->getOpt(), $this->getRequest(), $this->wait);
         }
     }
 }
