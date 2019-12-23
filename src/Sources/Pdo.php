@@ -58,7 +58,7 @@ class Pdo extends AbstractPlugin
             null,
             [10, 13, 0, 3]
         );
-        MakePdoConnection::addConnection($class, $this->dbName, $dsn, $retryHandler, $poolConfig);
+        MakePdoConnection::addConnection($class, $this->dbName, $dsn, $poolConfig, $retryHandler);
     }
 
     /**
