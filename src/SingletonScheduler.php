@@ -27,7 +27,10 @@ class SingletonScheduler extends Scheduler
                 $target->task_id = (string)getDI('idGen')->create();
                 $opt = [];
                 $input = [];
-                $target->process($input, $opt, $params);
+                $target->setInput($input);
+                $target->setOpt($opt);
+                $target->setRequest($params);
+                $target->process();
             }
         }
     }
@@ -53,7 +56,10 @@ class SingletonScheduler extends Scheduler
             }
 
             if ($transfer === null) {
-                $target->process($data, $opt, $request);
+                $target->setInput($data);
+                $target->setOpt($opt);
+                $target->setRequest($request);
+                $target->process();
             } else {
                 $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt, $request, $wait);
             }

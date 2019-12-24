@@ -167,6 +167,7 @@ class Scheduler implements InitInterface
                     $output = [$output => true];
                 }
                 $lockEx = ArrayHelper::remove($params, 'lockEx', 30);
+                $pluginName = ArrayHelper::remove($params, 'name', uniqid());
                 $this->targets[$name][$key] = ObjectFactory::createObject(
                     $class,
                     [
@@ -175,6 +176,7 @@ class Scheduler implements InitInterface
                         'output' => $output,
                         'start' => $start,
                         'taskName' => $name,
+                        'pluginName' => $pluginName,
                         'lockEx' => $lockEx,
                         'wait' => $wait,
                         'init()' => [],
