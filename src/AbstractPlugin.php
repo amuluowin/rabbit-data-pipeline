@@ -64,6 +64,8 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected $errHandler;
     /** @var bool */
     protected $wait = false;
+    /** @var string */
+    protected $pluginName;
 
     /**
      * AbstractPlugin constructor.
