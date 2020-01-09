@@ -30,7 +30,9 @@ class SingletonScheduler extends Scheduler
                 $target->setInput($input);
                 $target->setOpt($opt);
                 $target->setRequest($params);
-                $target->process();
+                rgo(function () use ($target) {
+                    $target->process();
+                });
             }
         }
     }
