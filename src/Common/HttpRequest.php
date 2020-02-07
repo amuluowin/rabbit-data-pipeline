@@ -118,7 +118,7 @@ class HttpRequest extends AbstractPlugin
                 return call_user_func($this->retry, $request, $this->throttleTime === null ? $throttleTime : $this->throttleTime);
             };
         }
-        $response = SaberGM::request(array_merge($this->input, $options));
+        $response = SaberGM::request(array_merge($options, $this->input));
         if (!$this->download) {
             $format = 'getParsed' . $this->format;
             if (method_exists($response, $format)) {
@@ -129,7 +129,7 @@ class HttpRequest extends AbstractPlugin
         } else {
             $outPutData = $path;
         }
-        if(is_callable($this->checkResponseFunc)){
+        if (is_callable($this->checkResponseFunc)) {
             call_user_func_array($this->checkResponseFunc, [&$outPutData]);
         }
         $this->output($outPutData);
