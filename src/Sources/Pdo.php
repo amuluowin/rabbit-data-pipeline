@@ -45,7 +45,7 @@ class Pdo extends AbstractPlugin
      * @throws NotFoundException
      * @throws Exception
      */
-    private function createConnection(string $class, string $dsn, array $pool, array $retryHandler): void
+    protected function createConnection(string $class, string $dsn, array $pool, array $retryHandler): void
     {
         [
             $poolConfig['min'],
