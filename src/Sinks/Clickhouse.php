@@ -103,10 +103,17 @@ class Clickhouse extends AbstractPlugin
         foreach ($this->input['data'] as $item) {
             $batch->addRow($item);
         }
+        $result = [];
         if ($batch->execute()) {
-            return ArrayHelper::getColumn($this->input['data'], $this->primaryKey, []);
+            if (is_array($this->primaryKey)) {
+                foreach ($this->primaryKey as $key => $type) {
+                    $result[$key] = array_unique(ArrayHelper::getColumn($this->input['data'], array_search($key, $this->input['columns']), []));
+                }
+            } else {
+                $result[$this->primaryKey] = array_unique(ArrayHelper::getColumn($this->input['data'], array_search($this->primaryKey, $this->input['columns']), []));
+            }
         }
-        return [];
+        return $result;
     }
 
     /**
