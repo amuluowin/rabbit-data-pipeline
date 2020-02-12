@@ -7,6 +7,7 @@ use DI\DependencyException;
 use DI\NotFoundException;
 use rabbit\core\Context;
 use Rabbit\Data\Pipeline\AbstractPlugin;
+use rabbit\db\clickhouse\BatchInsert;
 use rabbit\db\clickhouse\BatchInsertJsonRows;
 use rabbit\db\clickhouse\Connection;
 use rabbit\db\clickhouse\MakeCKConnection;
@@ -90,36 +91,51 @@ class Clickhouse extends AbstractPlugin
      */
     protected function saveWithLine(): array
     {
-        $result = [];
-        if ($this->db->createCommand()->batchInsert($this->tableName, $this->input['columns'], $this->input['data'])->execute() !== '') {
-            return $result;
-        }
-        if (is_array($this->primaryKey)) {
-            foreach ($this->primaryKey as $key => $type) {
-                $result[$key] = array_unique(ArrayHelper::getColumn($this->input['data'], array_search($key, $this->input['columns']), []));
-            }
+        if ($this->db instanceof Connection) {
+            $batch = new BatchInsert($this->tableName, $this->db);
         } else {
-            $result[$this->primaryKey] = array_unique(ArrayHelper::getColumn($this->input['data'], array_search($this->primaryKey, $this->input['columns']), []));
+            $batch = new \rabbit\db\click\BatchInsert($this->tableName, $this->db);
         }
-        return $result;
-    }
-
-    protected function saveWithRows(): array
-    {
-        $batch = new BatchInsertJsonRows($this->tableName, $this->db);
         $batch->addColumns($this->input['columns']);
-        $batch->addRow($this->input['data']);
+        if (!ArrayHelper::isIndexed($this->input['data'])) {
+            $this->input['data'] = [$this->input['data']];
+        }
+        foreach ($this->input['data'] as $item) {
+            $batch->addRow($item);
+        }
         if ($batch->execute()) {
             return ArrayHelper::getColumn($this->input['data'], $this->primaryKey, []);
         }
         return [];
     }
 
-    protected function updateFlag($ids)
+    /**
+     * @return array
+     */
+    protected function saveWithRows(): array
+    {
+        $batch = new BatchInsertJsonRows($this->tableName, $this->db);
+        $batch->addColumns($this->input['columns']);
+        if (!ArrayHelper::isIndexed($this->input['data'])) {
+            $this->input['data'] = [$this->input['data']];
+        }
+        foreach ($this->input['data'] as $item) {
+            $batch->addRow($item);
+        }
+        if ($batch->execute()) {
+            return ArrayHelper::getColumn($this->input['data'], $this->primaryKey, []);
+        }
+        return [];
+    }
+
+    /**
+     * @param array $ids
+     * @throws \rabbit\db\Exception
+     */
+    protected function updateFlag(array $ids): void
     {
         if ($this->db instanceof Connection) {
-            $model = new class($this->tableName, $this->db) extends \rabbit\db\clickhouse\ActiveRecord
-            {
+            $model = new class($this->tableName, $this->db) extends \rabbit\db\clickhouse\ActiveRecord {
                 /**
                  *  constructor.
                  * @param string $tableName
@@ -148,8 +164,7 @@ class Clickhouse extends AbstractPlugin
                 }
             };
         } else {
-            $model = new class($this->tableName, $this->db) extends \rabbit\db\click\ActiveRecord
-            {
+            $model = new class($this->tableName, $this->db) extends \rabbit\db\click\ActiveRecord {
                 /**
                  *  constructor.
                  * @param string $tableName
