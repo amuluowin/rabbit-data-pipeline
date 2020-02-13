@@ -9,6 +9,8 @@ use Psr\SimpleCache\CacheInterface;
 use rabbit\App;
 use rabbit\contract\InitInterface;
 use rabbit\core\BaseObject;
+use rabbit\exception\InvalidArgumentException;
+use rabbit\exception\InvalidCallException;
 use rabbit\helper\ArrayHelper;
 use rabbit\helper\ExceptionHelper;
 use rabbit\helper\VarDumper;
@@ -99,7 +101,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     public function getLock(string $key = null): bool
     {
         if ($key || $key = $this->task_id) {
-            if ((bool)$this->redis->set($key, true, ['nx', 'ex' => $this->lockEx])) {
+            if ((bool)$this->redis->set($key, true, 'NX', 'EX',  $this->lockEx)) {
                 $this->opt['Locks'][] = $key;
                 return true;
             }
@@ -177,6 +179,46 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     public function getFromOpt(string $key)
     {
         return ArrayHelper::getValue($this->opt, $key);
+    }
+    /**
+     * @param array $data
+     * @param array $input
+     * @param array $opt
+     * @param string $key
+     * @param $item
+     */
+    public function makeOptions(array &$data, array &$input, array &$opt, string $key, $item): void
+    {
+        if (is_array($item)) {
+            [$method, $params] = ArrayHelper::getValueByArray($item, ['method', 'params'], null, ['params' => []]);
+            if (empty($method)) {
+                throw new InvalidArgumentException("method must be set!");
+            }
+            if (!is_callable($method)) {
+                throw new InvalidCallException("$method does not exists");
+            }
+            call_user_func_array($method, [$key, $params, &$input, &$opt, &$data]);
+        }
+        if (is_string($item)) {
+            if (strtolower($item) === 'input') {
+                $data[$key] = $input;
+            } elseif (strtolower($item) === 'opt') {
+                $data[$key] = $opt;
+            } else {
+                $pos = strpos($item, '.') ? strpos($item, '.') : strlen($item);
+                $from = strtolower(substr($item, 0, $pos));
+                switch ($from) {
+                    case 'input':
+                        $data[$key] = ArrayHelper::getValue($input, substr($item, $pos + 1));
+                        break;
+                    case 'opt':
+                        $data[$key] = ArrayHelper::getValue($opt, substr($item, $pos + 1));
+                        break;
+                    default:
+                        $data[$key] = $item;
+                }
+            }
+        }
     }
 
     /**
