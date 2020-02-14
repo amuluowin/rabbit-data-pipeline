@@ -12,7 +12,8 @@
   "require": {
     "rabbit/framework": "dev-master",
     "rabbit/server": "dev-master",
-    "rabbit/parser": "dev-master"
+    "rabbit/parser": "dev-master",
+    "rabbit/httpclient": "dev-master"
   },
   "autoload": {
     "psr-4": {

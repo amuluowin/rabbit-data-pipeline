@@ -3,17 +3,17 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Common;
 
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
+use Psr\Http\Message\RequestInterface;
 use rabbit\App;
 use rabbit\core\Exception;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 use rabbit\exception\InvalidConfigException;
 use rabbit\helper\ArrayHelper;
 use rabbit\helper\FileHelper;
-use Swlib\Http\Exception\RequestException;
-use Swlib\Http\Exception\TransferException;
+use rabbit\httpclient\Client;
 use Swlib\Saber\Request;
-use Swlib\Saber\Response;
-use Swlib\SaberGM;
 
 /**
  * Class HttpRequest
@@ -37,6 +37,8 @@ class HttpRequest extends AbstractPlugin
     protected $download;
     /** @var string */
     protected $checkResponseFunc;
+    /** @var string */
+    protected $driver = 'saber';
 
     /**
      * @return mixed|void
@@ -46,6 +48,7 @@ class HttpRequest extends AbstractPlugin
     {
         parent::init();
         [
+            $this->driver,
             $this->usePool,
             $this->timeout,
             $this->error,
@@ -55,6 +58,7 @@ class HttpRequest extends AbstractPlugin
             $this->throttleTime,
             $this->checkResponseFunc,
         ] = ArrayHelper::getValueByArray($this->config, [
+            'driver',
             'usePool',
             'timeout',
             'error',
@@ -64,6 +68,7 @@ class HttpRequest extends AbstractPlugin
             'throttleTime',
             'checkResponseFunc'
         ], null, [
+            'saber',
             true,
             60,
             null,
@@ -93,34 +98,50 @@ class HttpRequest extends AbstractPlugin
             FileHelper::createDirectory(dirname($path), 777);
             $this->input += ['download_dir' => $path];
         }
+
         $options = [
-            'use_pool' => $this->usePool,
             'timeout' => ArrayHelper::getValue($this->opt, 'requestTimeOut', $this->timeout),
-            "before" => function (Request $request) use ($request_id) {
-                $uri = $request->getUri();
-                App::info(
-                    sprintf(
-                        "Request %s %s %s with body [%s]",
-                        $request_id,
-                        $request->getMethod(),
-                        $uri->getScheme() . "://" . $uri->getHost() . $uri->getPath(),
-                        (string)$request->getBody()
-                    ),
-                    "http"
-                );
-            },
-            'after' => function (Response $response) use ($request_id) {
-                App::info("Request $request_id finish");
-            }
         ];
-        if ($this->retry) {
-            $options['retry'] = function (Request $request) {
-                return call_user_func($this->retry, $request, $this->throttleTime === null ? $throttleTime : $this->throttleTime);
-            };
+
+        $before = function (RequestInterface $request) use ($request_id) {
+            $uri = $request->getUri();
+            App::info(
+                sprintf(
+                    "Request %s %s %s with body [%s]",
+                    $request_id,
+                    $request->getMethod(),
+                    $uri->getScheme() . "://" . $uri->getHost() . $uri->getPath(),
+                    (string)$request->getBody()
+                ),
+                "http"
+            );
+            return $request;
+        };
+        $after = function (ResponseInterface $response) use ($request_id) {
+            App::info("Request $request_id finish");
+            return $response;
+        };
+        if ($this->driver === 'saber') {
+            $options = array_merge($options, [
+                'use_pool' => $this->usePool,
+                "before" => $before,
+                'after' => $after
+            ]);
+            if ($this->retry) {
+                $options['retry'] = function (Request $request) {
+                    return call_user_func($this->retry, $request, $this->throttleTime === null ? $throttleTime : $this->throttleTime);
+                };
+            }
+        } else {
+            $stack = new HandlerStack();
+            $stack->push(Middleware::mapRequest($before));
+            $stack->push(Middleware::mapResponse($after));
+            $options['handler'] = $stack;
         }
-        $response = SaberGM::request(array_merge($options, $this->input));
+        $client = new Client($options);
+        $response = $client->request($this->input, $this->driver);
         if (!$this->download) {
-            $format = 'getParsed' . $this->format;
+            $format = $this->format;
             if (method_exists($response, $format)) {
                 $outPutData = $response->$format();
             } else {
