@@ -6,6 +6,7 @@ namespace Rabbit\Data\Pipeline\Sinks;
 use DI\DependencyException;
 use DI\NotFoundException;
 use rabbit\core\Context;
+use rabbit\core\Exception;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 use rabbit\db\clickhouse\BatchInsert;
 use rabbit\db\clickhouse\BatchInsertCsv;
@@ -102,15 +103,17 @@ class Clickhouse extends AbstractPlugin
         if ($this->db instanceof Connection) {
             $batch = count($this->input['data']) > $this->maxCount ? new BatchInsertCsv($this->tableName, uniqid(), $this->db)
                 : new BatchInsert($this->tableName, $this->db);
+            $batch->addColumns($this->input['columns']);
+            foreach ($this->input['data'] as $item) {
+                $batch->addRow($item);
+            }
+            $rows = $batch->execute();
         } else {
-            $batch = new \rabbit\db\click\BatchInsert($this->tableName, $this->db);
+            $rows = $this->db->insert($this->tableName, $this->input['columns'], $this->input['data']);
         }
-        $batch->addColumns($this->input['columns']);
-        foreach ($this->input['data'] as $item) {
-            $batch->addRow($item);
-        }
+
         $result = [];
-        if ($batch->execute()) {
+        if ($rows > 0) {
             if (is_array($this->primaryKey)) {
                 foreach ($this->primaryKey as $key => $type) {
                     $result[$key] = array_unique(ArrayHelper::getColumn($this->input['data'], array_search($key, $this->input['columns']), []));
@@ -210,7 +213,7 @@ class Clickhouse extends AbstractPlugin
         $res = $model::updateAll([$this->flagField => new Expression("{$this->flagField}+1")], array_merge([
             $this->flagField => [0, 1]
         ], $ids));
-        if (!empty($res)) {
+        if (!empty($res) && $res !== true) {
             throw new Exception($res);
         }
     }
