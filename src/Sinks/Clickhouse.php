@@ -8,6 +8,7 @@ use DI\NotFoundException;
 use rabbit\core\Context;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 use rabbit\db\clickhouse\BatchInsert;
+use rabbit\db\clickhouse\BatchInsertCsv;
 use rabbit\db\clickhouse\BatchInsertJsonRows;
 use rabbit\db\clickhouse\Connection;
 use rabbit\db\clickhouse\MakeCKConnection;
@@ -30,6 +31,8 @@ class Clickhouse extends AbstractPlugin
     protected $primaryKey;
     /** @var string */
     protected $flagField;
+    /** @var int */
+    protected $maxCount = 10000;
 
     /**
      * @return mixed|void
@@ -46,14 +49,16 @@ class Clickhouse extends AbstractPlugin
             $config,
             $this->tableName,
             $this->flagField,
-            $this->primaryKey
+            $this->primaryKey,
+            $this->maxCount
         ] = ArrayHelper::getValueByArray(
             $this->config,
-            ['class', 'dsn', 'config', 'tableName', 'flagField', 'primaryKey'],
+            ['class', 'dsn', 'config', 'tableName', 'flagField', 'primaryKey', 'maxCount'],
             null,
             [
                 'config' => [],
-                'flagField' => 'flag'
+                'flagField' => 'flag',
+                'maxCount' => 10000,
             ]
         );
         if ($dsn === null || $class === null || $this->primaryKey === null) {
@@ -91,15 +96,16 @@ class Clickhouse extends AbstractPlugin
      */
     protected function saveWithLine(): array
     {
+        if (!ArrayHelper::isIndexed($this->input['data'])) {
+            $this->input['data'] = [$this->input['data']];
+        }
         if ($this->db instanceof Connection) {
-            $batch = new BatchInsert($this->tableName, $this->db);
+            $batch = count($this->input['data']) > $this->maxCount ? new BatchInsertCsv($this->tableName, uniqid(), $this->db)
+                : new BatchInsert($this->tableName, $this->db);
         } else {
             $batch = new \rabbit\db\click\BatchInsert($this->tableName, $this->db);
         }
         $batch->addColumns($this->input['columns']);
-        if (!ArrayHelper::isIndexed($this->input['data'])) {
-            $this->input['data'] = [$this->input['data']];
-        }
         foreach ($this->input['data'] as $item) {
             $batch->addRow($item);
         }
