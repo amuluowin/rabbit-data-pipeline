@@ -6,6 +6,7 @@ namespace Rabbit\Data\Pipeline\Common;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
 use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 use rabbit\App;
 use rabbit\core\Exception;
 use Rabbit\Data\Pipeline\AbstractPlugin;
@@ -127,11 +128,11 @@ class HttpRequest extends AbstractPlugin
             }
         };
         if ($this->driver === 'saber') {
-            $options = array_merge($options, [
+            $options = array_merge([
                 'use_pool' => $this->usePool,
                 "before" => $before,
                 'after' => $after
-            ]);
+            ], $options);
             if ($this->retry) {
                 $options['retry'] = function (Request $request) {
                     return call_user_func($this->retry, $request, $this->throttleTime === null ? $throttleTime : $this->throttleTime);
