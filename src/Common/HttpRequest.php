@@ -115,11 +115,15 @@ class HttpRequest extends AbstractPlugin
                 ),
                 "http"
             );
-            return $request;
+            if ($this->driver === 'guzzle') {
+                return $request;
+            }
         };
         $after = function (ResponseInterface $response) use ($request_id) {
             App::info("Request $request_id finish");
-            return $response;
+            if ($this->driver === 'guzzle') {
+                return $response;
+            }
         };
         if ($this->driver === 'saber') {
             $options = array_merge($options, [
@@ -133,7 +137,7 @@ class HttpRequest extends AbstractPlugin
                 };
             }
         } else {
-            $stack = new HandlerStack();
+            $stack = new HandlerStack(choose_handler());
             $stack->push(Middleware::mapRequest($before));
             $stack->push(Middleware::mapResponse($after));
             $options['handler'] = $stack;
