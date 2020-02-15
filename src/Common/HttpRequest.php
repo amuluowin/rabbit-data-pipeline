@@ -14,6 +14,7 @@ use rabbit\helper\ArrayHelper;
 use rabbit\helper\FileHelper;
 use rabbit\httpclient\Client;
 use Swlib\Saber\Request;
+use function GuzzleHttp\choose_handler;
 
 /**
  * Class HttpRequest
