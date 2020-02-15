@@ -101,7 +101,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     public function getLock(string $key = null): bool
     {
         if ($key || $key = $this->task_id) {
-            if ((bool)$this->redis->set($key, true, 'NX', 'EX',  $this->lockEx)) {
+            if ((bool)$this->redis->set($key, true, 'NX', 'EX', $this->lockEx)) {
                 $this->opt['Locks'][] = $key;
                 return true;
             }
@@ -126,6 +126,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     {
         $locks = isset($this->opt['Locks']) ? $this->opt['Locks'] : [];
         foreach ($locks as $lock) {
+            !is_string($lock) && $lock = strval($lock);
             $this->deleteLock($lock);
         }
     }
@@ -140,7 +141,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
         if ($flag = $this->redis->del($key)) {
             App::warning("「{$this->taskName}」 Delete Lock: " . $key);
         }
-        return $flag;
+        return (int)$flag;
 
     }
 
@@ -180,6 +181,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     {
         return ArrayHelper::getValue($this->opt, $key);
     }
+
     /**
      * @param array $data
      * @param array $input
