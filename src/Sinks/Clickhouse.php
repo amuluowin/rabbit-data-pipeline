@@ -75,6 +75,9 @@ class Clickhouse extends AbstractPlugin
      */
     public function run()
     {
+        if (empty($this->tableName) && isset($this->input['tableName'])) {
+            $this->tableName = $this->input['tableName'];
+        }
         if (empty($this->tableName) && isset($this->opt['tableName'])) {
             $this->tableName = $this->opt['tableName'];
         }
