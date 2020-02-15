@@ -139,9 +139,11 @@ class HttpRequest extends AbstractPlugin
                 };
             }
         } else {
+            $befoerTmp = ArrayHelper::remove($this->input, 'before');
+            $afterTmp = ArrayHelper::remove($this->input, 'after');
             $stack = new HandlerStack(choose_handler());
-            $stack->push(Middleware::mapRequest($before));
-            $stack->push(Middleware::mapResponse($after));
+            $stack->push(Middleware::mapRequest($befoerTmp ?? $before));
+            $stack->push(Middleware::mapResponse($afterTmp ?? $after));
             $options['handler'] = $stack;
         }
         $client = new Client($options);
