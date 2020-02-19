@@ -68,6 +68,8 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected $wait = false;
     /** @var string */
     protected $pluginName;
+    /** @var array */
+    protected $lockKey = [];
 
     /**
      * AbstractPlugin constructor.
@@ -85,6 +87,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     {
         $this->cache = getDI(self::CACHE_KEY);
         $this->errHandler = ArrayHelper::getValue($this->config, 'errHandler');
+        $this->lockKey = ArrayHelper::getValue($this->config, 'lockKey');
     }
 
     /**
