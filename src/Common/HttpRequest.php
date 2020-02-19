@@ -3,8 +3,6 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Common;
 
-use GuzzleHttp\HandlerStack;
-use GuzzleHttp\Middleware;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use rabbit\App;
@@ -15,7 +13,6 @@ use rabbit\helper\ArrayHelper;
 use rabbit\helper\FileHelper;
 use rabbit\httpclient\Client;
 use Swlib\Saber\Request;
-use function GuzzleHttp\choose_handler;
 
 /**
  * Class HttpRequest
@@ -104,45 +101,31 @@ class HttpRequest extends AbstractPlugin
         $options = [
             'timeout' => ArrayHelper::getValue($this->opt, 'requestTimeOut', $this->timeout),
         ];
-
-        $before = function (RequestInterface $request) use ($request_id) {
-            $uri = $request->getUri();
-            App::info(
-                sprintf(
-                    "Request %s %s %s with body [%s]",
-                    $request_id,
-                    $request->getMethod(),
-                    $uri->getScheme() . "://" . $uri->getHost() . $uri->getPath(),
-                    (string)$request->getBody()
-                ),
-                "http"
-            );
-            if ($this->driver === 'guzzle') {
-                return $request;
-            }
-        };
-        $after = function (ResponseInterface $response) use ($request_id) {
-            App::info("Request $request_id finish");
-            if ($this->driver === 'guzzle') {
-                return $response;
-            }
-        };
         if ($this->driver === 'saber') {
             $options = array_merge([
                 'use_pool' => $this->usePool,
-                "before" => $before,
-                'after' => $after
+                "before" => function (RequestInterface $request) use ($request_id) {
+                    $uri = $request->getUri();
+                    App::info(
+                        sprintf(
+                            "Request %s %s %s with body [%s]",
+                            $request_id,
+                            $request->getMethod(),
+                            $uri->getScheme() . "://" . $uri->getHost() . $uri->getPath(),
+                            (string)$request->getBody()
+                        ),
+                        "http"
+                    );
+                },
+                'after' => function (ResponseInterface $response) use ($request_id) {
+                    App::info("Request $request_id finish");
+                }
             ], $options);
             if ($this->retry) {
                 $options['retry'] = function (Request $request) {
                     return call_user_func($this->retry, $request, $this->throttleTime === null ? $throttleTime : $this->throttleTime);
                 };
             }
-        } else {
-            $stack = new HandlerStack(choose_handler());
-            $stack->push(Middleware::mapRequest($before));
-            $stack->push(Middleware::mapResponse($after));
-            $options['handler'] = $stack;
         }
         $client = new Client($options);
         $response = $client->request($this->input, $this->driver);
