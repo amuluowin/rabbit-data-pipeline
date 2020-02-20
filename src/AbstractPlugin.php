@@ -87,7 +87,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     {
         $this->cache = getDI(self::CACHE_KEY);
         $this->errHandler = ArrayHelper::getValue($this->config, 'errHandler');
-        $this->lockKey = ArrayHelper::getValue($this->config, 'lockKey');
+        $this->lockKey = ArrayHelper::getValue($this->config, 'lockKey', []);
     }
 
     /**
