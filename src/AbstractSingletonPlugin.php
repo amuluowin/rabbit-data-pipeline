@@ -99,11 +99,9 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
      */
     public function getLock(string $key = null): bool
     {
-        if ($key || $key = $this->getTask_id()) {
-            if ((bool)$this->redis->set('Locks:' . $key, true, ['nx', 'ex' => $this->lockEx])) {
-                $this->getOpt()['Locks'][] = 'Locks:' . $key;
-                return true;
-            }
+        if (($key || $key = $this->task_id) && $this->scheduler->getLock($key)) {
+            $this->getOpt()['Locks'][] = $key;
+            return true;
         }
         return false;
     }
@@ -115,18 +113,12 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
     public function deleteLock(string $key = null): int
     {
         ($key === null) && $key = $this->getTask_id();
-        if ($flag = $this->redis->del($key)) {
-            App::warning("「{$this->taskName}」 Delete Lock: " . $key);
-        }
-        return $flag;
+        return $this->scheduler->deleteLock($this->taskName, $key);
     }
 
-    public function deleteAllLock()
+    public function deleteAllLock(): void
     {
-        isset($this->getOpt()['Locks']) && $locks = $this->getOpt()['Locks'];
-        foreach ($locks as $lock) {
-            $this->deleteLock($lock);
-        }
+        $this->scheduler->deleteAllLock($this->getOpt());
     }
 
     /**

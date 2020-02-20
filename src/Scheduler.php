@@ -170,6 +170,7 @@ class Scheduler implements SchedulerInterface, InitInterface
                 $this->targets[$name][$key] = ObjectFactory::createObject(
                     $class,
                     [
+                        'scheduler' => $this,
                         'config' => $params,
                         'key' => $key,
                         'output' => $output,
