@@ -16,17 +16,6 @@ use rabbit\helper\VarDumper;
 abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInterface
 {
     /**
-     * AbstractSingletonPlugin constructor.
-     * @param array $config
-     * @throws \Exception
-     */
-    public function __construct(array $config)
-    {
-        parent::__construct($config);
-        $this->schedulerName = 'singletonscheduler';
-    }
-
-    /**
      * @return string
      */
     public function getTask_id(): string
@@ -161,7 +150,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
             } else {
                 App::info("「{$this->taskName}」 $this->key -> $output; data: " . VarDumper::getDumper()->dumpAsString($data), 'Data');
             }
-            getDI($this->schedulerName)->send($this->taskName, $output, $this->getTask_id(), $data, $workerId ?? $transfer, $this->getOpt(), $this->getRequest(), $this->wait);
+            $this->scheduler->send($this->taskName, $output, $this->getTask_id(), $data, $workerId ?? $transfer, $this->getOpt(), $this->getRequest(), $this->wait);
         }
     }
 }

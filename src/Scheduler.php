@@ -19,7 +19,7 @@ use rabbit\httpserver\CoServer;
 use rabbit\redis\Redis;
 use Swoole\Table;
 
-class Scheduler implements InitInterface
+class Scheduler implements SchedulerInterface, InitInterface
 {
     /** @var array */
     protected $targets = [];
@@ -66,24 +66,23 @@ class Scheduler implements InitInterface
         }
     }
 
-    protected function refreshConfig(): void
+    /**
+     * @param string $taskName
+     * @param string $name
+     * @return AbstractPlugin|null
+     * @throws Exception
+     */
+    public function getTarget(string $taskName, string $name): ?AbstractPlugin
     {
-        $fd = inotify_init();
-        $watch_descriptor = inotify_add_watch($fd, $this->parser->getPath(), IN_MODIFY);
-        swoole_event_add($fd, function ($fd) {
-            $events = inotify_read($fd);
-            if ($events) {
-                foreach ($events as $event) {
-                    if (pathinfo($event['name'], PATHINFO_EXTENSION) === 'yaml') {
-                        App::info(App::getServer()->getSwooleServer()->worker_id . " {$event['name']} modify...");
-                    }
-                }
-                if (pathinfo($event['name'], PATHINFO_EXTENSION) === 'yaml') {
-                    $this->build($this->parser->parse());
-                }
-            }
-        });
+        $waitTime = 0;
+        /** @var AbstractPlugin $target */
+        while ((empty($this->targets) || !isset($this->targets[$taskName]) || !isset($this->targets[$taskName][$name])) && (++$waitTime <= $this->waitTimes)) {
+            App::warning("The $taskName is building wait {$this->waitTimes}s");
+            System::sleep($waitTime * 3);
+        }
+        return $this->targets[$taskName][$name];
     }
+
 
     /**
      * @return array
@@ -124,7 +123,7 @@ class Scheduler implements InitInterface
      * @param array $params
      * @throws InvalidArgumentException
      */
-    public function run(string $key = null, array $params = [])
+    public function run(string $key = null, array $params = []): void
     {
         $server = App::getServer();
         if ($key === null) {
@@ -216,26 +215,19 @@ class Scheduler implements InitInterface
      */
     public function send(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = [], array $request = [], bool $wait = false): void
     {
-        $waitTime = 0;
-        /** @var AbstractPlugin $target */
-        while ((empty($this->targets) || !isset($this->targets[$taskName]) || !isset($this->targets[$taskName][$key])) && (++$waitTime <= $this->waitTimes)) {
-            App::warning("The $taskName is building wait {$this->waitTimes}s");
-            System::sleep($waitTime * 3);
-        }
-        $target = clone $this->targets[$taskName][$key];
         try {
             if ($this->taskTable->get($task_id, 'stop') === 1) {
                 $this->taskTable->del($task_id);
-                App::warning("「{$target->taskName}」 $task_id stoped by user!");
+                App::warning("「$taskName」 $task_id stoped by user!");
                 return;
             }
-            $target->task_id = $task_id;
-            $target->input =& $data;
-            $target->opt = $opt;
-            $target->request =& $request;
-            $this->setTask($target);
-            /** @var CoServer $server */
             if ($transfer === null) {
+                $target = clone $this->getTarget($taskName, $key);
+                $target->task_id = $task_id;
+                $target->input =& $data;
+                $target->opt = $opt;
+                $target->request =& $request;
+                $this->setTask($target);
                 $target->process();
             } else {
                 $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt, $request, $wait);
@@ -244,8 +236,8 @@ class Scheduler implements InitInterface
                 App::info("「{$taskName}」 finished!");
             }
         } catch (\Throwable $exception) {
-            App::error("「{$target->taskName}」 " . ExceptionHelper::dumpExceptionToString($exception));
-            $target->deleteAllLock();
+            App::error("「$taskName」「$key」" . ExceptionHelper::dumpExceptionToString($exception));
+            $this->deleteAllLock($opt);
         }
     }
 
@@ -281,5 +273,38 @@ class Scheduler implements InitInterface
         } else {
             throw new NotSupportedException("Do not support Swoole\Server");
         }
+    }
+
+    /**
+     * @return int
+     */
+    public function getLock(string $key = null): bool
+    {
+        return (bool)$this->redis->set($key, true, 'NX', 'EX', $this->lockEx);
+    }
+
+    /**
+     * @param array $opt
+     */
+    public function deleteAllLock(array $opt = []): void
+    {
+        $locks = isset($opt['Locks']) ? $opt['Locks'] : [];
+        foreach ($locks as $lock) {
+            !is_string($lock) && $lock = strval($lock);
+            $this->deleteLock($lock);
+        }
+    }
+
+    /**
+     * @param string $lockKey
+     * @return bool
+     */
+    public function deleteLock(string $name, string $key = null): int
+    {
+        if ($flag = $this->redis->del($key)) {
+            App::warning("「{$name}」 Delete Lock: " . $key);
+        }
+        return (int)$flag;
+
     }
 }
