@@ -5,6 +5,7 @@ namespace Rabbit\Data\Pipeline\Sinks;
 
 use DI\DependencyException;
 use DI\NotFoundException;
+use rabbit\App;
 use rabbit\core\Context;
 use rabbit\core\Exception;
 use Rabbit\Data\Pipeline\AbstractPlugin;
@@ -125,6 +126,7 @@ class Clickhouse extends AbstractPlugin
                 $result[$this->primaryKey] = array_unique(ArrayHelper::getColumn($this->input['data'], array_search($this->primaryKey, $this->input['columns']), []));
             }
         }
+        App::warning("$this->tableName succ: $rows");
         return $result;
     }
 
