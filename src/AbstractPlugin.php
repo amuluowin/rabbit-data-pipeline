@@ -56,8 +56,8 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     const CACHE_KEY = 'cache';
     /** @var string */
     const LOCK_KEY = 'Plugin';
-    /** @var string */
-    protected $schedulerName = 'scheduler';
+    /** @var SchedulerInterface */
+    protected $scheduler;
     /** @var int */
     protected $logInfo = self::LOG_SIMPLE;
     /** @var LockInterface */
@@ -70,17 +70,20 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected $pluginName;
     /** @var array */
     protected $lockKey = [];
+    /** @var AbstractPlugin[] */
+    protected $inPlugin = [];
 
     /**
      * AbstractPlugin constructor.
      * @param array $config
      * @throws Exception
      */
-    public function __construct(array $config)
+    public function __construct(SchedulerInterface $scheduler, array $config)
     {
         $this->config = $config;
         $this->redis = getDI('redis');
         $this->atomicLock = new AtomicLock();
+        $this->scheduler = $scheduler;
     }
 
     public function init()
@@ -103,11 +106,9 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      */
     public function getLock(string $key = null): bool
     {
-        if ($key || $key = $this->task_id) {
-            if ((bool)$this->redis->set($key, true, ['NX', 'EX' => $this->lockEx])) {
-                $this->opt['Locks'][] = $key;
-                return true;
-            }
+        if (($key || $key = $this->task_id) && $this->scheduler->getLock($key)) {
+            $this->opt['Locks'][] = $key;
+            return true;
         }
         return false;
     }
@@ -125,13 +126,9 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
         return 'Locks:' . $key;
     }
 
-    public function deleteAllLock()
+    public function deleteAllLock(): void
     {
-        $locks = isset($this->opt['Locks']) ? $this->opt['Locks'] : [];
-        foreach ($locks as $lock) {
-            !is_string($lock) && $lock = strval($lock);
-            $this->deleteLock($lock);
-        }
+        $this->scheduler->deleteAllLock($this->opt);
     }
 
     /**
@@ -141,11 +138,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     public function deleteLock(string $key = null): int
     {
         ($key === null) && $key = $this->task_id;
-        if ($flag = $this->redis->del($key)) {
-            App::warning("「{$this->taskName}」 Delete Lock: " . $key);
-        }
-        return (int)$flag;
-
+        return $this->scheduler->deleteLock($this->taskName, $key);
     }
 
     /**
@@ -279,6 +272,18 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
                 } else {
                     $transfer = -1;
                 }
+            } elseif ($transfer === 'wait') {
+                if (!isset($this->inPlugin[$output])) {
+                    $plugin = clone $this->scheduler->getTarget($this->taskName, $output);
+                    $this->inPlugin[$output] = $plugin;
+                } else {
+                    $plugin = $this->inPlugin[$output];
+                }
+                $plugin->task_id = $this->task_id;
+                $plugin->input =& $this->data;
+                $plugin->opt = &$this->opt;
+                $plugin->request =& $this->request;
+                $plugin->process();
             }
             if (empty($data)) {
                 App::warning("「{$this->taskName}」 $this->key -> $output; data is empty", 'Data');
@@ -287,7 +292,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
             } else {
                 App::info("「{$this->taskName}」 $this->key -> $output; data: " . VarDumper::getDumper()->dumpAsString($data), 'Data');
             }
-            getDI($this->schedulerName)->send($this->taskName, $output, $this->task_id, $data, $workerId ?? $transfer, $this->opt, $this->request, $this->wait);
+            $this->scheduler->send($this->taskName, $output, $this->task_id, $data, $workerId ?? $transfer, $this->opt, $this->request, $this->wait);
         }
     }
 }
