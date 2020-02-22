@@ -279,9 +279,9 @@ class Scheduler implements SchedulerInterface, InitInterface
     /**
      * @return int
      */
-    public function getLock(string $key = null): bool
+    public function getLock(string $key = null, $lockEx = 60): bool
     {
-        return (bool)$this->redis->set($key, true, 'NX', 'EX', $this->lockEx);
+        return (bool)$this->redis->set($key, true, ['NX', 'EX' => $lockEx]);
     }
 
     /**
