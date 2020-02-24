@@ -48,12 +48,14 @@ interface SchedulerInterface
 
     /**
      * @param array $opt
+     * @param string $taskName
      */
-    public function deleteAllLock(array $opt = []): void;
+    public function deleteAllLock(array $opt = [], string $taskName): void;
 
     /**
      * @param string|null $key
+     * @param string $taskName
      * @return int
      */
-    public function deleteLock(string $name, string $key = null): int;
+    public function deleteLock(string $key = null, string $taskName): int;
 }

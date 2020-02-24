@@ -237,8 +237,8 @@ class Scheduler implements SchedulerInterface, InitInterface
                 App::info("「{$taskName}」 finished!");
             }
         } catch (\Throwable $exception) {
-            App::error("「$taskName」「$key」" . ExceptionHelper::dumpExceptionToString($exception));
-            $this->deleteAllLock($opt);
+            App::error("「{$taskName}」「{$key}」" . ExceptionHelper::dumpExceptionToString($exception));
+            $this->deleteAllLock($opt, $taskName);
         }
     }
 
@@ -287,23 +287,25 @@ class Scheduler implements SchedulerInterface, InitInterface
     /**
      * @param array $opt
      */
-    public function deleteAllLock(array $opt = []): void
+    public function deleteAllLock(array $opt = [], string $taskName = ''): void
     {
         $locks = isset($opt['Locks']) ? $opt['Locks'] : [];
         foreach ($locks as $lock) {
             !is_string($lock) && $lock = strval($lock);
-            $this->deleteLock($lock);
+            $this->deleteLock($lock, $taskName);
         }
     }
 
     /**
-     * @param string $lockKey
-     * @return bool
+     * @param string|null $key
+     * @param string $taskName
+     * @return int
+     * @throws Exception
      */
-    public function deleteLock(string $name, string $key = null): int
+    public function deleteLock(string $key = null, string $taskName = ''): int
     {
         if ($flag = $this->redis->del($key)) {
-            App::warning("「{$name}」 Delete Lock: " . $key);
+            App::warning("「{$taskName}」 Delete Lock: " . $key);
         }
         return (int)$flag;
 

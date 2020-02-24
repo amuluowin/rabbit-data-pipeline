@@ -128,7 +128,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
 
     public function deleteAllLock(): void
     {
-        $this->scheduler->deleteAllLock($this->opt);
+        $this->scheduler->deleteAllLock($this->opt, $this->taskName);
     }
 
     /**
