@@ -269,8 +269,8 @@ class Scheduler implements SchedulerInterface, InitInterface
                 $workerId = array_rand($ids);
             }
             App::info("Data from worker $socket->workerId to $workerId", 'Data');
-            $params = ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt, &$request, $wait]];
-            $socket->send($params, $workerId);
+            $params = ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt, &$request]];
+            $socket->send($params, $workerId, $wait);
         } else {
             throw new NotSupportedException("Do not support Swoole\Server");
         }
