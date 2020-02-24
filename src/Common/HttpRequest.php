@@ -120,15 +120,15 @@ class HttpRequest extends AbstractPlugin
                 'after' => function (ResponseInterface $response) use ($request_id) {
                     App::info("Request $request_id finish");
                 }
-            ], $options);
+            ], $options, $this->input);
             if ($this->retry) {
                 $options['retry'] = function (Request $request) {
                     return call_user_func($this->retry, $request, $this->throttleTime === null ? $throttleTime : $this->throttleTime);
                 };
             }
         }
-        $client = new Client($options);
-        $response = $client->request($this->input, $this->driver);
+        $client = new Client();
+        $response = $client->request($options, $this->driver);
         if (!$this->download) {
             $format = $this->format;
             if (method_exists($response, $format)) {
