@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
 
+use Co\System;
 use DI\DependencyException;
 use DI\NotFoundException;
 use rabbit\App;
@@ -16,6 +17,7 @@ use rabbit\db\clickhouse\Connection;
 use rabbit\db\clickhouse\MakeCKConnection;
 use rabbit\db\ConnectionInterface;
 use rabbit\db\Expression;
+use rabbit\exception\InvalidArgumentException;
 use rabbit\exception\InvalidConfigException;
 use rabbit\helper\ArrayHelper;
 
@@ -82,24 +84,47 @@ class Clickhouse extends AbstractPlugin
         if (empty($this->tableName) && isset($this->opt['tableName'])) {
             $this->tableName = $this->opt['tableName'];
         }
-        if (isset($this->input['columns'])) {
-            $ids = $this->saveWithLine();
-        } else {
-            $ids = $this->saveWithRows();
+        if (isset($this->input['flagField'])) {
+            $this->flagField = $this->input['flagField'];
         }
-        if ($this->primaryKey && $ids) {
-            $this->updateFlag($ids);
+        if (isset($this->input['primaryKey'])) {
+            $this->primaryKey = $this->input['primaryKey'];
         }
-        $this->output($ids);
+        if (!isset($this->input['columns']) || !isset($this->input['data']) || empty($this->tableName)) {
+            throw new InvalidArgumentException("Get Args Failed: 「columus」「data」「tableName」");
+        }
+
+        // 获取update flag的条件
+        [$updateFlagCondition, $lock] = $this->getUpdateFlagCondition();
+
+        // 设置redis锁， 防止同时插入更新
+        if ($this->primaryKey && !empty($updateFlagCondition)) {
+            while (!$this->getLock($lock)) {
+                App::warning("wait update $this->flagField lock: $lock");
+                System::sleep(1);
+            }
+        }
+
+        // 存储数据
+        $rows = $this->saveWithLine();
+
+        // 更新flag 删除锁
+        if ($this->primaryKey && !empty($updateFlagCondition) && $rows > 0 && isset($lock)) {
+            $this->updateFlag($updateFlagCondition);
+            $this->deleteLock($lock);
+            App::warning("update $this->flagField succ:  $lock");
+        }
+
+        $this->output($rows);
     }
 
     /**
-     * @return array
+     * @return int
      * @throws DependencyException
      * @throws NotFoundException
      * @throws \rabbit\db\Exception
      */
-    protected function saveWithLine(): array
+    protected function saveWithLine(): int
     {
         if (!ArrayHelper::isIndexed($this->input['data'])) {
             $this->input['data'] = [$this->input['data']];
@@ -115,45 +140,32 @@ class Clickhouse extends AbstractPlugin
         } else {
             $rows = $this->db->insert($this->tableName, $this->input['columns'], $this->input['data']);
         }
-
-        $result = [];
-        if ($rows > 0) {
-            if (is_array($this->primaryKey)) {
-                foreach ($this->primaryKey as $key => $type) {
-                    $result[$key] = array_unique(ArrayHelper::getColumn($this->input['data'], array_search($key, $this->input['columns']), []));
-                }
-            } else {
-                $result[$this->primaryKey] = array_unique(ArrayHelper::getColumn($this->input['data'], array_search($this->primaryKey, $this->input['columns']), []));
-            }
-        }
         App::warning("$this->tableName succ: $rows");
-        return $result;
+        return $rows;
     }
 
-    /**
-     * @return array
-     */
-    protected function saveWithRows(): array
+    protected function getUpdateFlagCondition()
     {
-        $batch = new BatchInsertJsonRows($this->tableName, $this->db);
-        $batch->addColumns($this->input['columns']);
-        if (!ArrayHelper::isIndexed($this->input['data'])) {
-            $this->input['data'] = [$this->input['data']];
+        $result = [];
+        $lock = '';
+        if (!is_array($this->primaryKey)) {
+            $this->primaryKey = [$this->primaryKey];
         }
-        foreach ($this->input['data'] as $item) {
-            $batch->addRow($item);
+        foreach ($this->primaryKey as $field) {
+            $fieldValue = array_unique(ArrayHelper::getColumn($this->input['data'], array_search($field, $this->input['columns']), []));
+            $result[$field] = $fieldValue;
+            $lock .= "{$field}" . implode('', $fieldValue);
         }
-        if ($batch->execute()) {
-            return ArrayHelper::getColumn($this->input['data'], $this->primaryKey, []);
-        }
-        return [];
+        $lock = $this->tableName . ':' . md5($lock);
+        return [$result, $lock];
     }
+
 
     /**
      * @param array $ids
      * @throws \rabbit\db\Exception
      */
-    protected function updateFlag(array $ids): void
+    protected function updateFlag(array $updateFlagCondition): void
     {
         if ($this->db instanceof Connection) {
             $model = new class($this->tableName, $this->db) extends \rabbit\db\clickhouse\ActiveRecord {
@@ -217,8 +229,9 @@ class Clickhouse extends AbstractPlugin
 
         $res = $model::updateAll([$this->flagField => new Expression("{$this->flagField}+1")], array_merge([
             $this->flagField => [0, 1]
-        ], $ids));
+        ], $updateFlagCondition));
         if (!empty($res) && $res !== true) {
+            ding()->at()->text("Update $this->flagField Failed; tableName: $this->tableName, condition: " . json_encode($updateFlagCondition, JSON_UNESCAPED_UNICODE));
             throw new Exception($res);
         }
     }
