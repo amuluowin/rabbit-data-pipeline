@@ -17,6 +17,7 @@ use rabbit\helper\ArrayHelper;
 use rabbit\helper\ExceptionHelper;
 use rabbit\httpserver\CoServer;
 use rabbit\redis\Redis;
+use rabbit\server\Server;
 use Swoole\Table;
 
 class Scheduler implements SchedulerInterface, InitInterface
@@ -131,14 +132,14 @@ class Scheduler implements SchedulerInterface, InitInterface
                 if ($server === null || $server instanceof CoServer) {
                     $this->process((string)$key, $params);
                 } else {
-                    throw new NotSupportedException("Do not support Swoole\Server");
+                    $server->getSwooleServer()->task(["{$this->name}->process", [(string)$key, $params]]);
                 }
             }
         } elseif (isset($this->targets[$key])) {
             if ($server === null || $server instanceof CoServer) {
                 $this->process((string)$key, $params);
             } else {
-                throw new NotSupportedException("Do not support Swoole\Server");
+                $server->getSwooleServer()->task(["{$this->name}->process", [(string)$key, $params]]);
             }
         } else {
             throw new InvalidArgumentException("No such target $key");
@@ -268,9 +269,23 @@ class Scheduler implements SchedulerInterface, InitInterface
                 unset($ids[$socket->workerId]);
                 $workerId = array_rand($ids);
             }
+            $params = ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt, &$request]];
             App::info("Data from worker $socket->workerId to $workerId", 'Data');
-            $params = ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt, &$request, $wait]];
-            $socket->send($params, $workerId);
+            $socket->send($params, $workerId, $wait);
+        } elseif ($server instanceof Server) {
+            $swooleServer = $server->getSwooleServer();
+            if ($transfer > -1) {
+                $workerId = $transfer % ($swooleServer->setting['task_worker_num'] - 1);
+            } else {
+                $workerId = $transfer;
+            }
+            $params = [
+                ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt, &$request]],
+                $workerId,
+                $wait
+            ];
+            App::info("Data from worker $swooleServer->worker_id to $workerId", 'Data');
+            $server->pipeHandler->sendMessage($params, rand(0, $swooleServer->setting['worker_num'] - 1));
         } else {
             throw new NotSupportedException("Do not support Swoole\Server");
         }
