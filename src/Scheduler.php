@@ -20,6 +20,10 @@ use rabbit\redis\Redis;
 use rabbit\server\Server;
 use Swoole\Table;
 
+/**
+ * Class Scheduler
+ * @package Rabbit\Data\Pipeline
+ */
 class Scheduler implements SchedulerInterface, InitInterface
 {
     /** @var array */

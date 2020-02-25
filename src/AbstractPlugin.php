@@ -138,7 +138,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     public function deleteLock(string $key = null): int
     {
         ($key === null) && $key = $this->task_id;
-        return $this->scheduler->deleteLock($this->taskName, $key);
+        return $this->scheduler->deleteLock($key, $this->taskName);
     }
 
     /**
