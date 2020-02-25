@@ -288,7 +288,7 @@ class Scheduler implements SchedulerInterface, InitInterface
                 $workerId,
                 $wait
             ];
-            App::info("Data from worker $swooleServer->worker_id to $workerId", 'Data');
+            App::info("Data from worker $swooleServer->worker_id to task $workerId", 'Data');
             $server->pipeHandler->sendMessage($params, rand(0, $swooleServer->setting['worker_num'] - 1));
         } else {
             throw new NotSupportedException("Do not support Swoole\Server");
