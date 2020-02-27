@@ -280,10 +280,11 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
                     $plugin = $this->inPlugin[$output];
                 }
                 $plugin->task_id = $this->task_id;
-                $plugin->input =& $this->data;
+                $plugin->input =& $data;
                 $plugin->opt = &$this->opt;
                 $plugin->request =& $this->request;
                 $plugin->process();
+                return;
             }
             if (empty($data)) {
                 App::warning("「{$this->taskName}」 $this->key -> $output; data is empty", 'Data');

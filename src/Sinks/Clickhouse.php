@@ -94,25 +94,31 @@ class Clickhouse extends AbstractPlugin
             throw new InvalidArgumentException("Get Args Failed: 「columus」「data」「tableName」");
         }
 
-        // 获取update flag的条件
-        [$updateFlagCondition, $lock] = $this->getUpdateFlagCondition();
+        try {
+            // 获取update flag的条件
+            [$updateFlagCondition, $lock] = $this->getUpdateFlagCondition();
 
-        // 设置redis锁， 防止同时插入更新
-        if ($this->primaryKey && !empty($updateFlagCondition)) {
-            while (!$this->getLock($lock)) {
-                App::warning("wait update $this->flagField lock: $lock");
-                System::sleep(1);
+            // 设置redis锁， 防止同时插入更新
+            if ($this->primaryKey && !empty($updateFlagCondition)) {
+                while (!$this->getLock($lock)) {
+                    App::warning("wait update $this->flagField lock: $lock");
+                    System::sleep(1);
+                }
             }
-        }
+            // 存储数据
+            $rows = $this->saveWithLine();
+            App::warning("$this->tableName insert succ: $rows");
 
-        // 存储数据
-        $rows = $this->saveWithLine();
-
-        // 更新flag 删除锁
-        if ($this->primaryKey && !empty($updateFlagCondition) && $rows > 0 && isset($lock)) {
-            $this->updateFlag($updateFlagCondition);
+            // 更新flag 删除锁
+            if ($this->primaryKey && !empty($updateFlagCondition) && $rows > 0 && isset($lock)) {
+                $this->updateFlag($updateFlagCondition);
+                App::warning("update $this->flagField succ:  $lock");
+            }
+        } catch (\Throwable $e) {
+            App::error($e);
+            throw $e;
+        } finally {
             $this->deleteLock($lock);
-            App::warning("update $this->flagField succ:  $lock");
         }
 
         $this->output($rows);
@@ -130,8 +136,8 @@ class Clickhouse extends AbstractPlugin
             $this->input['data'] = [$this->input['data']];
         }
         if ($this->db instanceof Connection) {
-            $batch = count($this->input['data']) > $this->maxCount ? new BatchInsertCsv($this->tableName, uniqid(), $this->db)
-                : new BatchInsert($this->tableName, $this->db);
+//            $batch = count($this->input['data']) > $this->maxCount ? new BatchInsertCsv($this->tableName, uniqid(), $this->db) : new BatchInsert($this->tableName, $this->db);
+            $batch =  new BatchInsert($this->tableName, $this->db);
             $batch->addColumns($this->input['columns']);
             foreach ($this->input['data'] as $item) {
                 $batch->addRow($item);
