@@ -137,7 +137,7 @@ class Clickhouse extends AbstractPlugin
         }
         if ($this->db instanceof Connection) {
 //            $batch = count($this->input['data']) > $this->maxCount ? new BatchInsertCsv($this->tableName, uniqid(), $this->db) : new BatchInsert($this->tableName, $this->db);
-            $batch =  new BatchInsert($this->tableName, $this->db);
+            $batch =  new BatchInsertCsv($this->tableName, uniqid(), $this->db);
             $batch->addColumns($this->input['columns']);
             foreach ($this->input['data'] as $item) {
                 $batch->addRow($item);

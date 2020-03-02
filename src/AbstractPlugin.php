@@ -104,9 +104,10 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     /**
      * @return int
      */
-    public function getLock(string $key = null): bool
+    public function getLock(string $key = null, $ext = null): bool
     {
-        if (($key || $key = $this->task_id) && $this->scheduler->getLock($key, $this->lockEx)) {
+        empty($ext) && $ext = $this->lockEx;
+        if (($key || $key = $this->task_id) && $this->scheduler->getLock($key, $ext)) {
             $this->opt['Locks'][] = $key;
             return true;
         }

@@ -97,8 +97,9 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
     /**
      * @return int
      */
-    public function getLock(string $key = null): bool
+    public function getLock(string $key = null,$ext = null): bool
     {
+        empty($ext) && $ext = $this->lockEx;
         if (($key || $key = $this->task_id) && $this->scheduler->getLock($key,$this->lockEx)) {
             $this->getOpt()['Locks'][] = $key;
             return true;
