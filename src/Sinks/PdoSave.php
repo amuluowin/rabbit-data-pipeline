@@ -101,7 +101,6 @@ class PdoSave extends AbstractPlugin
         /** @var Connection $db */
         $db = getDI('db')->getConnection($this->dbName);
         $res = $db->createCommand()->batchInsert($this->tableName, $this->input['columns'], $this->input['data'])->execute();
-        $db->release(true, $this->tableName);
         $this->output($res);
     }
 
@@ -137,15 +136,9 @@ class PdoSave extends AbstractPlugin
             {
                 return getDI('db')->getConnection(Context::get(md5(get_called_class() . 'dbName')));
             }
-
-            public static function getName(): string
-            {
-                return Context::get(md5(get_called_class() . 'dbName'));
-            }
         };
 
         $res = CreateExt::create($model, $this->input);
-        $model::getDb()->release(true, $model::getName());
         if (empty($res)) {
             throw new Exception("save to " . $model::tableName() . ' failed!');
         }
