@@ -16,6 +16,8 @@ use rabbit\exception\NotSupportedException;
 use rabbit\helper\ArrayHelper;
 use rabbit\helper\ExceptionHelper;
 use rabbit\httpserver\CoServer;
+use rabbit\memory\atomic\LockInterface;
+use rabbit\memory\atomic\LockManager;
 use rabbit\redis\Redis;
 use rabbit\server\Server;
 use Swoole\Table;
@@ -40,12 +42,14 @@ class Scheduler implements SchedulerInterface, InitInterface
     protected $taskTable;
     /** @var int */
     protected $waitTimes = 3;
+    /** @var LockInterface */
+    public $atomicLock;
 
     /**
      * Scheduler constructor.
      * @param ConfigParserInterface $parser
      */
-    public function __construct(ConfigParserInterface $parser)
+    public function __construct(ConfigParserInterface $parser, LockManager $manager, string $lockName)
     {
         $this->parser = $parser;
         $this->taskTable = new Table(1024);
@@ -54,6 +58,7 @@ class Scheduler implements SchedulerInterface, InitInterface
         $this->taskTable->column('request', Table::TYPE_STRING, 1024);
         $this->taskTable->column('stop', Table::TYPE_INT, 1);
         $this->taskTable->create();
+        $this->atomicLock = $manager->getLock($lockName);
     }
 
     /**

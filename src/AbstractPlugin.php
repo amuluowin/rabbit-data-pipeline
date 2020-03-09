@@ -14,8 +14,6 @@ use rabbit\exception\InvalidCallException;
 use rabbit\helper\ArrayHelper;
 use rabbit\helper\ExceptionHelper;
 use rabbit\helper\VarDumper;
-use rabbit\memory\atomic\AtomicLock;
-use rabbit\memory\atomic\LockInterface;
 use rabbit\redis\Redis;
 
 /**
@@ -60,8 +58,6 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected $scheduler;
     /** @var int */
     protected $logInfo = self::LOG_SIMPLE;
-    /** @var LockInterface */
-    protected $atomicLock;
     /** @var callable */
     protected $errHandler;
     /** @var bool */
@@ -82,7 +78,6 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     {
         $this->config = $config;
         $this->redis = getDI('redis');
-        $this->atomicLock = new AtomicLock();
         $this->scheduler = $scheduler;
     }
 
