@@ -138,18 +138,10 @@ class Scheduler implements SchedulerInterface, InitInterface
         $server = App::getServer();
         if ($key === null) {
             foreach (array_keys($this->targets) as $key) {
-                if ($server === null || $server instanceof CoServer) {
-                    $this->process((string)$key, $params);
-                } else {
-                    $server->getSwooleServer()->task(["{$this->name}->process", [(string)$key, $params]]);
-                }
+                $this->process((string)$key, $params);
             }
         } elseif (isset($this->targets[$key])) {
-            if ($server === null || $server instanceof CoServer) {
-                $this->process((string)$key, $params);
-            } else {
-                $server->getSwooleServer()->task(["{$this->name}->process", [(string)$key, $params]]);
-            }
+            $this->process((string)$key, $params);
         } else {
             throw new InvalidArgumentException("No such target $key");
         }
@@ -264,6 +256,7 @@ class Scheduler implements SchedulerInterface, InitInterface
     protected function transSend(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array &$opt = [], array &$request = [], bool $wait = false): void
     {
         $server = App::getServer();
+        $params = ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt, &$request]];
         if ($server === null || $server instanceof CoServer) {
             if ($server === null) {
                 $socket = getDI('socketHandle');
@@ -278,23 +271,22 @@ class Scheduler implements SchedulerInterface, InitInterface
                 unset($ids[$socket->workerId]);
                 $workerId = array_rand($ids);
             }
-            $params = ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt, &$request]];
             App::info("Data from worker $socket->workerId to $workerId", 'Data');
             $socket->send($params, $workerId, $wait);
         } elseif ($server instanceof Server) {
             $swooleServer = $server->getSwooleServer();
-            if ($transfer > -1) {
-                $workerId = $transfer % ($swooleServer->setting['task_worker_num'] - 1);
+            if ($swooleServer->worker_id < $swooleServer->setting['worker_num']) {
+                $swooleServer->task($params);
+                App::info("Data from worker $swooleServer->worker_id to task", 'Data');
             } else {
-                $workerId = $transfer;
+                $target = clone $this->getTarget($taskName, $key);
+                $target->task_id = $task_id;
+                $target->input =& $data;
+                $target->opt = $opt;
+                $target->request =& $request;
+                $this->setTask($target);
+                $target->process();
             }
-            $params = [
-                ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt, &$request]],
-                $workerId,
-                $wait
-            ];
-            App::info("Data from worker $swooleServer->worker_id to task $workerId", 'Data');
-            $server->pipeHandler->sendMessage($params, rand(0, $swooleServer->setting['worker_num'] - 1));
         } else {
             throw new NotSupportedException("Do not support Swoole\Server");
         }
