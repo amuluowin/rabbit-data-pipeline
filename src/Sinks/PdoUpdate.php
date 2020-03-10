@@ -100,6 +100,7 @@ class PdoUpdate extends AbstractPlugin
             {
                 Context::set(md5(get_called_class() . 'tableName'), $tableName);
                 Context::set(md5(get_called_class() . 'dbName'), $dbName);
+                parent::__construct();
             }
 
             /**
