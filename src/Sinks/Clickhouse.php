@@ -10,6 +10,7 @@ use rabbit\App;
 use rabbit\core\Context;
 use rabbit\core\Exception;
 use Rabbit\Data\Pipeline\AbstractPlugin;
+use rabbit\db\clickhouse\ActiveRecord;
 use rabbit\db\clickhouse\BatchInsert;
 use rabbit\db\clickhouse\BatchInsertCsv;
 use rabbit\db\clickhouse\BatchInsertJsonRows;
@@ -37,7 +38,8 @@ class Clickhouse extends AbstractPlugin
     protected $flagField;
     /** @var int */
     protected $maxCount = 10000;
-
+    /** @var string */
+    protected $driver;
     /**
      * @return mixed|void
      * @throws DependencyException
@@ -69,8 +71,8 @@ class Clickhouse extends AbstractPlugin
             throw new InvalidConfigException("class, dsn, primaryKey must be set in $this->key");
         }
         $dbName = md5($dsn);
-        $driver = MakeCKConnection::addConnection($class, $dbName, $dsn, $config);
-        $this->db = getDI($driver)->getConnection($dbName);
+        $this->driver = MakeCKConnection::addConnection($class, $dbName, $dsn, $config);
+        $this->db = $dbName;
     }
 
     /**
@@ -137,7 +139,11 @@ class Clickhouse extends AbstractPlugin
         }
         if ($this->db instanceof Connection) {
 //            $batch = count($this->input['data']) > $this->maxCount ? new BatchInsertCsv($this->tableName, uniqid(), $this->db) : new BatchInsert($this->tableName, $this->db);
-            $batch =  new BatchInsertCsv($this->tableName, uniqid(), $this->db);
+            $batch =  new BatchInsertCsv(
+                $this->tableName,
+                strval(getDI('idGen')->create()),
+                getDI($this->driver)->getConnection($this->db)
+            );
             $batch->addColumns($this->input['columns']);
             foreach ($this->input['data'] as $item) {
                 $batch->addRow($item);
@@ -173,17 +179,18 @@ class Clickhouse extends AbstractPlugin
      */
     protected function updateFlag(array $updateFlagCondition): void
     {
-        if ($this->db instanceof Connection) {
-            $model = new class($this->tableName, $this->db) extends \rabbit\db\clickhouse\ActiveRecord {
+        if ($this->driver === 'clickhouse') {
+            $model = new class($this->tableName, $this->db) extends ActiveRecord {
                 /**
                  *  constructor.
                  * @param string $tableName
-                 * @param string $dbName
+                 * @param string $db
                  */
-                public function __construct(string $tableName, ConnectionInterface $db)
+                public function __construct(string $tableName, string $db)
                 {
                     Context::set(md5(get_called_class() . 'tableName'), $tableName);
                     Context::set(md5(get_called_class() . 'db'), $db);
+                    parent::__construct();
                 }
 
                 /**
@@ -199,7 +206,7 @@ class Clickhouse extends AbstractPlugin
                  */
                 public static function getDb(): ConnectionInterface
                 {
-                    return Context::get(md5(get_called_class() . 'db'));
+                    return getDI('clickhouse')->getConnection(Context::get(md5(get_called_class() . 'db')));
                 }
             };
         } else {
@@ -207,9 +214,9 @@ class Clickhouse extends AbstractPlugin
                 /**
                  *  constructor.
                  * @param string $tableName
-                 * @param string $dbName
+                 * @param string $db
                  */
-                public function __construct(string $tableName, ConnectionInterface $db)
+                public function __construct(string $tableName, string $db)
                 {
                     Context::set(md5(get_called_class() . 'tableName'), $tableName);
                     Context::set(md5(get_called_class() . 'db'), $db);
@@ -228,7 +235,7 @@ class Clickhouse extends AbstractPlugin
                  */
                 public static function getDb(): ConnectionInterface
                 {
-                    return Context::get(md5(get_called_class() . 'db'));
+                    return getDI('click')->getConnection(Context::get(md5(get_called_class() . 'db')));
                 }
             };
         }
