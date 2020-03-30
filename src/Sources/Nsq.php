@@ -71,9 +71,8 @@ class Nsq extends AbstractSingletonPlugin
             if ($dsn === null || $class === null) {
                 throw new InvalidConfigException("class, dsn must be set in $this->key");
             }
-            $this->topics[$topic]['connName'] = md5($dsn . 'Consumer');
             $this->topics[$topic]['isRunning'] = false;
-            $this->createConnection($class, $this->topics[$topic]['connName'], $dsn, $pool);
+            $this->createConnection($class, $topic, $dsn, $pool);
         }
     }
 
@@ -94,9 +93,8 @@ class Nsq extends AbstractSingletonPlugin
             }
             $this->topics[$topic]['isRunning'] = true;
             /** @var NsqClient $nsq */
-            $nsq = getDI('nsq')->getConnection($config['connName']);
-            [$topic, $channel] = explode(':', $topic);
-            $nsq->subscribe($topic, $channel, [
+            $nsq = getDI('nsq')->getConnection($topic);
+            $nsq->subscribe([
                 'rdy' => ArrayHelper::getValue($config, 'rdy', 1),
                 'timeout' => ArrayHelper::getValue($config, 'timeout', 5)
             ], function (array $message) {
