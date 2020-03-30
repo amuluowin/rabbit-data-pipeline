@@ -58,9 +58,15 @@ class SingletonScheduler extends Scheduler
             }
 
             if ($transfer === null) {
-                $target->setInput($data);
-                $target->setOpt($opt);
-                $target->setRequest($request);
+                if ($target instanceof AbstractSingletonPlugin) {
+                    $target->setInput($data);
+                    $target->setOpt($opt);
+                    $target->setRequest($request);
+                } else {
+                    $target->input =& $data;
+                    $target->opt =& $opt;
+                    $target->request =& $request;
+                }
                 $target->process();
             } else {
                 $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt, $request, $wait);
