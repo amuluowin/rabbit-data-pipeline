@@ -10,6 +10,7 @@ use rabbit\exception\InvalidConfigException;
 use rabbit\kafka\Broker;
 use rabbit\kafka\Producter\Producter;
 use rabbit\kafka\Producter\ProducterConfig;
+use rabbit\kafka\Producter\RecordValidator;
 use rabbit\socket\pool\SocketConfig;
 use rabbit\socket\pool\SocketPool;
 use rabbit\socket\SocketClient;
@@ -75,6 +76,7 @@ class kafka extends AbstractSingletonPlugin
                 ]),
                 'logger' => $logger
             ], [], false),
+            new RecordValidator(),
             'logger' => $logger
         ], [], false);
     }
