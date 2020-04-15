@@ -3,10 +3,8 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sources;
 
-use Psr\Log\NullLogger;
 use rabbit\core\ObjectFactory;
 use Rabbit\Data\Pipeline\AbstractSingletonPlugin;
-use rabbit\exception\InvalidConfigException;
 use rabbit\helper\ArrayHelper;
 use rabbit\kafka\Broker;
 use rabbit\kafka\Consumer\Assignment;
@@ -17,7 +15,7 @@ use rabbit\kafka\Consumer\State;
 use rabbit\kafka\ConsumerModel;
 
 /**
- * Class Kafka
+ * Class Kafak
  * @package Rabbit\Data\Pipeline\Sources
  */
 class Kafka extends AbstractSingletonPlugin
