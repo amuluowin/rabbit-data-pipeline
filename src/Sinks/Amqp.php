@@ -17,8 +17,8 @@ use rabbit\helper\ArrayHelper;
  */
 class Amqp extends AbstractSingletonPlugin
 {
-    /** @var Connection */
-    protected $conn;
+    /** @var string */
+    protected $name;
     /** @var array */
     protected $properties = [
         'content_type' => 'text/plain',
@@ -80,11 +80,13 @@ class Amqp extends AbstractSingletonPlugin
                 'comClass' => Connection::class
             ])
         ]);
-        $this->conn = $amqp->getConnection($name);
     }
 
     public function run()
     {
-        $this->conn->basic_publish(new AMQPMessage($this->input, $this->properties));
+        /** @var Manager $amqp */
+        $amqp = getDI('amqp');
+        $conn = $amqp->getConnection($this->name);
+        $conn->basic_publish(new AMQPMessage($this->input, $this->properties));
     }
 }
