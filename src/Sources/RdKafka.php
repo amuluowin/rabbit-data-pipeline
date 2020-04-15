@@ -25,6 +25,9 @@ class RdKafka extends AbstractSingletonPlugin
     public function init()
     {
         parent::init();
+        array_walk($this->output, function (&$value) {
+            $value = false;
+        });
         [
             $dsn,
             $topics,
@@ -60,7 +63,7 @@ class RdKafka extends AbstractSingletonPlugin
         /** @var KafkaManager $manager */
         $manager = getDI('kafka');
         $manager->consumeWithKafkaConsumer($this->consumer, function (Message $message) {
-            $this->output($message->payload);
+            $this->output($message);
         });
     }
 }

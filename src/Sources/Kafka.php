@@ -30,6 +30,9 @@ class Kafka extends AbstractSingletonPlugin
     public function init()
     {
         parent::init();
+        array_walk($this->output, function (&$value) {
+            $value = false;
+        });
         [
             $dsn,
             $topic,
@@ -75,8 +78,7 @@ class Kafka extends AbstractSingletonPlugin
     public function run()
     {
         $this->consumer->consume(function (int $part, array $message) {
-            $msg = $message['message']['value'];
-            $this->output($msg);
+            $this->output($message);
         });
     }
 }
