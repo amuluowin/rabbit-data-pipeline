@@ -7,11 +7,9 @@ use rabbit\core\ObjectFactory;
 use Rabbit\Data\Pipeline\AbstractSingletonPlugin;
 use rabbit\helper\ArrayHelper;
 use rabbit\kafka\Broker;
-use rabbit\kafka\Consumer\Assignment;
 use rabbit\kafka\Consumer\Consumer;
 use rabbit\kafka\Consumer\ConsumerConfig;
 use rabbit\kafka\Consumer\Process;
-use rabbit\kafka\Consumer\State;
 use rabbit\kafka\ConsumerModel;
 
 /**
@@ -51,8 +49,6 @@ class Kafka extends AbstractSingletonPlugin
         foreach ($options as $param => $value) {
             $params['set' . lcfirst($param) . '()'] = [$value];
         }
-        $logger = getDI('kafka.logger', false);
-        $logger === null && $logger = new NullLogger();
         $this->consumer = new ConsumerModel([
             'consumer' => ObjectFactory::createObject([
                 'class' => Consumer::class,
@@ -62,14 +58,9 @@ class Kafka extends AbstractSingletonPlugin
                         'class' => Broker::class,
                         'config' => ObjectFactory::createObject([
                             'class' => ConsumerConfig::class
-                        ], $params, false),
-                        'logger' => $logger,
-                    ], [], false),
-                    'assignment' => ObjectFactory::createObject(Assignment::class, [], false),
-                    'state' => ObjectFactory::createObject(State::class, [], false),
-                    'logger' => $logger,
-                ], [], false),
-                'logger' => $logger,
+                        ], $params, false)
+                    ], [], false)
+                ], [], false)
             ], [], false),
             'topic' => $topic
         ]);
