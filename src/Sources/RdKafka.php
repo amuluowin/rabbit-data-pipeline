@@ -63,7 +63,7 @@ class RdKafka extends AbstractSingletonPlugin
         /** @var KafkaManager $manager */
         $manager = getDI('kafka');
         $manager->consumeWithKafkaConsumer($this->consumer, function (Message $message) {
-            $this->output($message);
+            $this->output($message->payload);
         });
     }
 }

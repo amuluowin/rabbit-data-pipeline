@@ -69,7 +69,7 @@ class Kafka extends AbstractSingletonPlugin
     public function run()
     {
         $this->consumer->consume(function (int $part, array $message) {
-            $this->output($message);
+            $this->output($message['message']['value']);
         });
     }
 }
