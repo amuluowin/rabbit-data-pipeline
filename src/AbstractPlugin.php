@@ -27,17 +27,17 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     /** @var string */
     public $taskName;
     /** @var string */
-    public $task_id;
+    private $taskId;
     /** @var string */
     public $key;
     /** @var array */
     protected $config = [];
     /** @var mixed */
-    public $input;
+    private $input;
     /** @var array */
-    public $request = [];
+    private $request = [];
     /** @var array */
-    public $opt = [];
+    private $opt = [];
     /** @var array */
     public $locks = [];
     /** @var array */
@@ -89,6 +89,67 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     }
 
     /**
+     * @return string
+     */
+    public function getTaskId(): string
+    {
+        return $this->taskId;
+    }
+
+    /**
+     * @param string $taskId
+     */
+    public function setTaskId(string $taskId): void
+    {
+        $this->taskId = $taskId;
+    }
+
+    /**
+     * @return array
+     */
+    public function getRequest(): array
+    {
+        return $this->request;
+    }
+
+    /**
+     * @param array $opt
+     */
+    public function setRequest(array &$request): void
+    {
+        $this->request = $request;
+    }
+
+    public function getInput()
+    {
+        return $this->input;
+    }
+
+    /**
+     * @param $input
+     */
+    public function setInput(&$input)
+    {
+        $this->input = $input;
+    }
+
+    /**
+     * @return array
+     */
+    public function getOpt(): array
+    {
+        return $this->opt;
+    }
+
+    /**
+     * @param array $opt
+     */
+    public function setOpt(array &$opt): void
+    {
+        $this->opt = $opt;
+    }
+
+    /**
      * @return bool
      */
     public function getStart(): bool
@@ -102,7 +163,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     public function getLock(string $key = null, $ext = null): bool
     {
         empty($ext) && $ext = $this->lockEx;
-        if (($key || $key = $this->task_id) && $this->scheduler->getLock($key, $ext)) {
+        if (($key || $key = $this->taskId) && $this->scheduler->getLock($key, $ext)) {
             $this->opt['Locks'][] = $key;
             return true;
         }
@@ -133,7 +194,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      */
     public function deleteLock(string $key = null): int
     {
-        ($key === null) && $key = $this->task_id;
+        ($key === null) && $key = $this->taskId;
         return $this->scheduler->deleteLock($key, $this->taskName);
     }
 
@@ -275,7 +336,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
                 } else {
                     $plugin = $this->inPlugin[$output];
                 }
-                $plugin->task_id = $this->task_id;
+                $plugin->taskId = $this->taskId;
                 $plugin->input =& $data;
                 $plugin->opt = &$this->opt;
                 $plugin->request =& $this->request;
@@ -289,7 +350,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
             } else {
                 App::info("「{$this->taskName}」 $this->key -> $output; data: " . VarDumper::getDumper()->dumpAsString($data), 'Data');
             }
-            $this->scheduler->send($this->taskName, $output, $this->task_id, $data, $workerId ?? $transfer, $this->opt, $this->request, $this->wait);
+            $this->scheduler->send($this->taskName, $output, $this->taskId, $data, $workerId ?? $transfer, $this->opt, $this->request, $this->wait);
         }
     }
 }

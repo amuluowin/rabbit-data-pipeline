@@ -24,7 +24,7 @@ class SingletonScheduler extends Scheduler
         /** @var AbstractSingletonPlugin $target */
         foreach ($this->targets[$task] as $target) {
             if ($target->getStart()) {
-                $target->task_id = (string)getDI('idGen')->create();
+                $target->setTaskId((string)getDI('idGen')->create());
                 $opt = [];
                 $input = [];
                 $target->setInput($input);

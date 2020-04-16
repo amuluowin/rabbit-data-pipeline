@@ -18,15 +18,15 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
     /**
      * @return string
      */
-    public function getTask_id(): string
+    public function getTaskId(): string
     {
         return (string)Context::get($this->taskName . $this->key . 'task_id');
     }
 
     /**
-     * @param string $task_id
+     * @param string $taskId
      */
-    public function setTask_id(string $task_id): void
+    public function setTaskId(string $taskId): void
     {
         Context::set($this->taskName . $this->key . 'task_id', $task_id);
     }
@@ -100,7 +100,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
     public function getLock(string $key = null,$ext = null): bool
     {
         empty($ext) && $ext = $this->lockEx;
-        if (($key || $key = $this->task_id) && $this->scheduler->getLock($key,$this->lockEx)) {
+        if (($key || $key = $this->getTaskId()) && $this->scheduler->getLock($key,$this->lockEx)) {
             $this->getOpt()['Locks'][] = $key;
             return true;
         }
@@ -143,7 +143,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
             } else {
                 App::info("「{$this->taskName}」 $this->key -> $output; data: " . VarDumper::getDumper()->dumpAsString($data), 'Data');
             }
-            $this->scheduler->send($this->taskName, $output, $this->getTask_id(), $data, $workerId ?? $transfer, $this->getOpt(), $this->getRequest(), $this->wait);
+            $this->scheduler->send($this->taskName, $output, $this->getTaskId(), $data, $workerId ?? $transfer, $this->getOpt(), $this->getRequest(), $this->wait);
         }
     }
 }

@@ -107,10 +107,10 @@ class Scheduler implements SchedulerInterface, InitInterface
      */
     protected function setTask(AbstractPlugin $target): void
     {
-        $this->taskTable->set($target->task_id, [
+        $this->taskTable->set($target->getTaskId(), [
             'taskName' => $target->taskName,
             'key' => $target->key,
-            'request' => \msgpack_pack($target->request),
+            'request' => \msgpack_pack($target->getRequest()),
             'stop' => 0
         ]);
     }
@@ -194,7 +194,7 @@ class Scheduler implements SchedulerInterface, InitInterface
         foreach ($this->targets[$task] as $target) {
             if ($target->getStart()) {
                 $current = clone $target;
-                $current->task_id = (string)getDI('idGen')->create();
+                $current->taskId = (string)getDI('idGen')->create();
                 $current->request = $params;
                 $this->setTask($current);
                 $current->process();
@@ -221,7 +221,7 @@ class Scheduler implements SchedulerInterface, InitInterface
             }
             if ($transfer === null) {
                 $target = clone $this->getTarget($taskName, $key);
-                $target->task_id = $task_id;
+                $target->taskId = $task_id;
                 $target->input =& $data;
                 $target->opt = $opt;
                 $target->request =& $request;
@@ -275,7 +275,7 @@ class Scheduler implements SchedulerInterface, InitInterface
                 App::info("Data from worker $swooleServer->worker_id to task", 'Data');
             } else {
                 $target = clone $this->getTarget($taskName, $key);
-                $target->task_id = $task_id;
+                $target->taskId = $task_id;
                 $target->input =& $data;
                 $target->opt = $opt;
                 $target->request =& $request;
