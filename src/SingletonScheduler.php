@@ -58,15 +58,15 @@ class SingletonScheduler extends Scheduler
             }
 
             if ($transfer === null) {
-                if ($target instanceof AbstractSingletonPlugin) {
-                    $target->setInput($data);
-                    $target->setOpt($opt);
-                    $target->setRequest($request);
-                } else {
-                    $target->input =& $data;
-                    $target->opt =& $opt;
-                    $target->request =& $request;
+                App::info("Data do not transfrom", 'Data');
+                if (!$target instanceof AbstractSingletonPlugin) {
+                    $target = clone $target;
                 }
+                $target->setTaskId($task_id);
+                $target->setInput($data);
+                $target->setInput($opt);
+                $target->setRequest($request);
+                $this->setTask($target);
                 $target->process();
             } else {
                 $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt, $request, $wait);

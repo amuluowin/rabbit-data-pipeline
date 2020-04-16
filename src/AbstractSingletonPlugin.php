@@ -20,7 +20,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
      */
     public function getTaskId(): string
     {
-        return (string)Context::get($this->taskName . $this->key . 'task_id');
+        return (string)Context::get($this->taskName . $this->key . 'taskid');
     }
 
     /**
@@ -28,7 +28,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
      */
     public function setTaskId(string $taskId): void
     {
-        Context::set($this->taskName . $this->key . 'task_id', $task_id);
+        Context::set($this->taskName . $this->key . 'taskid', $taskId);
     }
 
     /**
@@ -54,7 +54,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
      */
     public function getRequest(): array
     {
-        return (array)Context::get($this->getTask_id() . 'request');
+        return (array)Context::get($this->getTaskId() . 'request');
     }
 
     /**
@@ -62,12 +62,12 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
      */
     public function setRequest(array &$request): void
     {
-        Context::set($this->getTask_id() . 'request', $request);
+        Context::set($this->getTaskId() . 'request', $request);
     }
 
     public function getInput()
     {
-        return Context::get($this->getTask_id() . 'input');
+        return Context::get($this->getTaskId() . 'input');
     }
 
     /**
@@ -75,7 +75,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
      */
     public function setInput(&$input)
     {
-        Context::set($this->getTask_id() . 'input', $input);
+        Context::set($this->getTaskId() . 'input', $input);
     }
 
     /**
@@ -83,7 +83,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
      */
     public function getOpt(): array
     {
-        return (array)Context::get($this->getTask_id() . 'opt');
+        return (array)Context::get($this->getTaskId() . 'opt');
     }
 
     /**
@@ -91,7 +91,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
      */
     public function setOpt(array &$opt): void
     {
-        Context::set($this->getTask_id() . 'opt', $opt);
+        Context::set($this->getTaskId() . 'opt', $opt);
     }
 
     /**
@@ -113,7 +113,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
      */
     public function deleteLock(string $key = null): int
     {
-        ($key === null) && $key = $this->getTask_id();
+        ($key === null) && $key = $this->getTaskId();
         return $this->scheduler->deleteLock($this->taskName, $key);
     }
 

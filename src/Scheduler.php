@@ -220,11 +220,14 @@ class Scheduler implements SchedulerInterface, InitInterface
                 return;
             }
             if ($transfer === null) {
-                $target = clone $this->getTarget($taskName, $key);
-                $target->taskId = $task_id;
-                $target->input =& $data;
-                $target->opt = $opt;
-                $target->request =& $request;
+                App::info("Data do not transfrom", 'Data');
+                if (!$target instanceof AbstractSingletonPlugin) {
+                    $target = clone $target;
+                }
+                $target->setTaskId($task_id);
+                $target->setInput($data);
+                $target->setInput($opt);
+                $target->setRequest($request);
                 $this->setTask($target);
                 $target->process();
             } else {
