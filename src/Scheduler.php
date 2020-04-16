@@ -34,8 +34,6 @@ class Scheduler implements SchedulerInterface, InitInterface
     protected $parser;
     /** @var Redis */
     protected $redis;
-    /** @var bool */
-    private $autoRefresh = false;
     /** @var string */
     protected $name = 'scheduler';
     /** @var Table */
@@ -71,9 +69,6 @@ class Scheduler implements SchedulerInterface, InitInterface
     {
         $this->build($this->parser->parse());
         $this->redis = getDI('redis');
-        if ($this->autoRefresh) {
-            $this->refreshConfig();
-        }
     }
 
     /**
