@@ -64,7 +64,7 @@ class SingletonScheduler extends Scheduler
                 }
                 $target->setTaskId($task_id);
                 $target->setInput($data);
-                $target->setInput($opt);
+                $target->setOpt($opt);
                 $target->setRequest($request);
                 $this->setTask($target);
                 $target->process();
