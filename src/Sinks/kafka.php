@@ -3,23 +3,22 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
 
-use Psr\Log\NullLogger;
 use rabbit\core\ObjectFactory;
 use Rabbit\Data\Pipeline\AbstractSingletonPlugin;
 use rabbit\exception\InvalidConfigException;
+use rabbit\helper\ArrayHelper;
 use rabbit\kafka\Broker;
 use rabbit\kafka\Producter\Producter;
 use rabbit\kafka\Producter\ProducterConfig;
-use rabbit\kafka\Producter\RecordValidator;
 use rabbit\socket\pool\SocketConfig;
 use rabbit\socket\pool\SocketPool;
 use rabbit\socket\SocketClient;
 
 /**
- * Class kafka
+ * Class Kafka
  * @package Rabbit\Data\Pipeline\Sinks
  */
-class kafka extends AbstractSingletonPlugin
+class Kafka extends AbstractSingletonPlugin
 {
     /** @var Producter */
     protected $product;
@@ -48,17 +47,16 @@ class kafka extends AbstractSingletonPlugin
             'options',
             'kKey'
         ], null, [
-            'kKey' => $this->kKey
+            'kKey' => $this->kKey,
+            'pool' => [],
         ]);
         if (empty($dsn) || empty($this->topic)) {
             throw new InvalidConfigException("dsn & topic must be set!");
         }
         $params = [];
         foreach ($options as $param => $value) {
-            $params['set' . lcfirst($param) . '()'] = $value;
+            $params['set' . lcfirst($param) . '()'] = [$value];
         }
-        $logger = getDI('kafka.logger', false);
-        $logger === null && $logger = new NullLogger();
         $this->product = ObjectFactory::createObject([
             'class' => Producter::class,
             'broker' => ObjectFactory::createObject([
@@ -70,14 +68,16 @@ class kafka extends AbstractSingletonPlugin
                     'class' => SocketPool::class,
                     'poolConfig' => ObjectFactory::createObject([
                         'class' => SocketConfig::class,
-                        'uri' => $dsn,
-                    ], $pool, false),
+                        'uri' => explode(',', $dsn),
+                    ], empty($pool) ? [
+                        'timeout' => 3,
+                        'minActive' => 5,
+                        'maxActive' => 6,
+                        'maxWait' => 0
+                    ] : $pool, false),
                     'client' => SocketClient::class
-                ]),
-                'logger' => $logger
-            ], [], false),
-            new RecordValidator(),
-            'logger' => $logger
+                ],[],false),
+            ], [], false)
         ], [], false);
     }
 

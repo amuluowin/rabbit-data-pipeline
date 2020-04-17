@@ -24,14 +24,14 @@ class Nsq extends AbstractSingletonPlugin
     protected $connName;
 
     /**
-     * @param string $class
+     * @param string $connName
      * @param string $dsn
+     * @param string $dsnd
      * @param array $pool
-     * @throws DependencyException
-     * @throws NotFoundException
-     * @throws Exception
+     * @throws \DI\DependencyException
+     * @throws \DI\NotFoundException
      */
-    protected function createConnection(string $class, string $connName, string $dsn, array $pool): void
+    protected function createConnection(string $connName, string $dsn, string $dsnd, array $pool): void
     {
         [
             $poolConfig['min'],
@@ -44,7 +44,7 @@ class Nsq extends AbstractSingletonPlugin
             null,
             [1, 1, 0, 3]
         );
-        MakeNsqConnection::addConnection($class, $connName, $dsn, Consumer::class, $poolConfig);
+        MakeNsqConnection::addConnection($connName, $dsn, $dsnd, Consumer::class, $poolConfig);
     }
 
     /**
@@ -57,22 +57,22 @@ class Nsq extends AbstractSingletonPlugin
         $this->topics = ArrayHelper::getValue($this->config, 'topics', []);
         foreach ($this->topics as $topic => $config) {
             [
-                $class,
                 $dsn,
+                $dsnd,
                 $pool
             ] = ArrayHelper::getValueByArray(
                 $config,
-                ['class', 'dsn', 'pool'],
+                ['dsn', 'dsnd', 'pool'],
                 null,
                 [
                     'pool' => []
                 ]
             );
-            if ($dsn === null || $class === null) {
-                throw new InvalidConfigException("class, dsn must be set in $this->key");
+            if ($dsn === null || $dsnd === null) {
+                throw new InvalidConfigException("dsn & dsnd must be set in $this->key");
             }
             $this->topics[$topic]['isRunning'] = false;
-            $this->createConnection($class, $topic, $dsn, $pool);
+            $this->createConnection($topic, $dsn, $dsnd, $pool);
         }
     }
 

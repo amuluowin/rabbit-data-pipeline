@@ -176,7 +176,6 @@ class Scheduler implements SchedulerInterface, InitInterface
                         'pluginName' => $pluginName,
                         'lockEx' => $lockEx,
                         'wait' => $wait,
-                        'init()' => [],
                     ],
                     false
                 );
