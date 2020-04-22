@@ -95,7 +95,7 @@ class Nsq extends AbstractSingletonPlugin
             /** @var NsqClient $nsq */
             $nsq = getDI('nsq')->getConnection($topic);
             $nsq->subscribe([
-                'rdy' => ArrayHelper::getValue($config, 'rdy', 1),
+                'rdy' => ArrayHelper::getValue($config, 'rdy', swoole_cpu_num()),
                 'timeout' => ArrayHelper::getValue($config, 'timeout', 5)
             ], function (array $message) {
                 $this->output($message);
