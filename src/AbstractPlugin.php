@@ -81,6 +81,22 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
         $this->scheduler = $scheduler;
     }
 
+    /**
+     * @param $name
+     */
+    public function &__get($name)
+    {
+        if (isset($this->$name)) {
+            return $this->$name;
+        }
+        $getter = 'get' . $name;
+        if (method_exists($this, $getter)) {
+            $value = $this->$getter();
+            return $value;
+        }
+        return null;
+    }
+
     public function init()
     {
         $this->cache = getDI(self::CACHE_KEY);
