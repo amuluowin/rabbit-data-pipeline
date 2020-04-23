@@ -218,6 +218,8 @@ class Scheduler implements SchedulerInterface, InitInterface
                 App::warning("「$taskName」 $task_id stoped by user!");
                 return;
             }
+            /** @var AbstractSingletonPlugin $target */
+            $target = $this->targets[$taskName][$key];
             if ($transfer === null) {
                 App::info("Data do not transfrom", 'Data');
                 if (!$target instanceof AbstractSingletonPlugin) {
