@@ -30,13 +30,9 @@ class StartAll extends AbstractSingletonPlugin
                 array_walk($this->output, function (&$value) {
                     $value = false;
                 });
-                rgo(function () use ($cid) {
-                    $this->output($cid);
-                });
+                $this->output($cid);
             } else {
-                rgo(function () use ($cid, $id) {
-                    $this->output($cid, $id);
-                });
+                $this->output($cid, $id);
             }
         }
     }
