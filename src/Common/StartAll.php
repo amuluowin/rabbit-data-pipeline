@@ -14,6 +14,9 @@ use rabbit\server\Server;
  */
 class StartAll extends AbstractSingletonPlugin
 {
+    /**
+     * @throws \Exception
+     */
     public function run()
     {
         $server = App::getServer();
@@ -30,11 +33,14 @@ class StartAll extends AbstractSingletonPlugin
                 array_walk($this->output, function (&$value) {
                     $value = false;
                 });
-                $this->output($cid);
+                rgo(function () use ($cid) {
+                    $this->output($cid);
+                });
             } else {
-                $this->output($cid, $id);
+                rgo(function () use ($cid, $id) {
+                    $this->output($cid, $id);
+                });
             }
         }
     }
-
 }

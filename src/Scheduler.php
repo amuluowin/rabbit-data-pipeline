@@ -226,7 +226,7 @@ class Scheduler implements SchedulerInterface, InitInterface
             }
             /** @var AbstractSingletonPlugin $target */
             $target = $this->targets[$taskName][$key];
-            if ($transfer === null || App::getServer() instanceof Server) {
+            if ($transfer === null) {
                 App::info("Data do not transfrom", 'Data');
                 if (!$target instanceof AbstractSingletonPlugin) {
                     $target = clone $target;
@@ -264,21 +264,67 @@ class Scheduler implements SchedulerInterface, InitInterface
     {
         $server = App::getServer();
         $params = ["{$this->name}->send", [$taskName, $key, $task_id, &$data, null, &$opt, &$request]];
-        if ($server === null) {
-            $socket = getDI('socketHandle');
+        if ($server === null || $server instanceof CoServer) {
+            if ($server === null) {
+                $socket = getDI('socketHandle');
+            } else {
+                $socket = $server->getProcessSocket();
+            }
+            $ids = $socket->getWorkerIds();
+            if ($transfer > -1) {
+                $workerId = $transfer % count($ids);
+                $workerId === $socket->workerId && $workerId++;
+            } else {
+                unset($ids[$socket->workerId]);
+                $workerId = empty($ids) ? null : array_rand($ids);
+            }
+            if ($workerId !== null) {
+                App::info("Data from worker $socket->workerId to $workerId", 'Data');
+                $socket->send($params, $workerId, $wait);
+            } else {
+                $target = $this->getTarget($taskName, $key);
+                if (!$target instanceof AbstractSingletonPlugin) {
+                    $target = clone $target;
+                }
+                $target->setTaskId($task_id);
+                $target->setInput($data);
+                $target->setOpt($opt);
+                $target->setRequest($request);
+                $this->setTask($target);
+                $target->process();
+            }
+        } elseif ($server instanceof Server) {
+            $swooleServer = $server->getSwooleServer();
+            $ids = range(0, $swooleServer->setting['task_worker_num'] - 1);
+            if ($transfer > -1) {
+                $workerId = $swooleServer->setting['worker_num'] + ($transfer % $swooleServer->setting['task_worker_num']);
+                $workerId === $swooleServer->worker_id && $workerId++;
+            } else {
+                if ($swooleServer->taskworker) {
+                    unset($ids[$swooleServer->worker_id - $swooleServer->setting['worker_num']]);
+                } else {
+                    unset($ids[$swooleServer->worker_id]);
+                }
+                $workerId = empty($ids) ? null : $swooleServer->setting['worker_num'] + array_rand($ids);
+            }
+            if (!$wait && $workerId !== null) {
+                $server->pipeHandler->sendMessage($params, $workerId);
+                App::info(sprintf("Data from %s $swooleServer->worker_id to task $workerId", $swooleServer->taskworker ? 'task' : 'worker'), 'Data');
+            } else {
+                $target = $this->getTarget($taskName, $key);
+                if (!$target instanceof AbstractSingletonPlugin) {
+                    $target = clone $target;
+                }
+                $target->setTaskId($task_id);
+                $target->setInput($data);
+                $target->setOpt($opt);
+                $target->setRequest($request);
+                $this->setTask($target);
+                $target->process();
+            }
         } else {
-            $socket = $server->getProcessSocket();
+            throw new NotSupportedException("Do not support Swoole\Server");
         }
-        $ids = $socket->getWorkerIds();
-        if ($transfer > -1) {
-            $workerId = $transfer % count($ids);
-            $workerId === $socket->workerId && $workerId++;
-        } else {
-            unset($ids[$socket->workerId]);
-            $workerId = empty($ids) ? $socket->workerId : array_rand($ids);
-        }
-        App::info("Data from worker $socket->workerId to $workerId", 'Data');
-        $socket->send($params, $workerId, $wait);
     }
 
     /**
