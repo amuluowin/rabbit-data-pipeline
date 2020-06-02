@@ -14,7 +14,7 @@ interface SchedulerInterface
      * @param string $name
      * @return AbstractPlugin|null
      */
-    public function getTarget(string $taskName, string $name): ?AbstractPlugin;
+    public function getTarget(string $taskName, string $name): AbstractPlugin;
 
     /**
      * @param string $task

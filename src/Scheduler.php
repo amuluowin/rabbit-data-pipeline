@@ -65,8 +65,8 @@ class Scheduler implements SchedulerInterface, InitInterface
      */
     public function init()
     {
-        $this->build($this->parser->parse());
         $this->redis = getDI('redis');
+        $this->build($this->parser->parse());
     }
 
     /**
@@ -75,11 +75,10 @@ class Scheduler implements SchedulerInterface, InitInterface
      * @return AbstractPlugin|null
      * @throws Exception
      */
-    public function getTarget(string $taskName, string $name): ?AbstractPlugin
+    public function getTarget(string $taskName, string $name): AbstractPlugin
     {
         $waitTime = 0;
-        /** @var AbstractPlugin $target */
-        while ((empty($this->targets) || !isset($this->targets[$taskName]) || !isset($this->targets[$taskName][$name])) && (++$waitTime <= $this->waitTimes)) {
+        while ((empty($this->targets) || !isset($this->targets[$taskName]) || !isset($this->targets[$taskName][$name]) || !$this->targets[$taskName][$name] instanceof AbstractPlugin) && (++$waitTime <= $this->waitTimes)) {
             App::warning("The $taskName is building wait {$this->waitTimes}s");
             System::sleep($waitTime * 3);
         }
@@ -225,7 +224,7 @@ class Scheduler implements SchedulerInterface, InitInterface
                 return;
             }
             /** @var AbstractSingletonPlugin $target */
-            $target = $this->targets[$taskName][$key];
+            $target = $this->getTarget($taskName, $key);
             if ($transfer === null) {
                 App::info("Data do not transfrom", 'Data');
                 if (!$target instanceof AbstractSingletonPlugin) {
