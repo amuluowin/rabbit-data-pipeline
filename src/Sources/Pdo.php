@@ -56,7 +56,7 @@ class Pdo extends AbstractPlugin
             $pool,
             ['min', 'max', 'wait', 'retry'],
             null,
-            [10, 13, 0, 3]
+            [10, 12, 0, 3]
         );
         MakePdoConnection::addConnection($class, $this->dbName, $dsn, $poolConfig, $retryHandler);
     }

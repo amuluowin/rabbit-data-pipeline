@@ -46,7 +46,7 @@ class PdoSave extends AbstractPlugin
             $pool,
             ['min', 'max', 'wait', 'retry'],
             null,
-            [42, 52, 0, 3]
+            [10, 12, 0, 3]
         );
         MakePdoConnection::addConnection($class, $this->dbName, $dsn, $poolConfig);
     }
