@@ -230,14 +230,12 @@ class Scheduler implements SchedulerInterface, InitInterface
                 if (!$target instanceof AbstractSingletonPlugin) {
                     $target = clone $target;
                 }
-                rgo(function () use ($target, $task_id, &$data, &$opt, &$request) {
-                    $target->setTaskId($task_id);
-                    $target->setInput($data);
-                    $target->setOpt($opt);
-                    $target->setRequest($request);
-                    $this->setTask($target);
-                    $target->process();
-                });
+                $target->setTaskId($task_id);
+                $target->setInput($data);
+                $target->setOpt($opt);
+                $target->setRequest($request);
+                $this->setTask($target);
+                $target->process();
             } else {
                 $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt, $request, $wait);
             }
