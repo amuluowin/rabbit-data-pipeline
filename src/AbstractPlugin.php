@@ -44,8 +44,6 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected $output = [];
     /** @var bool */
     protected $start = false;
-    /** @var Redis */
-    public $redis;
     /** @var int */
     protected $lockEx = 0;
     /** @var CacheInterface */
