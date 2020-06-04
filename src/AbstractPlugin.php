@@ -346,7 +346,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
                 }
             } elseif ($transfer === 'wait') {
                 if (!isset($this->inPlugin[$output])) {
-                    $plugin = clone $this->scheduler->getTarget($this->taskName, $output);
+                    $plugin = $this->scheduler->getTarget($this->taskName, $output);
                     $this->inPlugin[$output] = $plugin;
                 } else {
                     $plugin = $this->inPlugin[$output];

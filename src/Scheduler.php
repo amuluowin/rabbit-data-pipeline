@@ -82,7 +82,10 @@ class Scheduler implements SchedulerInterface, InitInterface
             App::warning("The $taskName is building wait {$this->waitTimes}s");
             System::sleep($waitTime * 3);
         }
-        return $this->targets[$taskName][$name];
+        if ($this->targets[$taskName][$name] instanceof AbstractSingletonPlugin) {
+            return $this->targets[$taskName][$name];
+        }
+        return clone $this->targets[$taskName][$name];
     }
 
 
@@ -195,13 +198,17 @@ class Scheduler implements SchedulerInterface, InitInterface
     public function process(string $task, array $params = []): void
     {
         /** @var AbstractPlugin $target */
-        foreach ($this->targets[$task] as $target) {
-            if ($target->getStart()) {
-                $current = clone $target;
-                $current->setTaskId((string)getDI('idGen')->create());
-                $current->setRequest($params);
-                $this->setTask($current);
-                $current->process();
+        foreach ($this->targets[$task] as $tmp) {
+            if ($tmp->getStart()) {
+                if ($tmp instanceof AbstractSingletonPlugin) {
+                    $target = $tmp;
+                } else {
+                    $target = clone $tmp;
+                }
+                $target->setTaskId((string)getDI('idGen')->create());
+                $target->setRequest($params);
+                $this->setTask($target);
+                $target->process();
             }
         }
     }
@@ -223,13 +230,10 @@ class Scheduler implements SchedulerInterface, InitInterface
                 App::warning("「$taskName」 $task_id stoped by user!");
                 return;
             }
-            /** @var AbstractPlugin $target */
-            $target = $this->getTarget($taskName, $key);
             if ($transfer === null) {
                 App::info("Data do not transfrom", 'Data');
-                if (!$target instanceof AbstractSingletonPlugin) {
-                    $target = clone $target;
-                }
+                /** @var AbstractPlugin $target */
+                $target = $this->getTarget($taskName, $key);
                 $target->setTaskId($task_id);
                 $target->setInput($data);
                 $target->setOpt($opt);
@@ -280,9 +284,6 @@ class Scheduler implements SchedulerInterface, InitInterface
                 $socket->send($params, $workerId, $wait);
             } else {
                 $target = $this->getTarget($taskName, $key);
-                if (!$target instanceof AbstractSingletonPlugin) {
-                    $target = clone $target;
-                }
                 $target->setTaskId($task_id);
                 $target->setInput($data);
                 $target->setOpt($opt);
@@ -309,9 +310,6 @@ class Scheduler implements SchedulerInterface, InitInterface
                 App::info(sprintf("Data from %s $swooleServer->worker_id to task $workerId", $swooleServer->taskworker ? 'task' : 'worker'), 'Data');
             } else {
                 $target = $this->getTarget($taskName, $key);
-                if (!$target instanceof AbstractSingletonPlugin) {
-                    $target = clone $target;
-                }
                 $target->setTaskId($task_id);
                 $target->setInput($data);
                 $target->setOpt($opt);
