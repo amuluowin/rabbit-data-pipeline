@@ -5,11 +5,8 @@ namespace Rabbit\Data\Pipeline\Sinks;
 
 use DI\DependencyException;
 use DI\NotFoundException;
-use rabbit\activerecord\ActiveRecord;
 use rabbit\App;
-use rabbit\core\Context;
 use Rabbit\Data\Pipeline\AbstractPlugin;
-use rabbit\db\ConnectionInterface;
 use rabbit\db\Exception;
 use rabbit\db\MakePdoConnection;
 use rabbit\exception\InvalidArgumentException;
@@ -90,35 +87,23 @@ class PdoUpdate extends AbstractPlugin
         if (empty($updates)) {
             throw new InvalidArgumentException("updates can not empty");
         }
-        $model = new class($this->tableName, $this->dbName) extends ActiveRecord {
-            /**
-             *  constructor.
-             * @param string $tableName
-             * @param string $dbName
-             */
-            public function __construct(string $tableName, string $dbName)
-            {
-                Context::set(md5(get_called_class() . 'tableName'), $tableName);
-                Context::set(md5(get_called_class() . 'dbName'), $dbName);
-                parent::__construct();
-            }
+        $model = eval(sprintf("return new class() extends \\rabbit\\activerecord\\ActiveRecord {
+        /**
+         * @return mixed|string
+         */
+        public static function tableName()
+        {
+            return '%s';
+        }
 
-            /**
-             * @return mixed|string
-             */
-            public static function tableName()
-            {
-                return Context::get(md5(get_called_class() . 'tableName'));
-            }
-
-            /**
-             * @return ConnectionInterface
-             */
-            public static function getDb(): ConnectionInterface
-            {
-                return getDI('db')->getConnection(Context::get(md5(get_called_class() . 'dbName')));
-            }
-        };
+        /**
+         * @return ConnectionInterface
+         */
+        public static function getDb(): \\rabbit\\db\\ConnectionInterface
+        {
+            return getDI('db')->getConnection('%s');
+        }
+    };", $this->tableName, $this->dbName));
         $res = $model::updateAll($updates, $condition);
         if (!$res) {
             App::warning("$this->tableName update failed");
