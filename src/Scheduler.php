@@ -34,8 +34,6 @@ class Scheduler implements SchedulerInterface, InitInterface
     public $redis;
     /** @var string */
     protected $name = 'scheduler';
-    /** @var Table */
-    protected $taskTable;
     /** @var int */
     protected $waitTimes = 3;
     /** @var LockInterface */
@@ -48,12 +46,6 @@ class Scheduler implements SchedulerInterface, InitInterface
     public function __construct(ConfigParserInterface $parser, LockManager $manager, string $lockName)
     {
         $this->parser = $parser;
-        $this->taskTable = new Table(1024);
-        $this->taskTable->column('taskName', Table::TYPE_STRING, 64);
-        $this->taskTable->column('key', Table::TYPE_STRING, 64);
-        $this->taskTable->column('request', Table::TYPE_STRING, 1024);
-        $this->taskTable->column('stop', Table::TYPE_INT, 1);
-        $this->taskTable->create();
         $this->atomicLock = $manager->getLock($lockName);
     }
 
@@ -66,7 +58,7 @@ class Scheduler implements SchedulerInterface, InitInterface
     public function init()
     {
         $this->redis = getDI('redis');
-        $this->build($this->parser->parse());
+        $this->targets = $this->build($this->parser->parse());
     }
 
     /**
@@ -88,41 +80,6 @@ class Scheduler implements SchedulerInterface, InitInterface
         return clone $this->targets[$taskName][$name];
     }
 
-
-    /**
-     * @return array
-     */
-    public function getTasks(): array
-    {
-        $table = [];
-        foreach ($this->taskTable as $key => $item) {
-            $item['request'] = \msgpack_unpack($item['request']);
-            $table[$key] = $item;
-        }
-        return $table;
-    }
-
-    /**
-     * @param AbstractPlugin $target
-     */
-    protected function setTask(AbstractPlugin $target): void
-    {
-        $this->taskTable->set($target->getTaskId(), [
-            'taskName' => $target->taskName,
-            'key' => $target->key,
-            'request' => \msgpack_pack($target->getRequest()),
-            'stop' => 0
-        ]);
-    }
-
-    /**
-     * @param string $task_id
-     */
-    public function stopTask(string $task_id): void
-    {
-        $this->taskTable->set($task_id, ['stop' => 1]);
-    }
-
     /**
      * @param string|null $key
      * @param array $params
@@ -130,6 +87,7 @@ class Scheduler implements SchedulerInterface, InitInterface
      */
     public function run(string $key = null, array $params = []): void
     {
+        $this->waitTasksBuild();
         $server = App::getServer();
         if ($key === null) {
             foreach (array_keys($this->targets) as $key) {
@@ -156,8 +114,9 @@ class Scheduler implements SchedulerInterface, InitInterface
      * @throws InvalidConfigException
      * @throws NotFoundException
      */
-    public function build(array $configs): void
+    public function build(array $configs): array
     {
+        $targets = [];
         foreach ($configs as $name => $config) {
             foreach ($config as $key => $params) {
                 $class = ArrayHelper::remove($params, 'type');
@@ -172,7 +131,7 @@ class Scheduler implements SchedulerInterface, InitInterface
                 }
                 $lockEx = ArrayHelper::remove($params, 'lockEx', 30);
                 $pluginName = ArrayHelper::remove($params, 'name', uniqid());
-                $this->targets[$name][$key] = ObjectFactory::createObject(
+                $targets[$name][$key] = ObjectFactory::createObject(
                     $class,
                     [
                         'scheduler' => $this,
@@ -189,6 +148,7 @@ class Scheduler implements SchedulerInterface, InitInterface
                 );
             }
         }
+        return $targets;
     }
 
     /**
@@ -197,6 +157,7 @@ class Scheduler implements SchedulerInterface, InitInterface
      */
     public function process(string $task, array $params = []): void
     {
+        $this->waitTasksBuild();
         /** @var AbstractPlugin $target */
         foreach ($this->targets[$task] as $tmp) {
             if ($tmp->getStart()) {
@@ -207,7 +168,6 @@ class Scheduler implements SchedulerInterface, InitInterface
                 }
                 $target->setTaskId((string)getDI('idGen')->create());
                 $target->setRequest($params);
-                $this->setTask($target);
                 $target->process();
             }
         }
@@ -225,11 +185,6 @@ class Scheduler implements SchedulerInterface, InitInterface
     public function send(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = [], array $request = [], bool $wait = false): void
     {
         try {
-            if ($this->taskTable->get($task_id, 'stop') === 1) {
-                $this->taskTable->del($task_id);
-                App::warning("「$taskName」 $task_id stoped by user!");
-                return;
-            }
             if ($transfer === null) {
                 App::info("Data do not transfrom", 'Data');
                 /** @var AbstractPlugin $target */
@@ -238,7 +193,6 @@ class Scheduler implements SchedulerInterface, InitInterface
                 $target->setInput($data);
                 $target->setOpt($opt);
                 $target->setRequest($request);
-                $this->setTask($target);
                 $target->process();
             } else {
                 $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt, $request, $wait);
@@ -288,7 +242,6 @@ class Scheduler implements SchedulerInterface, InitInterface
                 $target->setInput($data);
                 $target->setOpt($opt);
                 $target->setRequest($request);
-                $this->setTask($target);
                 $target->process();
             }
         } elseif ($server instanceof Server) {
@@ -314,7 +267,6 @@ class Scheduler implements SchedulerInterface, InitInterface
                 $target->setInput($data);
                 $target->setOpt($opt);
                 $target->setRequest($request);
-                $this->setTask($target);
                 $target->process();
             }
         } else {
@@ -355,5 +307,17 @@ class Scheduler implements SchedulerInterface, InitInterface
         }
         return (int)$flag;
 
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function waitTasksBuild(): void
+    {
+        $waitTime = 0;
+        while (empty($this->targets) && (++$waitTime <= $this->waitTimes)) {
+            App::warning("The targets is building wait {$this->waitTimes}s");
+            System::sleep($waitTime * 3);
+        }
     }
 }
