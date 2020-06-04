@@ -31,7 +31,7 @@ class Scheduler implements SchedulerInterface, InitInterface
     /** @var ConfigParserInterface */
     protected $parser;
     /** @var Redis */
-    protected $redis;
+    public $redis;
     /** @var string */
     protected $name = 'scheduler';
     /** @var Table */
@@ -198,8 +198,8 @@ class Scheduler implements SchedulerInterface, InitInterface
         foreach ($this->targets[$task] as $target) {
             if ($target->getStart()) {
                 $current = clone $target;
-                $current->taskId = (string)getDI('idGen')->create();
-                $current->request = $params;
+                $current->setTaskId((string)getDI('idGen')->create());
+                $current->setRequest($params);
                 $this->setTask($current);
                 $current->process();
             }
@@ -223,7 +223,7 @@ class Scheduler implements SchedulerInterface, InitInterface
                 App::warning("「$taskName」 $task_id stoped by user!");
                 return;
             }
-            /** @var AbstractSingletonPlugin $target */
+            /** @var AbstractPlugin $target */
             $target = $this->getTarget($taskName, $key);
             if ($transfer === null) {
                 App::info("Data do not transfrom", 'Data');

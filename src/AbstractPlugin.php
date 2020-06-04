@@ -77,7 +77,6 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     public function __construct(SchedulerInterface $scheduler, array $config)
     {
         $this->config = $config;
-        $this->redis = getDI('redis');
         $this->scheduler = $scheduler;
     }
 
@@ -222,14 +221,14 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     public function redisLock(string $key, \Closure $function, array $params)
     {
         try {
-            if ($this->redis->setnx($key, true)) {
+            if ($this->scheduler->redis->setnx($key, true)) {
                 return call_user_func_array($function, $params);
             }
             return null;
         } catch (\Throwable $exception) {
             App::error(ExceptionHelper::dumpExceptionToString($exception));
         } finally {
-            $this->redis->del($key);
+            $this->scheduler->redis->del($key);
         }
     }
 
