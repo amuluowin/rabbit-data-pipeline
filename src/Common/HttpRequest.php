@@ -7,7 +7,7 @@ use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use rabbit\App;
 use rabbit\core\Exception;
-use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\Data\Pipeline\AbstractSingletonPlugin;
 use rabbit\exception\InvalidConfigException;
 use rabbit\helper\ArrayHelper;
 use rabbit\helper\FileHelper;
@@ -18,10 +18,10 @@ use Swlib\Saber\Request;
  * Class HttpRequest
  * @package Rabbit\Data\Pipeline\Common
  */
-class HttpRequest extends AbstractPlugin
+class HttpRequest extends AbstractSingletonPlugin
 {
     /** @var bool */
-    protected $usePool = true;
+    protected $usePool = false;
     /** @var int */
     protected $timeout = 60;
     /** @var int */
@@ -38,6 +38,8 @@ class HttpRequest extends AbstractPlugin
     protected $checkResponseFunc;
     /** @var string */
     protected $driver = 'saber';
+    /** @var Client */
+    protected $client;
 
     /**
      * @return mixed|void
@@ -77,12 +79,10 @@ class HttpRequest extends AbstractPlugin
             null,
             null
         ]);
-//        if ($this->error && !is_callable($this->error)) {
-//            throw new InvalidConfigException("The error must be callable");
-//        }
         if ($this->retry && !is_callable($this->retry)) {
             throw new InvalidConfigException("The retry must be callable");
         }
+        $this->client = new Client();
     }
 
     /**
@@ -127,8 +127,8 @@ class HttpRequest extends AbstractPlugin
                 };
             }
         }
-        $client = new Client();
-        $response = $client->request($options, $this->driver);
+
+        $response = $this->client->request($options, $this->driver);
         if (!$this->download) {
             $format = $this->format;
             if (method_exists($response, $format)) {
