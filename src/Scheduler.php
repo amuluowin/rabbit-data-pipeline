@@ -90,10 +90,14 @@ class Scheduler implements SchedulerInterface, InitInterface
         $server = App::getServer();
         if ($key === null) {
             foreach (array_keys($this->targets) as $key) {
-                $this->process((string)$key, $params);
+                rgo(function () use ($key, $params) {
+                    $this->process((string)$key, $params);
+                });
             }
         } elseif (isset($this->targets[$key])) {
-            $this->process((string)$key, $params);
+            rgo(function () use ($key, $params) {
+                $this->process((string)$key, $params);
+            });
         } else {
             throw new InvalidArgumentException("No such target $key");
         }
