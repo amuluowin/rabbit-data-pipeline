@@ -126,15 +126,22 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
      * @param $data
      * @throws Exception
      */
-    public function output(&$data, int $workerId = null): void
+    public function output(&$data): void
     {
         foreach ($this->output as $output => $transfer) {
-            if (is_bool($transfer)) {
-                if ($transfer === false) {
-                    $transfer = null;
+            if ($transfer === 'wait') {
+                if (!isset($this->inPlugin[$output])) {
+                    $plugin = $this->scheduler->getTarget($this->taskName, $output);
+                    $this->inPlugin[$output] = $plugin;
                 } else {
-                    $transfer = -1;
+                    $plugin = $this->inPlugin[$output];
                 }
+                $plugin->setTaskId($this->getTaskId());
+                $plugin->setInput($data);
+                $plugin->setOpt($this->getOpt());
+                $plugin->setRequest($this->getRequest());
+                $plugin->process();
+                return;
             }
             if (empty($data)) {
                 App::warning("「{$this->taskName}」 $this->key -> $output; data is empty", 'Data');
@@ -143,7 +150,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
             } else {
                 App::info("「{$this->taskName}」 $this->key -> $output; data: " . VarDumper::getDumper()->dumpAsString($data), 'Data');
             }
-            $this->scheduler->send($this->taskName, $output, $this->getTaskId(), $data, $workerId ?? $transfer, $this->getOpt(), $this->getRequest(), $this->wait);
+            $this->scheduler->send($this->taskName, $output, $this->getTaskId(), $data, (bool)$transfer, $this->getOpt(), $this->getRequest(), $this->wait);
         }
     }
 }

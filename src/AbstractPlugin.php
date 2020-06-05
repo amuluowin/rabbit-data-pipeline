@@ -333,16 +333,10 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      * @param $data
      * @throws Exception
      */
-    public function output(&$data, int $workerId = null): void
+    public function output(&$data): void
     {
         foreach ($this->output as $output => $transfer) {
-            if (is_bool($transfer)) {
-                if ($transfer === false) {
-                    $transfer = null;
-                } else {
-                    $transfer = -1;
-                }
-            } elseif ($transfer === 'wait') {
+            if ($transfer === 'wait') {
                 if (!isset($this->inPlugin[$output])) {
                     $plugin = $this->scheduler->getTarget($this->taskName, $output);
                     $this->inPlugin[$output] = $plugin;
@@ -363,7 +357,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
             } else {
                 App::info("「{$this->taskName}」 $this->key -> $output; data: " . VarDumper::getDumper()->dumpAsString($data), 'Data');
             }
-            $this->scheduler->send($this->taskName, $output, $this->taskId, $data, $workerId ?? $transfer, $this->opt, $this->request, $this->wait);
+            $this->scheduler->send($this->taskName, $output, $this->taskId, $data, (bool)$transfer, $this->opt, $this->request, $this->wait);
         }
     }
 }

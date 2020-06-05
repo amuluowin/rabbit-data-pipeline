@@ -103,7 +103,7 @@ class HttpRequest extends AbstractSingletonPlugin
         ];
         if ($this->driver === 'saber') {
             $options = array_merge([
-                'use_pool' => $this->usePool === true ? 20 : $this->usePool,
+                'use_pool' => $this->usePool,
                 "before" => function (RequestInterface $request) use ($request_id) {
                     $uri = $request->getUri();
                     App::info(

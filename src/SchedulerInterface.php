@@ -38,7 +38,7 @@ interface SchedulerInterface
      * @param array $request
      * @param bool $wait
      */
-    public function send(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = [], array $request = [], bool $wait = false): void;
+    public function send(string $taskName, string $key, ?string $task_id, &$data, bool $transfer, array $opt = [], array $request = [], bool $wait = false): void;
 
     /**
      * @param string|null $key

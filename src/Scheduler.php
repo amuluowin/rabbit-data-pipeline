@@ -17,7 +17,6 @@ use rabbit\helper\ExceptionHelper;
 use rabbit\memory\atomic\LockInterface;
 use rabbit\memory\atomic\LockManager;
 use rabbit\redis\Redis;
-use rabbit\server\Server;
 
 /**
  * Class Scheduler
@@ -87,7 +86,6 @@ class Scheduler implements SchedulerInterface, InitInterface
     public function run(string $key = null, array $params = []): void
     {
         $this->waitTasksBuild();
-        $server = App::getServer();
         if ($key === null) {
             foreach (array_keys($this->targets) as $key) {
                 rgo(function () use ($key, $params) {
@@ -177,20 +175,21 @@ class Scheduler implements SchedulerInterface, InitInterface
      * @param array $opt
      * @throws Exception
      */
-    public function send(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array $opt = [], array $request = [], bool $wait = false): void
+    public function send(string $taskName, string $key, ?string $task_id, &$data, bool $transfer, array $opt = [], array $request = [], bool $wait = false): void
     {
         try {
-            if ($transfer === null) {
-                App::info("Data do not transfrom", 'Data');
-                /** @var AbstractPlugin $target */
-                $target = $this->getTarget($taskName, $key);
-                $target->setTaskId($task_id);
-                $target->setInput($data);
-                $target->setOpt($opt);
-                $target->setRequest($request);
-                $target->process();
+            /** @var AbstractPlugin $target */
+            $target = $this->getTarget($taskName, $key);
+            $target->setTaskId($task_id);
+            $target->setInput($data);
+            $target->setOpt($opt);
+            $target->setRequest($request);
+            if ($transfer) {
+                rgo(function () use ($target) {
+                    $target->process();
+                });
             } else {
-                $this->transSend($taskName, $key, $task_id, $data, $transfer, $opt, $request, $wait);
+                $target->process();
             }
             if (end($this->targets[$taskName])->key === $key) {
                 App::info("「{$taskName}」 finished!");
@@ -198,68 +197,6 @@ class Scheduler implements SchedulerInterface, InitInterface
         } catch (\Throwable $exception) {
             App::error("「{$taskName}」「{$key}」" . ExceptionHelper::dumpExceptionToString($exception));
             $this->deleteAllLock($opt, $taskName);
-        }
-    }
-
-    /**
-     * @param string $taskName
-     * @param string $key
-     * @param string|null $task_id
-     * @param $data
-     * @param int|null $transfer
-     * @param array $opt
-     * @throws Exception
-     */
-    protected function transSend(string $taskName, string $key, ?string $task_id, &$data, ?int $transfer, array &$opt = [], array &$request = [], bool $wait = false): void
-    {
-        $server = App::getServer();
-        $params = ["{$this->name}->send", [$taskName, $key, $task_id, $data, null, $opt, $request]];
-        if ($server === null || $server instanceof CoServer) {
-            if ($server === null) {
-                $socket = getDI('socketHandle');
-            } else {
-                $socket = $server->getProcessSocket();
-            }
-            $ids = $socket->getWorkerIds();
-            if ($transfer > -1) {
-                $workerId = $transfer % count($ids);
-            } else {
-                unset($ids[$socket->workerId]);
-                $workerId = empty($ids) ? null : array_rand($ids);
-            }
-            if ($workerId !== null) {
-                App::info("Data from worker $socket->workerId to $workerId", 'Data');
-                $socket->send($params, $workerId, $wait);
-            } else {
-                $target = $this->getTarget($taskName, $key);
-                $target->setTaskId($task_id);
-                $target->setInput($data);
-                $target->setOpt($opt);
-                $target->setRequest($request);
-                $target->process();
-            }
-        } elseif ($server instanceof Server) {
-            $swooleServer = $server->getSwooleServer();
-            if ($transfer > -1) {
-                $workerId = $transfer % $swooleServer->setting['worker_num'];
-            } else {
-                $ids = range(0, $swooleServer->setting['worker_num'] - 1);
-                unset($ids[$swooleServer->worker_id]);
-                $workerId = empty($ids) ? null : array_rand($ids);
-            }
-            if (!$wait && $workerId !== null) {
-                App::info("Data from worker $swooleServer->worker_id to $workerId", 'Data');
-                $server->pipeHandler->sendMessage($params, $workerId);
-            } else {
-                $target = $this->getTarget($taskName, $key);
-                $target->setTaskId($task_id);
-                $target->setInput($data);
-                $target->setOpt($opt);
-                $target->setRequest($request);
-                $target->process();
-            }
-        } else {
-            throw new NotSupportedException("Do not support Swoole\Server");
         }
     }
 
