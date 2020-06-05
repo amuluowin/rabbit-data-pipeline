@@ -97,10 +97,10 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
     /**
      * @return int
      */
-    public function getLock(string $key = null,$ext = null): bool
+    public function getLock(string $key = null, $ext = null): bool
     {
         empty($ext) && $ext = $this->lockEx;
-        if (($key || $key = $this->getTaskId()) && $this->scheduler->getLock($key,$this->lockEx)) {
+        if (($key || $key = $this->getTaskId()) && $this->scheduler->getLock($key, $this->lockEx)) {
             $this->getOpt()['Locks'][] = $key;
             return true;
         }
@@ -136,10 +136,13 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
                 } else {
                     $plugin = $this->inPlugin[$output];
                 }
-                $plugin->setTaskId($this->getTaskId());
+                $taskid = $this->getTaskId();
+                $plugin->setTaskId($taskid);
                 $plugin->setInput($data);
-                $plugin->setOpt($this->getOpt());
-                $plugin->setRequest($this->getRequest());
+                $opt = $this->getOpt();
+                $plugin->setOpt($opt);
+                $request = $this->getRequest();
+                $plugin->setRequest($request);
                 $plugin->process();
                 return;
             }
