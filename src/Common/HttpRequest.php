@@ -12,7 +12,6 @@ use rabbit\exception\InvalidConfigException;
 use rabbit\helper\ArrayHelper;
 use rabbit\helper\FileHelper;
 use rabbit\httpclient\Client;
-use Swlib\Saber;
 use Swlib\Saber\Request;
 
 /**
@@ -83,7 +82,7 @@ class HttpRequest extends AbstractPlugin
         if ($this->retry && !is_callable($this->retry)) {
             throw new InvalidConfigException("The retry must be callable");
         }
-        $this->client = Saber::create();
+        $this->client = new Client();
     }
 
     /**
@@ -105,7 +104,7 @@ class HttpRequest extends AbstractPlugin
         if ($this->driver === 'saber') {
             $options = array_merge([
                 'use_pool' => $this->usePool,
-                "before" => function (RequestInterface $request) use ($request_id) {
+                "before" => [function (RequestInterface $request) use ($request_id) {
                     $uri = $request->getUri();
                     App::info(
                         sprintf(
@@ -117,10 +116,10 @@ class HttpRequest extends AbstractPlugin
                         ),
                         "http"
                     );
-                },
-                'after' => function (ResponseInterface $response) use ($request_id) {
+                }],
+                'after' => [function (ResponseInterface $response) use ($request_id) {
                     App::info("Request $request_id finish");
-                }
+                }]
             ], $options, $this->input);
             if ($this->retry) {
                 $options['retry'] = function (Request $request) {
@@ -129,7 +128,7 @@ class HttpRequest extends AbstractPlugin
             }
         }
 
-        $response = $this->client->request($options);
+        $response = $this->client->request($options, $this->driver);
         if (!$this->download) {
             $format = $this->format;
             if (method_exists($response, $format)) {
