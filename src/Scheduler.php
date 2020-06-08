@@ -29,8 +29,6 @@ class Scheduler implements SchedulerInterface, InitInterface
     protected $parser;
     /** @var Redis */
     public $redis;
-    /** @var string */
-    protected $name = 'scheduler';
     /** @var int */
     protected $waitTimes = 3;
     /** @var RedisLock */
@@ -126,7 +124,6 @@ class Scheduler implements SchedulerInterface, InitInterface
                 $targets[$name][$key] = ObjectFactory::createObject(
                     $class,
                     [
-                        'scheduler' => $this,
                         'config' => $params,
                         'key' => $key,
                         'output' => $output,
@@ -166,23 +163,21 @@ class Scheduler implements SchedulerInterface, InitInterface
     }
 
     /**
-     * @param string $taskName
+     * @param AbstractPlugin $pre
      * @param string $key
-     * @param string|null $task_id
      * @param $data
-     * @param int|null $transfer
-     * @param array $opt
+     * @param bool $transfer
      * @throws Exception
      */
-    public function send(string $taskName, string $key, ?string $task_id, &$data, bool $transfer, array $opt = [], array $request = [], bool $wait = false): void
+    public function send(AbstractPlugin $pre, string $key, &$data, bool $transfer): void
     {
         try {
             /** @var AbstractPlugin $target */
-            $target = $this->getTarget($taskName, $key);
-            $target->setTaskId($task_id);
+            $target = $this->getTarget($pre->taskName, $key);
+            $target->setTaskId($pre->getTaskId());
             $target->setInput($data);
-            $target->setOpt($opt);
-            $target->setRequest($request);
+            $target->setOpt($pre->getOpt());
+            $target->setRequest($pre->getRequest());
             if ($transfer) {
                 rgo(function () use ($target) {
                     $target->process();
@@ -190,12 +185,12 @@ class Scheduler implements SchedulerInterface, InitInterface
             } else {
                 $target->process();
             }
-            if (end($this->targets[$taskName])->key === $key) {
-                App::info("「{$taskName}」 finished!");
+            if (end($this->targets[$pre->taskName])->key === $key) {
+                App::info("「{$pre->taskName}」 finished!");
             }
         } catch (\Throwable $exception) {
-            App::error("「{$taskName}」「{$key}」" . ExceptionHelper::dumpExceptionToString($exception));
-            $this->deleteAllLock($opt, $taskName);
+            App::error("「{$pre->taskName}」「{$key}」" . ExceptionHelper::dumpExceptionToString($exception));
+            $this->deleteAllLock($pre->getOpt(), $pre->taskName);
         }
     }
 

@@ -29,16 +29,12 @@ interface SchedulerInterface
     public function run(string $key = null, array $params = []): void;
 
     /**
-     * @param string $taskName
+     * @param AbstractPlugin $pre
      * @param string $key
-     * @param string|null $task_id
      * @param $data
-     * @param int|null $transfer
-     * @param array $opt
-     * @param array $request
-     * @param bool $wait
+     * @param bool $transfer
      */
-    public function send(string $taskName, string $key, ?string $task_id, &$data, bool $transfer, array $opt = [], array $request = [], bool $wait = false): void;
+    public function send(AbstractPlugin $pre, string $key, &$data, bool $transfer): void;
 
     /**
      * @param string|null $key

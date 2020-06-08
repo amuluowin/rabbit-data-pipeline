@@ -60,7 +60,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
     /**
      * @param array $opt
      */
-    public function setRequest(array &$request): void
+    public function setRequest(array $request): void
     {
         Context::set($this->getTaskId() . 'request', $request);
     }
@@ -73,7 +73,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
     /**
      * @param $input
      */
-    public function setInput(&$input)
+    public function setInput($input)
     {
         Context::set($this->getTaskId() . 'input', $input);
     }
@@ -89,7 +89,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
     /**
      * @param array $opt
      */
-    public function setOpt(array &$opt): void
+    public function setOpt(array $opt): void
     {
         Context::set($this->getTaskId() . 'opt', $opt);
     }
@@ -136,13 +136,10 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
                 } else {
                     $plugin = $this->inPlugin[$output];
                 }
-                $taskid = $this->getTaskId();
-                $plugin->setTaskId($taskid);
+                $plugin->setTaskId($this->getTaskId());
                 $plugin->setInput($data);
-                $opt = $this->getOpt();
-                $plugin->setOpt($opt);
-                $request = $this->getRequest();
-                $plugin->setRequest($request);
+                $plugin->setOpt($this->getOpt());
+                $plugin->setRequest($this->getRequest());
                 $plugin->process();
                 return;
             }
@@ -153,7 +150,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
             } else {
                 App::info("「{$this->taskName}」 $this->key -> $output; data: " . VarDumper::getDumper()->dumpAsString($data), 'Data');
             }
-            $this->scheduler->send($this->taskName, $output, $this->getTaskId(), $data, (bool)$transfer, $this->getOpt(), $this->getRequest(), $this->wait);
+            $this->getScheduler()->send($this, $output, $data, (bool)$transfer);
         }
     }
 }

@@ -52,8 +52,6 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     const CACHE_KEY = 'cache';
     /** @var string */
     const LOCK_KEY = 'Plugin';
-    /** @var SchedulerInterface */
-    protected $scheduler;
     /** @var int */
     protected $logInfo = self::LOG_SIMPLE;
     /** @var callable */
@@ -72,10 +70,9 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      * @param array $config
      * @throws Exception
      */
-    public function __construct(SchedulerInterface $scheduler, array $config)
+    public function __construct(array $config)
     {
         $this->config = $config;
-        $this->scheduler = $scheduler;
     }
 
     /**
@@ -83,7 +80,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      */
     public function &__get($name)
     {
-        if (isset($this->$name)) {
+        if (property_exists($this, $name)) {
             return $this->$name;
         }
         $getter = 'get' . $name;
@@ -99,6 +96,15 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
         $this->cache = getDI(self::CACHE_KEY);
         $this->errHandler = ArrayHelper::getValue($this->config, 'errHandler');
         $this->lockKey = ArrayHelper::getValue($this->config, 'lockKey', []);
+    }
+
+    /**
+     * @return SchedulerInterface
+     * @throws Exception
+     */
+    public function getScheduler(): SchedulerInterface
+    {
+        return getDI('scheduler');
     }
 
     /**
@@ -128,7 +134,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     /**
      * @param array $opt
      */
-    public function setRequest(array &$request): void
+    public function setRequest(array $request): void
     {
         $this->request = $request;
     }
@@ -141,7 +147,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     /**
      * @param $input
      */
-    public function setInput(&$input)
+    public function setInput($input)
     {
         $this->input = $input;
     }
@@ -157,7 +163,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     /**
      * @param array $opt
      */
-    public function setOpt(array &$opt): void
+    public function setOpt(array $opt): void
     {
         $this->opt = $opt;
     }
@@ -344,9 +350,9 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
                     $plugin = $this->inPlugin[$output];
                 }
                 $plugin->taskId = $this->taskId;
-                $plugin->input =& $data;
-                $plugin->opt = &$this->opt;
-                $plugin->request =& $this->request;
+                $plugin->input = $data;
+                $plugin->opt = $this->opt;
+                $plugin->request = $this->request;
                 $plugin->process();
                 return;
             }
@@ -357,7 +363,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
             } else {
                 App::info("「{$this->taskName}」 $this->key -> $output; data: " . VarDumper::getDumper()->dumpAsString($data), 'Data');
             }
-            $this->scheduler->send($this->taskName, $output, $this->taskId, $data, (bool)$transfer, $this->opt, $this->request, $this->wait);
+            $this->getScheduler()->send($this, $output, $data, (bool)$transfer);
         }
     }
 }
