@@ -11,11 +11,10 @@ use Exception;
 use rabbit\App;
 use rabbit\contract\InitInterface;
 use rabbit\core\ObjectFactory;
+use rabbit\db\redis\RedisLock;
 use rabbit\exception\InvalidConfigException;
 use rabbit\helper\ArrayHelper;
 use rabbit\helper\ExceptionHelper;
-use rabbit\memory\atomic\LockInterface;
-use rabbit\memory\atomic\LockManager;
 use rabbit\redis\Redis;
 
 /**
@@ -34,17 +33,16 @@ class Scheduler implements SchedulerInterface, InitInterface
     protected $name = 'scheduler';
     /** @var int */
     protected $waitTimes = 3;
-    /** @var LockInterface */
-    public $atomicLock;
+    /** @var RedisLock */
+    public $lock;
 
     /**
      * Scheduler constructor.
      * @param ConfigParserInterface $parser
      */
-    public function __construct(ConfigParserInterface $parser, LockManager $manager, string $lockName)
+    public function __construct(ConfigParserInterface $parser)
     {
         $this->parser = $parser;
-        $this->atomicLock = $manager->getLock($lockName);
     }
 
     /**
@@ -56,6 +54,7 @@ class Scheduler implements SchedulerInterface, InitInterface
     public function init()
     {
         $this->redis = getDI('redis');
+        $this->lock = new RedisLock($this->redis);
         $this->targets = $this->build($this->parser->parse());
     }
 

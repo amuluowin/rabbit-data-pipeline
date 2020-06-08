@@ -7,7 +7,7 @@ use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use rabbit\App;
 use rabbit\core\Exception;
-use Rabbit\Data\Pipeline\AbstractSingletonPlugin;
+use Rabbit\Data\Pipeline\AbstractPlugin;
 use rabbit\exception\InvalidConfigException;
 use rabbit\helper\ArrayHelper;
 use rabbit\helper\FileHelper;
@@ -18,7 +18,7 @@ use Swlib\Saber\Request;
  * Class HttpRequest
  * @package Rabbit\Data\Pipeline\Common
  */
-class HttpRequest extends AbstractSingletonPlugin
+class HttpRequest extends AbstractPlugin
 {
     /** @var bool */
     protected $usePool = false;
