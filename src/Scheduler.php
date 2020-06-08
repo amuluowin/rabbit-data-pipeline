@@ -33,6 +33,8 @@ class Scheduler implements SchedulerInterface, InitInterface
     protected $waitTimes = 3;
     /** @var RedisLock */
     public $lock;
+    /** @var string */
+    protected $name = 'scheduler';
 
     /**
      * Scheduler constructor.
@@ -124,6 +126,7 @@ class Scheduler implements SchedulerInterface, InitInterface
                 $targets[$name][$key] = ObjectFactory::createObject(
                     $class,
                     [
+                        'scName' => $this->name,
                         'config' => $params,
                         'key' => $key,
                         'output' => $output,

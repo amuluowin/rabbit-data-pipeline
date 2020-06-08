@@ -64,15 +64,18 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected $lockKey = [];
     /** @var AbstractPlugin[] */
     protected $inPlugin = [];
+    /** @var string */
+    protected $scName;
 
     /**
      * AbstractPlugin constructor.
      * @param array $config
      * @throws Exception
      */
-    public function __construct(array $config)
+    public function __construct(string $scName, array $config)
     {
         $this->config = $config;
+        $this->scName = $scName;
     }
 
     /**
@@ -104,7 +107,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      */
     public function getScheduler(): SchedulerInterface
     {
-        return getDI('scheduler');
+        return getDI($this->scName);
     }
 
     /**
