@@ -12,6 +12,7 @@ use rabbit\exception\InvalidConfigException;
 use rabbit\helper\ArrayHelper;
 use rabbit\helper\FileHelper;
 use rabbit\httpclient\Client;
+use Swlib\Saber;
 use Swlib\Saber\Request;
 
 /**
@@ -82,7 +83,7 @@ class HttpRequest extends AbstractPlugin
         if ($this->retry && !is_callable($this->retry)) {
             throw new InvalidConfigException("The retry must be callable");
         }
-        $this->client = new Client();
+        $this->client = Saber::create();
     }
 
     /**
@@ -128,7 +129,7 @@ class HttpRequest extends AbstractPlugin
             }
         }
 
-        $response = $this->client->request($options, $this->driver);
+        $response = $this->client->request($options);
         if (!$this->download) {
             $format = $this->format;
             if (method_exists($response, $format)) {

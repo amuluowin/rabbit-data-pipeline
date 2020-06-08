@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
 
-use Co\System;
 use common\Exception\InvalidArgumentException;
 use DI\DependencyException;
 use DI\NotFoundException;
@@ -35,6 +34,10 @@ class Scheduler implements SchedulerInterface, InitInterface
     public $lock;
     /** @var string */
     protected $name = 'scheduler';
+    /** @var array */
+    protected $config = [];
+    /** @var array */
+    protected $taskKeys = [];
 
     /**
      * Scheduler constructor.
@@ -43,6 +46,10 @@ class Scheduler implements SchedulerInterface, InitInterface
     public function __construct(ConfigParserInterface $parser)
     {
         $this->parser = $parser;
+        $this->config = $this->parser->parse();
+        foreach ($this->config as $name => $item) {
+            $this->taskKeys[$name] = array_keys($item);
+        }
     }
 
     /**
@@ -55,26 +62,6 @@ class Scheduler implements SchedulerInterface, InitInterface
     {
         $this->redis = getDI('redis');
         $this->lock = new RedisLock($this->redis);
-        $this->targets = $this->build($this->parser->parse());
-    }
-
-    /**
-     * @param string $taskName
-     * @param string $name
-     * @return AbstractPlugin|null
-     * @throws Exception
-     */
-    public function getTarget(string $taskName, string $name): AbstractPlugin
-    {
-        $waitTime = 0;
-        while ((empty($this->targets) || !isset($this->targets[$taskName]) || !isset($this->targets[$taskName][$name]) || !$this->targets[$taskName][$name] instanceof AbstractPlugin) && (++$waitTime <= $this->waitTimes)) {
-            App::warning("The $taskName is building wait {$this->waitTimes}s");
-            System::sleep($waitTime * 3);
-        }
-        if ($this->targets[$taskName][$name] instanceof AbstractSingletonPlugin) {
-            return $this->targets[$taskName][$name];
-        }
-        return clone $this->targets[$taskName][$name];
     }
 
     /**
@@ -84,17 +71,16 @@ class Scheduler implements SchedulerInterface, InitInterface
      */
     public function run(string $key = null, array $params = []): void
     {
-        $this->waitTasksBuild();
         if ($key === null) {
-            foreach (array_keys($this->targets) as $key) {
+            foreach (array_keys($this->config) as $key) {
                 rgo(function () use ($key, $params) {
                     $this->process((string)$key, $params);
                 });
             }
-        } elseif (isset($this->targets[$key])) {
-            rgo(function () use ($key, $params) {
+        } elseif (isset($this->config[$key])) {
+//            rgo(function () use ($key, $params) {
                 $this->process((string)$key, $params);
-            });
+//            });
         } else {
             throw new InvalidArgumentException("No such target $key");
         }
@@ -106,41 +92,43 @@ class Scheduler implements SchedulerInterface, InitInterface
      * @throws InvalidConfigException
      * @throws NotFoundException
      */
-    public function build(array $configs): array
+    public function getTarget(string $name, string $key): AbstractPlugin
     {
-        $targets = [];
-        foreach ($configs as $name => $config) {
-            foreach ($config as $key => $params) {
-                $class = ArrayHelper::remove($params, 'type');
-                if (!$class) {
-                    throw new InvalidConfigException("The type must be set in $key");
-                }
-                $output = ArrayHelper::remove($params, 'output', []);
-                $start = ArrayHelper::remove($params, 'start', false);
-                $wait = ArrayHelper::remove($params, 'wait', false);
-                if (is_string($output)) {
-                    $output = [$output => true];
-                }
-                $lockEx = ArrayHelper::remove($params, 'lockEx', 30);
-                $pluginName = ArrayHelper::remove($params, 'name', uniqid());
-                $targets[$name][$key] = ObjectFactory::createObject(
-                    $class,
-                    [
-                        'scName' => $this->name,
-                        'config' => $params,
-                        'key' => $key,
-                        'output' => $output,
-                        'start' => $start,
-                        'taskName' => $name,
-                        'pluginName' => $pluginName,
-                        'lockEx' => $lockEx,
-                        'wait' => $wait,
-                    ],
-                    false
-                );
-            }
+        if (null !== $target = ArrayHelper::getValue($this->targets, "$name.$key")) {
+            return $target;
         }
-        return $targets;
+        $params = $this->config[$name][$key];
+        $class = ArrayHelper::remove($params, 'type');
+        if (!$class) {
+            throw new InvalidConfigException("The type must be set in $key");
+        }
+        $output = ArrayHelper::remove($params, 'output', []);
+        $start = ArrayHelper::remove($params, 'start', false);
+        $wait = ArrayHelper::remove($params, 'wait', false);
+        if (is_string($output)) {
+            $output = [$output => true];
+        }
+        $lockEx = ArrayHelper::remove($params, 'lockEx', 30);
+        $pluginName = ArrayHelper::remove($params, 'name', uniqid());
+        $target = ObjectFactory::createObject(
+            $class,
+            [
+                'scName' => $this->name,
+                'config' => $params,
+                'key' => $key,
+                'output' => $output,
+                'start' => $start,
+                'taskName' => $name,
+                'pluginName' => $pluginName,
+                'lockEx' => $lockEx,
+                'wait' => $wait,
+            ],
+            false
+        );
+        if ($target instanceof AbstractSingletonPlugin) {
+            $this->targets[$taskName][$targetName] = $target;
+        }
+        return $target;
     }
 
     /**
@@ -149,15 +137,10 @@ class Scheduler implements SchedulerInterface, InitInterface
      */
     public function process(string $task, array $params = []): void
     {
-        $this->waitTasksBuild();
         /** @var AbstractPlugin $target */
-        foreach ($this->targets[$task] as $tmp) {
-            if ($tmp->getStart()) {
-                if ($tmp instanceof AbstractSingletonPlugin) {
-                    $target = $tmp;
-                } else {
-                    $target = clone $tmp;
-                }
+        foreach ($this->config[$task] as $key => $tmp) {
+            if (ArrayHelper::getValue($tmp, 'start') === true) {
+                $target = $this->getTarget($task, $key);
                 $target->setTaskId((string)getDI('idGen')->create());
                 $target->setRequest($params);
                 $target->process();
@@ -182,14 +165,17 @@ class Scheduler implements SchedulerInterface, InitInterface
             $target->setOpt($pre->getOpt());
             $target->setRequest($pre->getRequest());
             if ($transfer) {
-                rgo(function () use ($target) {
+                rgo(function () use ($target, $pre, $key) {
                     $target->process();
+                    if (end($this->taskKeys[$pre->taskName]) === $key) {
+                        App::error("「{$pre->taskName}」 finished!");
+                    }
                 });
             } else {
                 $target->process();
-            }
-            if (end($this->targets[$pre->taskName])->key === $key) {
-                App::info("「{$pre->taskName}」 finished!");
+                if (end($this->taskKeys[$pre->taskName]) === $key) {
+                    App::error("「{$pre->taskName}」 finished!");
+                }
             }
         } catch (\Throwable $exception) {
             App::error("「{$pre->taskName}」「{$key}」" . ExceptionHelper::dumpExceptionToString($exception));
@@ -230,17 +216,5 @@ class Scheduler implements SchedulerInterface, InitInterface
         }
         return (int)$flag;
 
-    }
-
-    /**
-     * @throws Exception
-     */
-    private function waitTasksBuild(): void
-    {
-        $waitTime = 0;
-        while (empty($this->targets) && (++$waitTime <= $this->waitTimes)) {
-            App::warning("The targets is building wait {$this->waitTimes}s");
-            System::sleep($waitTime * 3);
-        }
     }
 }
