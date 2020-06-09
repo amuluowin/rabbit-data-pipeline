@@ -75,13 +75,11 @@ class Scheduler implements SchedulerInterface, InitInterface
             foreach (array_keys($this->config) as $key) {
                 rgo(function () use ($key, $params) {
                     $this->process((string)$key, $params);
-                    gc_collect_cycles();
                 });
             }
         } elseif (isset($this->config[$key])) {
             rgo(function () use ($key, $params) {
                 $this->process((string)$key, $params);
-                gc_collect_cycles();
             });
         } else {
             throw new InvalidArgumentException("No such target $key");
@@ -172,14 +170,13 @@ class Scheduler implements SchedulerInterface, InitInterface
                 rgo(function () use ($target, $pre, $key) {
                     $target->process();
                     if (end($this->taskKeys[$pre->taskName]) === $key) {
-                        App::error("「{$pre->taskName}」 {$pre->getTaskId()} finished!");
+                        App::info("「{$pre->taskName}」 {$pre->getTaskId()} finished!");
                     }
-                    gc_collect_cycles();
                 });
             } else {
                 $target->process();
                 if (end($this->taskKeys[$pre->taskName]) === $key) {
-                    App::error("「{$pre->taskName}」 {$pre->getTaskId()} finished!");
+                    App::info("「{$pre->taskName}」 {$pre->getTaskId()} finished!");
                 }
             }
         } catch (\Throwable $exception) {
