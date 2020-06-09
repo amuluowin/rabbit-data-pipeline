@@ -138,8 +138,10 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
                 }
                 $plugin->setTaskId($this->getTaskId());
                 $plugin->setInput($data);
-                $plugin->setOpt($this->getOpt());
-                $plugin->setRequest($this->getRequest());
+                $opt = $this->getOpt();
+                $plugin->setOpt($opt);
+                $req = $this->getRequest();
+                $plugin->setRequest($req);
                 $plugin->process();
                 return;
             }

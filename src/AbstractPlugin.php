@@ -137,7 +137,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     /**
      * @param array $opt
      */
-    public function setRequest(array $request): void
+    public function setRequest(array &$request): void
     {
         $this->request = $request;
     }
@@ -150,7 +150,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     /**
      * @param $input
      */
-    public function setInput($input)
+    public function setInput(&$input)
     {
         $this->input = $input;
     }
@@ -166,7 +166,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     /**
      * @param array $opt
      */
-    public function setOpt(array $opt): void
+    public function setOpt(array &$opt): void
     {
         $this->opt = $opt;
     }
@@ -353,9 +353,9 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
                     $plugin = $this->inPlugin[$output];
                 }
                 $plugin->taskId = $this->taskId;
-                $plugin->input = $data;
-                $plugin->opt = $this->opt;
-                $plugin->request = $this->request;
+                $plugin->input = &$data;
+                $plugin->opt = &$this->opt;
+                $plugin->request = &$this->request;
                 $plugin->process();
                 return;
             }
