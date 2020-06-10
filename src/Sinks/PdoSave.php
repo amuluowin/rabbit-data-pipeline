@@ -5,10 +5,14 @@ namespace Rabbit\Data\Pipeline\Sinks;
 
 use DI\DependencyException;
 use DI\NotFoundException;
+use rabbit\activerecord\ActiveRecord;
+use rabbit\core\Context;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 use rabbit\db\Connection;
+use rabbit\db\ConnectionInterface;
 use rabbit\db\Exception;
 use rabbit\db\MakePdoConnection;
+use rabbit\db\mysql\CreateExt;
 use rabbit\exception\InvalidConfigException;
 use rabbit\helper\ArrayHelper;
 
@@ -85,7 +89,7 @@ class PdoSave extends AbstractPlugin
         if (isset($this->input['columns'])) {
             $this->saveWithLine();
         } else {
-            $this->saveWithOne();
+            $this->saveWithModel();
         }
     }
 
@@ -103,14 +107,40 @@ class PdoSave extends AbstractPlugin
     /**
      * @throws Exception
      */
-    protected function saveWithOne(): void
+    protected function saveWithModel(): void
     {
-        $data = $this->input;
-        if (!$res = getDI('db')->getConnection($this->dbName)
-            ->createCommand()
-            ->batchInsert($this->tableName, array_keys($data), [array_values($data)])
-            ->execute()) {
-            throw new Exception("save to $this->tableName failed");
+        $model = new class($this->tableName, $this->dbName) extends ActiveRecord {
+            /**
+             *  constructor.
+             * @param string $tableName
+             * @param string $dbName
+             */
+            public function __construct(string $tableName, string $dbName)
+            {
+                Context::set(md5(get_called_class() . 'tableName'), $tableName);
+                Context::set(md5(get_called_class() . 'dbName'), $dbName);
+            }
+
+            /**
+             * @return mixed|string
+             */
+            public static function tableName()
+            {
+                return Context::get(md5(get_called_class() . 'tableName'));
+            }
+
+            /**
+             * @return ConnectionInterface
+             */
+            public static function getDb(): ConnectionInterface
+            {
+                return getDI('db')->getConnection(Context::get(md5(get_called_class() . 'dbName')));
+            }
+        };
+
+        $res = CreateExt::create($model, $this->input);
+        if (empty($res)) {
+            throw new Exception("save to " . $model::tableName() . ' failed!');
         }
         $this->output($res);
     }
