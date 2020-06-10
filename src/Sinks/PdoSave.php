@@ -9,7 +9,6 @@ use Rabbit\Data\Pipeline\AbstractPlugin;
 use rabbit\db\Connection;
 use rabbit\db\Exception;
 use rabbit\db\MakePdoConnection;
-use rabbit\db\mysql\CreateExt;
 use rabbit\exception\InvalidConfigException;
 use rabbit\helper\ArrayHelper;
 
@@ -86,7 +85,7 @@ class PdoSave extends AbstractPlugin
         if (isset($this->input['columns'])) {
             $this->saveWithLine();
         } else {
-            $this->saveWithModel();
+            $this->saveWithOne();
         }
     }
 
@@ -104,29 +103,14 @@ class PdoSave extends AbstractPlugin
     /**
      * @throws Exception
      */
-    protected function saveWithModel(): void
+    protected function saveWithOne(): void
     {
-        $model = eval(sprintf("return new class() extends \\rabbit\\activerecord\\ActiveRecord {
-        /**
-         * @return mixed|string
-         */
-        public static function tableName()
-        {
-            return '%s';
-        }
-
-        /**
-         * @return ConnectionInterface
-         */
-        public static function getDb(): \\rabbit\\db\\ConnectionInterface
-        {
-            return getDI('db')->getConnection('%s');
-        }
-    };", $this->tableName, $this->dbName));
-
-        $res = CreateExt::create($model, $this->input);
-        if (empty($res)) {
-            throw new Exception("save to " . $model::tableName() . ' failed!');
+        $data = $this->input;
+        if (!$res = getDI('db')->getConnection($this->dbName)
+            ->createCommand()
+            ->batchInsert($this->tableName, array_keys($data), [array_values($data)])
+            ->execute()) {
+            throw new Exception("save to $this->tableName failed");
         }
         $this->output($res);
     }
