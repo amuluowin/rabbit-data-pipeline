@@ -38,6 +38,8 @@ class Scheduler implements SchedulerInterface, InitInterface
     protected $config = [];
     /** @var array */
     protected $taskKeys = [];
+    /** @var ISender[] */
+    protected $senders;
 
     /**
      * Scheduler constructor.
@@ -69,7 +71,7 @@ class Scheduler implements SchedulerInterface, InitInterface
      * @param array $params
      * @throws InvalidArgumentException
      */
-    public function run(string $key = null, array $params = []): void
+    public function run(string $key = null, string $target = null, array $params = []): void
     {
         if ($key === null) {
             foreach (array_keys($this->config) as $key) {
@@ -78,9 +80,21 @@ class Scheduler implements SchedulerInterface, InitInterface
                 });
             }
         } elseif (isset($this->config[$key])) {
-            rgo(function () use ($key, $params) {
-                $this->process((string)$key, $params);
-            });
+            if ($target && isset($this->config[$key][$target])) {
+                ['taskId' => $taskId, 'input' => $input, 'opt' => $opt, 'request' => $request] = $params;
+                $target = $this->getTarget($key, $target);
+                $target->setTaskId($taskId);
+                $target->setInput($input);
+                $target->setOpt($opt);
+                $target->setRequest($request);
+                rgo(function () use ($target) {
+                    $target->process();
+                });
+            } else {
+                rgo(function () use ($key, $params) {
+                    $this->process((string)$key, $params);
+                });
+            }
         } else {
             throw new InvalidArgumentException("No such target $key");
         }
@@ -158,25 +172,40 @@ class Scheduler implements SchedulerInterface, InitInterface
     public function send(AbstractPlugin $pre, string $key, &$data, bool $transfer): void
     {
         try {
-            /** @var AbstractPlugin $target */
-            $target = $this->getTarget($pre->taskName, $key);
-            $target->setTaskId($pre->getTaskId());
-            $target->setInput($data);
-            $opt = $pre->getOpt();
-            $target->setOpt($opt);
-            $req = $pre->getRequest();
-            $target->setRequest($req);
-            if ($transfer) {
-                rgo(function () use ($target, $pre, $key) {
+            $keyArr = explode(':', $key);
+            if (count($keyArr) === 3) {
+                [$sender, $address, $target] = $keyArr;
+                if (!array_key_exists($sender, $this->senders)) {
+                    throw new Exception("Scheduler has no sender name $sender");
+                }
+                if ($transfer) {
+                    rgo(function () use ($sender, $address, $target, $pre, &$data) {
+                        $this->senders[$sender]->send($address, $target, $pre, $data);
+                    });
+                } else {
+                    $this->senders[$sender]->send($address, $target, $pre, $data);
+                }
+            } else {
+                /** @var AbstractPlugin $target */
+                $target = $this->getTarget($pre->taskName, $key);
+                $target->setTaskId($pre->getTaskId());
+                $target->setInput($data);
+                $opt = $pre->getOpt();
+                $target->setOpt($opt);
+                $req = $pre->getRequest();
+                $target->setRequest($req);
+                if ($transfer) {
+                    rgo(function () use ($target, $pre, $key) {
+                        $target->process();
+                        if (end($this->taskKeys[$pre->taskName]) === $key) {
+                            App::error("「{$pre->taskName}」 {$pre->getTaskId()} finished!");
+                        }
+                    });
+                } else {
                     $target->process();
                     if (end($this->taskKeys[$pre->taskName]) === $key) {
-                        App::info("「{$pre->taskName}」 {$pre->getTaskId()} finished!");
+                        App::error("「{$pre->taskName}」 {$pre->getTaskId()} finished!");
                     }
-                });
-            } else {
-                $target->process();
-                if (end($this->taskKeys[$pre->taskName]) === $key) {
-                    App::info("「{$pre->taskName}」 {$pre->getTaskId()} finished!");
                 }
             }
         } catch (\Throwable $exception) {
