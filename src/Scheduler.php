@@ -197,14 +197,14 @@ class Scheduler implements SchedulerInterface, InitInterface
                 if ($transfer) {
                     rgo(function () use ($target, $pre, $key) {
                         $target->process();
-                        if (end($this->taskKeys[$pre->taskName]) === $key) {
-                            App::error("「{$pre->taskName}」 {$pre->getTaskId()} finished!");
+                        if ($pre->output === []) {
+                            App::info("「{$pre->taskName}」 {$pre->getTaskId()} finished!");
                         }
                     });
                 } else {
                     $target->process();
-                    if (end($this->taskKeys[$pre->taskName]) === $key) {
-                        App::error("「{$pre->taskName}」 {$pre->getTaskId()} finished!");
+                    if ($pre->output === []) {
+                        App::info("「{$pre->taskName}」 {$pre->getTaskId()} finished!");
                     }
                 }
             }
