@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Rabbit\Data\Pipeline\Common;
+namespace Rabbit\Data\Pipeline\Transforms;
 
 use Rabbit\Data\Pipeline\AbstractPlugin;
 use rabbit\exception\InvalidConfigException;
