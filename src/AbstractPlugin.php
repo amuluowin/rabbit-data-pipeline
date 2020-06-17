@@ -19,6 +19,10 @@ use rabbit\redis\Redis;
 /**
  * Interface AbstractPlugin
  * @package Rabbit\Data\Pipeline
+ * @property Scheduler scheduler
+ * @property array opt
+ * @property mixed input
+ * @property array request
  */
 abstract class AbstractPlugin extends BaseObject implements InitInterface
 {

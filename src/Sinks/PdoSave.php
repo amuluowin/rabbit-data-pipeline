@@ -26,6 +26,8 @@ class PdoSave extends AbstractPlugin
     protected $tableName;
     /** @var string */
     protected $dbName;
+    /** @var string */
+    protected $driver = 'db';
 
     /**
      * @param string $class
@@ -59,23 +61,31 @@ class PdoSave extends AbstractPlugin
     {
         parent::init();
         [
+            $mysql,
             $class,
             $dsn,
             $pool,
             $this->tableName
         ] = ArrayHelper::getValueByArray(
             $this->config,
-            ['class', 'dsn', 'pool', 'tableName'],
+            ['mysql', 'class', 'dsn', 'pool', 'tableName'],
             null,
             [
                 'pool' => [],
             ]
         );
-        if ($dsn === null || $class === null || $this->taskName === null) {
-            throw new InvalidConfigException("class, dsn must be set in $this->key");
+        if ($this->taskName === null) {
+            throw new InvalidConfigException("taskName must be set in $this->key");
         }
-        $this->dbName = md5($dsn);
-        $this->createConnection($class, $dsn, $pool);
+        if ($mysql === null && ($dsn === null || $class === null)) {
+            throw new InvalidConfigException("$this->key must need prams: mysql or class, dsn");
+        }
+        if (!empty($mysql)) {
+            [$this->driver, $this->dbName] = explode('.', trim($mysql));
+        } else {
+            $this->dbName = md5($dsn);
+            $this->createConnection($class, $dsn, $pool, $retryHandler);
+        }
     }
 
     /**
@@ -99,7 +109,7 @@ class PdoSave extends AbstractPlugin
     protected function saveWithLine(): void
     {
         /** @var Connection $db */
-        $db = getDI('db')->getConnection($this->dbName);
+        $db = getDI($this->driver)->getConnection($this->dbName);
         $res = $db->createCommand()->batchInsert($this->tableName, $this->input['columns'], $this->input['data'])->execute();
         $this->output($res);
     }
