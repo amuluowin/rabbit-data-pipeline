@@ -60,7 +60,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
     /**
      * @param array $opt
      */
-    public function setRequest(array $request): void
+    public function setRequest(array &$request): void
     {
         Context::set($this->getTaskId() . 'request', $request);
     }
@@ -73,7 +73,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
     /**
      * @param $input
      */
-    public function setInput($input)
+    public function setInput(&$input)
     {
         Context::set($this->getTaskId() . 'input', $input);
     }
@@ -89,7 +89,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
     /**
      * @param array $opt
      */
-    public function setOpt(array $opt): void
+    public function setOpt(array &$opt): void
     {
         Context::set($this->getTaskId() . 'opt', $opt);
     }

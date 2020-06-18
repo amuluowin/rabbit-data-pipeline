@@ -113,7 +113,7 @@ class Pdo extends AbstractPlugin
                     $this->send($batchList);
                 }
             } else {
-                $data = DBHelper::PubSearch(new Query(), $this->sql, $this->query, getDI('db')->getConnection($this->dbName));
+                $data = DBHelper::PubSearch(new Query(), $this->sql, $this->query, getDI('db')->get($this->dbName));
                 $this->send($data);
             }
         } else {
@@ -134,7 +134,7 @@ class Pdo extends AbstractPlugin
                         }
                 }
             }
-            $data = getDI('db')->getConnection($this->dbName)->createCommand($this->sql, $params)->cache($this->duration, $this->cache->getDriver($this->cacheDriver))->{$this->query}();
+            $data = getDI('db')->get($this->dbName)->createCommand($this->sql, $params)->cache($this->duration, $this->cache->getDriver($this->cacheDriver))->{$this->query}();
             $this->send($data);
         }
     }

@@ -140,7 +140,7 @@ class Scheduler implements SchedulerInterface, InitInterface
             false
         );
         if ($target instanceof AbstractSingletonPlugin) {
-            $this->targets[$taskName][$targetName] = $target;
+            $this->targets[$name][$key] = $target;
         }
         return $target;
     }

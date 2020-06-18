@@ -93,7 +93,7 @@ class Nsq extends AbstractSingletonPlugin
             }
             $this->topics[$topic]['isRunning'] = true;
             /** @var NsqClient $nsq */
-            $nsq = getDI('nsq')->getConnection($topic);
+            $nsq = getDI('nsq')->get($topic);
             $nsq->subscribe([
                 'rdy' => ArrayHelper::getValue($config, 'rdy', swoole_cpu_num()),
                 'timeout' => ArrayHelper::getValue($config, 'timeout', 5)

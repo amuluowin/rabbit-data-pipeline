@@ -142,7 +142,7 @@ class Clickhouse extends AbstractPlugin
             $batch =  new BatchInsertCsv(
                 $this->tableName,
                 strval(getDI('idGen')->create()),
-                getDI($this->driver)->getConnection($this->db)
+                getDI($this->driver)->get($this->db)
             );
             $batch->addColumns($this->input['columns']);
             foreach ($this->input['data'] as $item) {
@@ -206,7 +206,7 @@ class Clickhouse extends AbstractPlugin
                  */
                 public static function getDb(): ConnectionInterface
                 {
-                    return getDI('clickhouse')->getConnection(Context::get(md5(get_called_class() . 'db')));
+                    return getDI('clickhouse')->get(Context::get(md5(get_called_class() . 'db')));
                 }
             };
         } else {
@@ -235,7 +235,7 @@ class Clickhouse extends AbstractPlugin
                  */
                 public static function getDb(): ConnectionInterface
                 {
-                    return getDI('click')->getConnection(Context::get(md5(get_called_class() . 'db')));
+                    return getDI('click')->get(Context::get(md5(get_called_class() . 'db')));
                 }
             };
         }

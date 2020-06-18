@@ -5,11 +5,11 @@ namespace Rabbit\Data\Pipeline\Sinks;
 
 use Rabbit\Amqp\Connection;
 use Rabbit\Amqp\Manager;
-use rabbit\compool\BaseCompool;
-use rabbit\compool\ComPoolProperties;
 use rabbit\core\ObjectFactory;
 use Rabbit\Data\Pipeline\AbstractSingletonPlugin;
 use rabbit\helper\ArrayHelper;
+use rabbit\pool\BasePool;
+use rabbit\pool\BasePoolProperties;
 
 /**
  * Class Amqp
@@ -64,11 +64,11 @@ class Amqp extends AbstractSingletonPlugin
         $name = uniqid();
         /** @var Manager $amqp */
         $amqp = getDI('amqp');
-        $amqp->addConnection([
+        $amqp->add([
             $name => ObjectFactory::createObject([
-                'class' => BaseCompool::class,
+                'class' => BasePool::class,
                 'poolConfig' => ObjectFactory::createObject([
-                    'class' => ComPoolProperties::class,
+                    'class' => BasePoolProperties::class,
                     'config' => [
                         'queue' => $queue,
                         'exchange' => $exchange,
@@ -77,7 +77,7 @@ class Amqp extends AbstractSingletonPlugin
                         'exchangeDeclare' => $exchangeDeclare
                     ]
                 ]),
-                'comClass' => Connection::class
+                'objclass' => Connection::class
             ])
         ]);
     }
@@ -86,7 +86,7 @@ class Amqp extends AbstractSingletonPlugin
     {
         /** @var Manager $amqp */
         $amqp = getDI('amqp');
-        $conn = $amqp->getConnection($this->name);
+        $conn = $amqp->get($this->name);
         $conn->basic_publish(new AMQPMessage($this->input, $this->properties));
     }
 }

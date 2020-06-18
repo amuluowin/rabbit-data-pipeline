@@ -77,7 +77,7 @@ class Nsq extends AbstractSingletonPlugin
     public function run()
     {
         /** @var NsqClient $nsq */
-        $nsq = getDI('nsq')->getConnection($topic);
+        $nsq = getDI('nsq')->get($topic);
         if (!is_array($this->input)) {
             $this->input = [$this->input];
         }

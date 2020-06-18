@@ -95,7 +95,7 @@ class OrmDB extends Pdo
                     }
             }
         }
-        $data = getDI('db')->getConnection($this->dbName)->createCommandExt($this->sql, $params)->cache($this->duration, $this->cache->getDriver($this->cacheDriver))->{$this->query}();
+        $data = getDI('db')->get($this->dbName)->createCommandExt($this->sql, $params)->cache($this->duration, $this->cache->getDriver($this->cacheDriver))->{$this->query}();
         $this->send($data);
     }
 }

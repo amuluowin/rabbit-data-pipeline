@@ -116,7 +116,7 @@ class PdoUpdate extends AbstractPlugin
              */
             public static function getDb(): ConnectionInterface
             {
-                return getDI('db')->getConnection(Context::get(md5(get_called_class() . 'dbName')));
+                return getDI('db')->get(Context::get(md5(get_called_class() . 'dbName')));
             }
         };
         $res = $model::updateAll($updates, $condition);

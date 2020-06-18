@@ -109,7 +109,7 @@ class PdoSave extends AbstractPlugin
     protected function saveWithLine(): void
     {
         /** @var Connection $db */
-        $db = getDI($this->driver)->getConnection($this->dbName);
+        $db = getDI($this->driver)->get($this->dbName);
         $res = $db->createCommand()->batchInsert($this->tableName, $this->input['columns'], $this->input['data'])->execute();
         $this->output($res);
     }
@@ -144,7 +144,7 @@ class PdoSave extends AbstractPlugin
              */
             public static function getDb(): ConnectionInterface
             {
-                return getDI('db')->getConnection(Context::get(md5(get_called_class() . 'dbName')));
+                return getDI('db')->get(Context::get(md5(get_called_class() . 'dbName')));
             }
         };
 
