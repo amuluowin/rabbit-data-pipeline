@@ -10,10 +10,10 @@
     }
   ],
   "require": {
-    "rabbit/framework": "dev-master",
-    "rabbit/server": "dev-master",
-    "rabbit/parser": "dev-master",
-    "rabbit/httpclient": "dev-master"
+    "rabbit/framework": "^1.0",
+    "rabbit/server": "^1.0",
+    "rabbit/parser": "^1.0",
+    "rabbit/httpclient": "^1.0"
   },
   "autoload": {
     "psr-4": {
