@@ -75,7 +75,7 @@ class Amqp extends AbstractSingletonPlugin
                         'exchangeDeclare' => $exchangeDeclare
                     ]
                 ]),
-                'objclass' => Connection::class
+                'objClass' => Connection::class
             ])
         ]);
         $this->conn = $amqp->get($name)->get();
