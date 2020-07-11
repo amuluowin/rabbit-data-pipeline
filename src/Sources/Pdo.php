@@ -5,14 +5,14 @@ namespace Rabbit\Data\Pipeline\Sources;
 
 use DI\DependencyException;
 use DI\NotFoundException;
-use Exception;
+use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
-use rabbit\db\Connection;
-use rabbit\db\DBHelper;
-use rabbit\db\MakePdoConnection;
-use rabbit\db\Query;
-use rabbit\exception\InvalidConfigException;
-use rabbit\helper\ArrayHelper;
+use Rabbit\DB\ConnectionInterface;
+use Rabbit\DB\DBHelper;
+use Rabbit\DB\MakePdoConnection;
+use Rabbit\DB\Query;
+use Throwable;
 
 /**
  * Class Pdo
@@ -20,30 +20,31 @@ use rabbit\helper\ArrayHelper;
  */
 class Pdo extends AbstractPlugin
 {
-    /** @var string */
+    /** @var string|array */
     protected $sql;
     /** @var string */
-    protected $dbName;
+    protected string $dbName;
     /** @var int */
-    protected $duration;
+    protected int $duration;
     /** @var string */
-    protected $query;
-    /** @var Connection */
-    protected $db;
+    protected string $query;
+    /** @var ConnectionInterface */
+    protected ConnectionInterface $db;
     /** @var int */
-    protected $each = false;
+    protected ?int $each = null;
     /** @var array */
-    protected $params = [];
+    protected array $params = [];
     /** @var string */
-    protected $cacheDriver = 'memory';
+    protected string $cacheDriver = 'memory';
 
     /**
      * @param string $class
      * @param string $dsn
      * @param array $pool
+     * @param array $retryHandler
      * @throws DependencyException
      * @throws NotFoundException
-     * @throws Exception
+     * @throws Throwable
      */
     protected function createConnection(string $class, string $dsn, array $pool, array $retryHandler): void
     {
@@ -55,7 +56,6 @@ class Pdo extends AbstractPlugin
         ] = ArrayHelper::getValueByArray(
             $pool,
             ['min', 'max', 'wait', 'retry'],
-            null,
             [10, 12, 0, 3]
         );
         MakePdoConnection::addConnection($class, $this->dbName, $dsn, $poolConfig, $retryHandler);
@@ -63,7 +63,9 @@ class Pdo extends AbstractPlugin
 
     /**
      * @return mixed|void
-     * @throws Exception
+     * @throws DependencyException
+     * @throws NotFoundException
+     * @throws Throwable
      */
     public function init()
     {
@@ -101,7 +103,7 @@ class Pdo extends AbstractPlugin
     }
 
     /**
-     * @throws Exception
+     * @throws Throwable
      */
     public function run(): void
     {
@@ -141,7 +143,7 @@ class Pdo extends AbstractPlugin
 
     /**
      * @param $data
-     * @throws Exception
+     * @throws Throwable
      */
     protected function send(&$data): void
     {

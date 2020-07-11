@@ -3,18 +3,19 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
 
-use common\Exception\InvalidArgumentException;
 use DI\DependencyException;
 use DI\NotFoundException;
 use Exception;
-use rabbit\App;
-use rabbit\contract\InitInterface;
-use rabbit\core\ObjectFactory;
-use rabbit\db\redis\RedisLock;
-use rabbit\exception\InvalidConfigException;
-use rabbit\helper\ArrayHelper;
-use rabbit\helper\ExceptionHelper;
-use rabbit\redis\Redis;
+use Rabbit\Base\App;
+use Rabbit\Base\Contract\InitInterface;
+use Rabbit\Base\Exception\InvalidArgumentException;
+use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Base\Helper\ArrayHelper;
+use Rabbit\Base\Helper\ExceptionHelper;
+use Rabbit\DB\Redis\Redis;
+use Rabbit\DB\Redis\RedisLock;
+use ReflectionException;
+use Throwable;
 
 /**
  * Class Scheduler
@@ -23,23 +24,21 @@ use rabbit\redis\Redis;
 class Scheduler implements SchedulerInterface, InitInterface
 {
     /** @var array */
-    protected $targets = [];
+    protected array $targets = [];
     /** @var ConfigParserInterface */
-    protected $parser;
+    protected ConfigParserInterface $parser;
     /** @var Redis */
-    public $redis;
-    /** @var int */
-    protected $waitTimes = 3;
+    public ?Redis $redis;
     /** @var RedisLock */
-    public $lock;
+    public ?RedisLock $lock;
     /** @var string */
-    protected $name = 'scheduler';
+    protected string $name = 'scheduler';
     /** @var array */
-    protected $config = [];
+    protected array $config = [];
     /** @var array */
-    protected $taskKeys = [];
+    protected array $taskKeys = [];
     /** @var ISender[] */
-    protected $senders;
+    protected array $senders = [];
 
     /**
      * Scheduler constructor.
@@ -56,9 +55,7 @@ class Scheduler implements SchedulerInterface, InitInterface
 
     /**
      * @return mixed|void
-     * @throws DependencyException
-     * @throws InvalidConfigException
-     * @throws NotFoundException
+     * @throws Throwable
      */
     public function init()
     {
@@ -68,8 +65,12 @@ class Scheduler implements SchedulerInterface, InitInterface
 
     /**
      * @param string|null $key
+     * @param string|null $target
      * @param array $params
-     * @throws InvalidArgumentException
+     * @throws DependencyException
+     * @throws InvalidConfigException
+     * @throws NotFoundException
+     * @throws ReflectionException
      */
     public function run(string $key = null, string $target = null, array $params = []): void
     {
@@ -101,10 +102,13 @@ class Scheduler implements SchedulerInterface, InitInterface
     }
 
     /**
-     * @param array $configs
+     * @param string $name
+     * @param string $key
+     * @return AbstractPlugin
      * @throws DependencyException
      * @throws InvalidConfigException
      * @throws NotFoundException
+     * @throws ReflectionException
      */
     public function getTarget(string $name, string $key): AbstractPlugin
     {
@@ -124,7 +128,7 @@ class Scheduler implements SchedulerInterface, InitInterface
         }
         $lockEx = ArrayHelper::remove($params, 'lockEx', 30);
         $pluginName = ArrayHelper::remove($params, 'name', uniqid());
-        $target = ObjectFactory::createObject(
+        $target = create(
             $class,
             [
                 'scName' => $this->name,
@@ -148,6 +152,11 @@ class Scheduler implements SchedulerInterface, InitInterface
     /**
      * @param string $task
      * @param array|null $params
+     * @throws DependencyException
+     * @throws InvalidConfigException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws Throwable
      */
     public function process(string $task, array $params = []): void
     {
@@ -167,7 +176,7 @@ class Scheduler implements SchedulerInterface, InitInterface
      * @param string $key
      * @param $data
      * @param bool $transfer
-     * @throws Exception
+     * @throws Throwable
      */
     public function send(AbstractPlugin $pre, string $key, &$data, bool $transfer): void
     {
@@ -186,7 +195,6 @@ class Scheduler implements SchedulerInterface, InitInterface
                     $this->senders[$sender]->send($address, $target, $pre, $data);
                 }
             } else {
-                /** @var AbstractPlugin $target */
                 $target = $this->getTarget($pre->taskName, $key);
                 $target->setTaskId($pre->getTaskId());
                 $target->setInput($data);
@@ -208,14 +216,16 @@ class Scheduler implements SchedulerInterface, InitInterface
                     }
                 }
             }
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             App::error("「{$pre->taskName}」「{$key}」 {$pre->getTaskId()}" . ExceptionHelper::dumpExceptionToString($exception));
-            $this->deleteAllLock($pre->getOpt(), $pre->taskName);
+            $this->deleteAllLock($pre->taskName, $pre->getOpt());
         }
     }
 
     /**
-     * @return int
+     * @param string|null $key
+     * @param int $lockEx
+     * @return bool
      */
     public function getLock(string $key = null, $lockEx = 60): bool
     {
@@ -223,14 +233,16 @@ class Scheduler implements SchedulerInterface, InitInterface
     }
 
     /**
+     * @param string $taskName
      * @param array $opt
+     * @throws Throwable
      */
-    public function deleteAllLock(array $opt = [], string $taskName = ''): void
+    public function deleteAllLock(string $taskName = '', array $opt = []): void
     {
         $locks = isset($opt['Locks']) ? $opt['Locks'] : [];
         foreach ($locks as $lock) {
             !is_string($lock) && $lock = strval($lock);
-            $this->deleteLock($lock, $taskName);
+            $this->deleteLock($taskName, $lock);
         }
     }
 
@@ -238,9 +250,9 @@ class Scheduler implements SchedulerInterface, InitInterface
      * @param string|null $key
      * @param string $taskName
      * @return int
-     * @throws Exception
+     * @throws Throwable
      */
-    public function deleteLock(string $key = null, string $taskName = ''): int
+    public function deleteLock(string $taskName, string $key = null): int
     {
         if ($flag = $this->redis->del($key)) {
             App::warning("「{$taskName}」 Delete Lock: " . $key);

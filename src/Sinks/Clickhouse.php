@@ -6,21 +6,20 @@ namespace Rabbit\Data\Pipeline\Sinks;
 use Co\System;
 use DI\DependencyException;
 use DI\NotFoundException;
-use rabbit\App;
-use rabbit\core\Context;
-use rabbit\core\Exception;
+use Rabbit\Base\App;
+use Rabbit\Base\Core\Context;
+use Rabbit\Base\Core\Exception;
+use Rabbit\Base\Exception\InvalidArgumentException;
+use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
-use rabbit\db\clickhouse\ActiveRecord;
-use rabbit\db\clickhouse\BatchInsert;
-use rabbit\db\clickhouse\BatchInsertCsv;
-use rabbit\db\clickhouse\BatchInsertJsonRows;
-use rabbit\db\clickhouse\Connection;
-use rabbit\db\clickhouse\MakeCKConnection;
-use rabbit\db\ConnectionInterface;
-use rabbit\db\Expression;
-use rabbit\exception\InvalidArgumentException;
-use rabbit\exception\InvalidConfigException;
-use rabbit\helper\ArrayHelper;
+use Rabbit\DB\ClickHouse\ActiveRecord;
+use Rabbit\DB\ClickHouse\BatchInsertCsv;
+use Rabbit\DB\ClickHouse\Connection;
+use Rabbit\DB\ClickHouse\MakeCKConnection;
+use Rabbit\DB\Expression;
+use Rabbit\Pool\ConnectionInterface;
+use Throwable;
 
 /**
  * Class Clickhouse
@@ -28,23 +27,23 @@ use rabbit\helper\ArrayHelper;
  */
 class Clickhouse extends AbstractPlugin
 {
-    /** @var Connection */
-    protected $db;
     /** @var string */
-    protected $tableName;
+    protected string $db;
+    /** @var string */
+    protected ?string $tableName = null;
     /** @var array */
-    protected $primaryKey;
+    protected ?array $primaryKey;
     /** @var string */
-    protected $flagField;
+    protected string $flagField;
     /** @var int */
-    protected $maxCount = 10000;
+    protected int $maxCount;
     /** @var string */
-    protected $driver;
+    protected string $driver;
+
     /**
      * @return mixed|void
-     * @throws DependencyException
      * @throws InvalidConfigException
-     * @throws NotFoundException
+     * @throws Throwable
      */
     public function init()
     {
@@ -60,7 +59,6 @@ class Clickhouse extends AbstractPlugin
         ] = ArrayHelper::getValueByArray(
             $this->config,
             ['class', 'dsn', 'config', 'tableName', 'flagField', 'primaryKey', 'maxCount'],
-            null,
             [
                 'config' => [],
                 'flagField' => 'flag',
@@ -76,7 +74,7 @@ class Clickhouse extends AbstractPlugin
     }
 
     /**
-     * @throws \Exception
+     * @throws Throwable
      */
     public function run()
     {
@@ -116,7 +114,7 @@ class Clickhouse extends AbstractPlugin
                 $this->updateFlag($updateFlagCondition);
                 App::warning("update $this->flagField succ:  $lock");
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             App::error($e);
             throw $e;
         } finally {
@@ -128,18 +126,16 @@ class Clickhouse extends AbstractPlugin
 
     /**
      * @return int
-     * @throws DependencyException
-     * @throws NotFoundException
-     * @throws \rabbit\db\Exception
+     * @throws Exception
+     * @throws Throwable
      */
     protected function saveWithLine(): int
     {
         if (!ArrayHelper::isIndexed($this->input['data'])) {
             $this->input['data'] = [$this->input['data']];
         }
-        if ($this->db instanceof Connection) {
-//            $batch = count($this->input['data']) > $this->maxCount ? new BatchInsertCsv($this->tableName, uniqid(), $this->db) : new BatchInsert($this->tableName, $this->db);
-            $batch =  new BatchInsertCsv(
+        if ($this->driver === 'clickhouse') {
+            $batch = new BatchInsertCsv(
                 $this->tableName,
                 strval(getDI('idGen')->create()),
                 getDI($this->driver)->get($this->db)
@@ -150,13 +146,16 @@ class Clickhouse extends AbstractPlugin
             }
             $rows = $batch->execute();
         } else {
-            $rows = $this->db->insert($this->tableName, $this->input['columns'], $this->input['data']);
+            $rows = getDI($this->driver)->get($this->db)->insert($this->tableName, $this->input['columns'], $this->input['data']);
         }
-        App::warning("$this->tableName succ: $rows");
+        App::warning("$this->tableName success: $rows");
         return $rows;
     }
 
-    protected function getUpdateFlagCondition()
+    /**
+     * @return array
+     */
+    protected function getUpdateFlagCondition(): array
     {
         $result = [];
         $lock = '';
@@ -174,8 +173,9 @@ class Clickhouse extends AbstractPlugin
 
 
     /**
-     * @param array $ids
-     * @throws \rabbit\db\Exception
+     * @param array $updateFlagCondition
+     * @throws Exception
+     * @throws Throwable
      */
     protected function updateFlag(array $updateFlagCondition): void
     {
@@ -190,13 +190,12 @@ class Clickhouse extends AbstractPlugin
                 {
                     Context::set(md5(get_called_class() . 'tableName'), $tableName);
                     Context::set(md5(get_called_class() . 'db'), $db);
-                    parent::__construct();
                 }
 
                 /**
                  * @return mixed|string
                  */
-                public static function tableName()
+                public static function tableName(): string
                 {
                     return Context::get(md5(get_called_class() . 'tableName'));
                 }
@@ -210,7 +209,7 @@ class Clickhouse extends AbstractPlugin
                 }
             };
         } else {
-            $model = new class($this->tableName, $this->db) extends \rabbit\db\click\ActiveRecord {
+            $model = new class($this->tableName, $this->db) extends \Rabbit\DB\Click\ActiveRecord {
                 /**
                  *  constructor.
                  * @param string $tableName
@@ -225,7 +224,7 @@ class Clickhouse extends AbstractPlugin
                 /**
                  * @return mixed|string
                  */
-                public static function tableName()
+                public static function tableName(): string
                 {
                     return Context::get(md5(get_called_class() . 'tableName'));
                 }

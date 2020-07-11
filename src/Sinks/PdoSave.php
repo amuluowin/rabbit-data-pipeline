@@ -5,16 +5,16 @@ namespace Rabbit\Data\Pipeline\Sinks;
 
 use DI\DependencyException;
 use DI\NotFoundException;
-use rabbit\activerecord\ActiveRecord;
-use rabbit\core\Context;
+use Rabbit\ActiveRecord\ActiveRecord;
+use Rabbit\ActiveRecord\ARHelper;
+use Rabbit\Base\Core\Context;
+use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
-use rabbit\db\Connection;
-use rabbit\db\ConnectionInterface;
-use rabbit\db\Exception;
-use rabbit\db\MakePdoConnection;
-use rabbit\db\mysql\CreateExt;
-use rabbit\exception\InvalidConfigException;
-use rabbit\helper\ArrayHelper;
+use Rabbit\DB\ConnectionInterface;
+use Rabbit\DB\Exception;
+use Rabbit\DB\MakePdoConnection;
+use Throwable;
 
 /**
  * Class Pdo
@@ -23,11 +23,11 @@ use rabbit\helper\ArrayHelper;
 class PdoSave extends AbstractPlugin
 {
     /** @var string */
-    protected $tableName;
+    protected ?string $tableName;
     /** @var string */
-    protected $dbName;
+    protected string $dbName;
     /** @var string */
-    protected $driver = 'db';
+    protected string $driver = 'db';
 
     /**
      * @param string $class
@@ -35,7 +35,7 @@ class PdoSave extends AbstractPlugin
      * @param array $pool
      * @throws DependencyException
      * @throws NotFoundException
-     * @throws Exception
+     * @throws Throwable
      */
     private function createConnection(string $class, string $dsn, array $pool): void
     {
@@ -47,7 +47,6 @@ class PdoSave extends AbstractPlugin
         ] = ArrayHelper::getValueByArray(
             $pool,
             ['min', 'max', 'wait', 'retry'],
-            null,
             [10, 12, 0, 3]
         );
         MakePdoConnection::addConnection($class, $this->dbName, $dsn, $poolConfig);
@@ -55,7 +54,9 @@ class PdoSave extends AbstractPlugin
 
     /**
      * @return mixed|void
-     * @throws Exception
+     * @throws DependencyException
+     * @throws NotFoundException
+     * @throws Throwable
      */
     public function init()
     {
@@ -69,7 +70,6 @@ class PdoSave extends AbstractPlugin
         ] = ArrayHelper::getValueByArray(
             $this->config,
             ['mysql', 'class', 'dsn', 'pool', 'tableName'],
-            null,
             [
                 'pool' => [],
             ]
@@ -84,12 +84,12 @@ class PdoSave extends AbstractPlugin
             [$this->driver, $this->dbName] = explode('.', trim($mysql));
         } else {
             $this->dbName = md5($dsn);
-            $this->createConnection($class, $dsn, $pool, $retryHandler);
+            $this->createConnection($class, $dsn, $pool);
         }
     }
 
     /**
-     * @throws Exception
+     * @throws Throwable
      */
     public function run(): void
     {
@@ -104,18 +104,17 @@ class PdoSave extends AbstractPlugin
     }
 
     /**
-     * @throws Exception
+     * @throws Throwable
      */
     protected function saveWithLine(): void
     {
-        /** @var Connection $db */
         $db = getDI($this->driver)->get($this->dbName);
         $res = $db->createCommand()->batchInsert($this->tableName, $this->input['columns'], $this->input['data'])->execute();
         $this->output($res);
     }
 
     /**
-     * @throws Exception
+     * @throws Throwable
      */
     protected function saveWithModel(): void
     {
@@ -134,7 +133,7 @@ class PdoSave extends AbstractPlugin
             /**
              * @return mixed|string
              */
-            public static function tableName()
+            public static function tableName(): string
             {
                 return Context::get(md5(get_called_class() . 'tableName'));
             }
@@ -148,7 +147,7 @@ class PdoSave extends AbstractPlugin
             }
         };
 
-        $res = CreateExt::create($model, $this->input);
+        $res = ARHelper::create($model, $this->input);
         if (empty($res)) {
             throw new Exception("save to " . $model::tableName() . ' failed!');
         }

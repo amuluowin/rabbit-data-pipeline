@@ -3,11 +3,12 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
 
-use rabbit\App;
-use rabbit\contract\InitInterface;
-use rabbit\core\Context;
-use rabbit\helper\ArrayHelper;
-use rabbit\helper\VarDumper;
+use Exception;
+use Rabbit\Base\App;
+use Rabbit\Base\Contract\InitInterface;
+use Rabbit\Base\Core\Context;
+use Rabbit\Base\Helper\ArrayHelper;
+use Throwable;
 
 /**
  * Class AbstractSingletonPlugin
@@ -58,7 +59,7 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
     }
 
     /**
-     * @param array $opt
+     * @param array $request
      */
     public function setRequest(array &$request): void
     {
@@ -95,9 +96,11 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
     }
 
     /**
-     * @return int
+     * @param string|null $key
+     * @param int $ext
+     * @return bool
      */
-    public function getLock(string $key = null, $ext = null): bool
+    public function getLock(string $key = null, int $ext = null): bool
     {
         empty($ext) && $ext = $this->lockEx;
         if (($key || $key = $this->getTaskId()) && $this->scheduler->getLock($key, $this->lockEx)) {
@@ -108,8 +111,9 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
     }
 
     /**
-     * @param string $lockKey
-     * @return bool
+     * @param string|null $key
+     * @return int
+     * @throws Throwable
      */
     public function deleteLock(string $key = null): int
     {
@@ -117,14 +121,17 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
         return $this->scheduler->deleteLock($this->taskName, $key);
     }
 
+    /**
+     * @throws Throwable
+     */
     public function deleteAllLock(): void
     {
-        $this->scheduler->deleteAllLock($this->getOpt());
+        $this->scheduler->deleteAllLock($this->taskName, $this->getOpt());
     }
 
     /**
      * @param $data
-     * @throws Exception
+     * @throws Throwable
      */
     public function output(&$data): void
     {
@@ -147,10 +154,8 @@ abstract class AbstractSingletonPlugin extends AbstractPlugin implements InitInt
             }
             if (empty($data)) {
                 App::warning("「{$this->taskName}」 $this->key -> $output; data is empty", 'Data');
-            } elseif ($this->logInfo === self::LOG_SIMPLE) {
-                App::info("「{$this->taskName}」 $this->key -> $output;", 'Data');
             } else {
-                App::info("「{$this->taskName}」 $this->key -> $output; data: " . VarDumper::getDumper()->dumpAsString($data), 'Data');
+                App::info("「{$this->taskName}」 $this->key -> $output;", 'Data');
             }
             $this->getScheduler()->send($this, $output, $data, (bool)$transfer);
         }

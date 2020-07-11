@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
 
-use rabbit\exception\InvalidConfigException;
-use rabbit\helper\FileHelper;
+use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Base\Helper\FileHelper;
 
 /**
  * Class YamlParser
@@ -13,7 +13,7 @@ use rabbit\helper\FileHelper;
 class YamlParser implements ConfigParserInterface
 {
     /** @var string */
-    protected $path;
+    protected string $path;
 
     /**
      * YamlParser constructor.

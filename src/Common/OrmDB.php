@@ -6,13 +6,10 @@ namespace Rabbit\Data\Pipeline\Common;
 
 use DI\DependencyException;
 use DI\NotFoundException;
+use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\Sources\Pdo;
-use rabbit\db\Connection;
-use rabbit\db\DBHelper;
-use rabbit\db\MakePdoConnection;
-use rabbit\db\Query;
-use rabbit\exception\InvalidConfigException;
-use rabbit\helper\ArrayHelper;
+use Throwable;
 
 /**
  * Class OrmDB
@@ -20,50 +17,12 @@ use rabbit\helper\ArrayHelper;
  */
 class OrmDB extends Pdo
 {
-    /** @var string */
-    protected $sql;
-    /** @var string */
-    protected $dbName;
-    /** @var int */
-    protected $duration;
-    /** @var string */
-    protected $query;
-    /** @var Connection */
-    protected $db;
-    /** @var int */
-    protected $each = false;
-    /** @var array */
-    protected $params = [];
-    /** @var string */
-    protected $cacheDriver = 'memory';
-
-    /**
-     * @param string $class
-     * @param string $dsn
-     * @param array $pool
-     * @throws DependencyException
-     * @throws NotFoundException
-     * @throws Exception
-     */
-    private function createConnection(string $class, string $dsn, array $pool, array $retryHandler): void
-    {
-        [
-            $poolConfig['min'],
-            $poolConfig['max'],
-            $poolConfig['wait'],
-            $poolConfig['retry']
-        ] = ArrayHelper::getValueByArray(
-            $pool,
-            ['min', 'max', 'wait', 'retry'],
-            null,
-            [10, 12, 0, 3]
-        );
-        MakePdoConnection::addConnection($class, $this->dbName, $dsn, $poolConfig, $retryHandler);
-    }
-
     /**
      * @return mixed|void
-     * @throws Exception
+     * @throws DependencyException
+     * @throws InvalidConfigException
+     * @throws NotFoundException
+     * @throws Throwable
      */
     public function init()
     {
@@ -74,7 +33,7 @@ class OrmDB extends Pdo
     }
 
     /**
-     * @throws Exception
+     * @throws Throwable
      */
     public function run(): void
     {

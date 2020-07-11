@@ -4,9 +4,10 @@ declare(strict_types=1);
 namespace Rabbit\Data\Pipeline\Sources;
 
 use Exception;
-use rabbit\helper\ArrayHelper;
+use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 use Swlib\SaberGM;
+use Throwable;
 
 /**
  * Class Http
@@ -16,7 +17,7 @@ class Http extends AbstractPlugin
 {
 
     /**
-     * @throws Exception
+     * @throws Throwable
      */
     public function run(): void
     {

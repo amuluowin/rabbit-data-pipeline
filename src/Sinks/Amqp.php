@@ -3,13 +3,14 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
 
+use PhpAmqpLib\Message\AMQPMessage;
 use Rabbit\Amqp\Connection;
-use Rabbit\Amqp\Manager;
-use rabbit\core\ObjectFactory;
+use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractSingletonPlugin;
-use rabbit\helper\ArrayHelper;
-use rabbit\pool\BasePool;
-use rabbit\pool\BasePoolProperties;
+use Rabbit\Pool\BaseManager;
+use Rabbit\Pool\BasePool;
+use Rabbit\Pool\BasePoolProperties;
+use Throwable;
 
 /**
  * Class Amqp
@@ -18,16 +19,16 @@ use rabbit\pool\BasePoolProperties;
 class Amqp extends AbstractSingletonPlugin
 {
     /** @var string */
-    protected $name;
+    protected string $name;
     /** @var array */
-    protected $properties = [
+    protected array $properties = [
         'content_type' => 'text/plain',
         'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT
     ];
 
     /**
      * @return mixed|void
-     * @throws \Exception
+     * @throws Throwable
      */
     public function init()
     {
@@ -38,7 +39,6 @@ class Amqp extends AbstractSingletonPlugin
         [
             $queue,
             $exchange,
-            $count,
             $connParams,
             $queueDeclare,
             $exchangeDeclare,
@@ -46,28 +46,26 @@ class Amqp extends AbstractSingletonPlugin
         ] = ArrayHelper::getValueByArray($this->config, [
             'queue',
             'exchange',
-            'count',
             'connParams',
             'queueDeclare',
             'exchangeDeclare',
             'properties'
-        ], null, [
+        ], [
             '',
             '',
             '',
-            5,
             [],
             [],
             [],
             $this->properties
         ]);
         $name = uniqid();
-        /** @var Manager $amqp */
+        /** @var BaseManager $amqp */
         $amqp = getDI('amqp');
         $amqp->add([
-            $name => ObjectFactory::createObject([
+            $name => create([
                 'class' => BasePool::class,
-                'poolConfig' => ObjectFactory::createObject([
+                'poolConfig' => create([
                     'class' => BasePoolProperties::class,
                     'config' => [
                         'queue' => $queue,
@@ -82,9 +80,12 @@ class Amqp extends AbstractSingletonPlugin
         ]);
     }
 
+    /**
+     * @throws Throwable
+     */
     public function run()
     {
-        /** @var Manager $amqp */
+        /** @var BaseManager $amqp */
         $amqp = getDI('amqp');
         $conn = $amqp->get($this->name);
         $conn->basic_publish(new AMQPMessage($this->input, $this->properties));

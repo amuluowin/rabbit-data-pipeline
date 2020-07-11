@@ -3,11 +3,14 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sources;
 
+use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractSingletonPlugin;
-use rabbit\exception\InvalidConfigException;
-use rabbit\helper\ArrayHelper;
 use Rabbit\Rdkafka\KafkaManager;
+use RdKafka\Exception;
+use RdKafka\KafkaConsumer;
 use RdKafka\Message;
+use Throwable;
 
 /**
  * Class RdKafka
@@ -16,11 +19,12 @@ use RdKafka\Message;
 class RdKafka extends AbstractSingletonPlugin
 {
     /** @var KafkaConsumer */
-    protected $consumer;
+    protected ?KafkaConsumer $consumer;
 
     /**
      * @return mixed|void
      * @throws Exception
+     * @throws Throwable
      */
     public function init()
     {
@@ -58,6 +62,10 @@ class RdKafka extends AbstractSingletonPlugin
         $this->consumer->subscribe($topics);
     }
 
+    /**
+     * @throws Exception
+     * @throws Throwable
+     */
     public function run()
     {
         /** @var KafkaManager $manager */

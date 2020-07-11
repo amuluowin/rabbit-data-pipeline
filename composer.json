@@ -10,10 +10,37 @@
     }
   ],
   "require": {
-    "rabbit/framework": "^1.0",
-    "rabbit/server": "^1.0",
-    "rabbit/parser": "^1.0",
-    "rabbit/httpclient": "^1.0"
+    "php": ">=7.4.0",
+    "ext-swoole": ">=4.5.0",
+    "rabbit/base": "dev-master",
+    "rabbit/cache": "dev-master",
+    "rabbit/httpclient": "dev-master",
+    "rabbit/db": "dev-master",
+    "rabbit/active-record": "dev-master",
+    "rabbit/db-redis": "dev-master",
+    "rabbit/pool": "dev-master",
+    "ext-json": "*",
+    "ext-yaml": "*"
+  },
+  "require-dev": {
+    "rabbit/web": "dev-master",
+    "rabbit/server": "dev-master",
+    "rabbit/parser": "dev-master",
+    "rabbit/amqp": "dev-master",
+    "rabbit/nsq": "dev-master",
+    "rabbit/socket": "dev-master",
+    "rabbit/rdkafka": "dev-master",
+    "rabbit/db-clickhouse": "dev-master",
+    "rabbit/db-click": "dev-master",
+    "kwn/php-rdkafka-stubs": "^2.0",
+    "swoole/ide-helper": "@dev",
+    "phpunit/phpunit": "*"
+  },
+  "suggest": {
+    "rabbit/server": "Use server to run",
+    "rabbit/process": "Use process to run",
+    "ext-simplexml": "Support xml parse",
+    "ext-rdkafka": "Use kafka"
   },
   "autoload": {
     "psr-4": {

@@ -3,16 +3,16 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
 
-use common\Helpers\FileHelper;
-use common\Helpers\XmlFormatHelper;
-use rabbit\App;
-use rabbit\core\Exception;
+use Rabbit\Base\App;
+use Rabbit\Base\Core\Exception;
+use Rabbit\Base\Exception\InvalidArgumentException;
+use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Base\Helper\ArrayHelper;
+use Rabbit\Base\Helper\ExceptionHelper;
+use Rabbit\Base\Helper\FileHelper;
+use Rabbit\Base\Helper\VarDumper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
-use rabbit\exception\InvalidArgumentException;
-use rabbit\exception\InvalidConfigException;
-use rabbit\helper\ArrayHelper;
-use rabbit\helper\ExceptionHelper;
-use rabbit\helper\VarDumper;
+use Throwable;
 
 /**
  * Class File
@@ -21,15 +21,15 @@ use rabbit\helper\VarDumper;
 class File extends AbstractPlugin
 {
     /** @var string */
-    protected $path;
+    protected ?string $path;
     /** @var string */
-    protected $fileName;
+    protected string $fileName;
     /** @var string */
-    protected $ext;
+    protected string $ext;
 
     /**
      * @return mixed|void
-     * @throws InvalidConfigException
+     * @throws Throwable
      */
     public function init()
     {
@@ -38,9 +38,9 @@ class File extends AbstractPlugin
         $this->path = App::getAlias($configPath);
     }
 
-
     /**
      * @throws Exception
+     * @throws Throwable
      */
     public function run(): void
     {
@@ -75,43 +75,51 @@ class File extends AbstractPlugin
 
     /**
      * @param string $fileName
+     * @param string $data
      * @throws Exception
+     * @throws Throwable
      */
-    protected function saveFile(string $fileName): void
+    protected function saveFile(string $fileName, string $data = null): void
     {
         FileHelper::createDirectory(dirname($fileName), 777);
         $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
         switch ($ext) {
             case 'csv':
                 if (false === $fp = fopen($fileName, 'w+')) {
-                    App::error("can not open file $fileName", $this->logKey);
+                    App::error("can not open file $fileName");
                     return;
                 }
                 try {
-                    foreach (ArrayHelper::toArray($this->input) as $item) {
+                    foreach (ArrayHelper::toArray($data ?? $this->input) as $item) {
                         fputcsv($fp, $item);
                     }
-                } catch (\Throwable $throwable) {
-                    App::error(ExceptionHelper::dumpExceptionToString($throwable), $this->logKey);
+                } catch (Throwable $throwable) {
+                    App::error(ExceptionHelper::dumpExceptionToString($throwable));
                 } finally {
                     fclose($fp);
                 }
                 break;
             case 'xml':
-                if (is_string($this->input)) {
-                    $this->saveContents($fileName, $this->input);
+                $data = $data ?? $this->input;
+                if (is_string($data)) {
+                    $this->saveContents($fileName, $data);
                 } else {
-                    $this->saveContents($fileName, XmlFormatHelper::format($this->input));
+                    $this->saveContents($fileName, XmlFormatHelper::format($data));
                 }
                 break;
             case 'txt':
             default:
-                $this->saveContents($fileName, VarDumper::getDumper()->dumpAsString($this->input));
+                $this->saveContents($fileName, VarDumper::getDumper()->dumpAsString($data));
         }
         $this->output($fileName);
     }
 
-    protected function saveContents(string $fileName): void
+    /**
+     * @param string $fileName
+     * @param string|null $data
+     * @throws Throwable
+     */
+    protected function saveContents(string $fileName, ?string $data): void
     {
         $len = file_put_contents($fileName, $this->input);
         if ($len !== strlen($this->input)) {

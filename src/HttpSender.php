@@ -3,8 +3,9 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
 
-use rabbit\App;
-use rabbit\httpclient\Client;
+use Rabbit\Base\App;
+use Rabbit\HttpClient\Client;
+use Throwable;
 
 /**
  * Class HttpSender
@@ -13,9 +14,9 @@ use rabbit\httpclient\Client;
 class HttpSender implements ISender
 {
     /** @var Client */
-    protected $client;
+    protected Client $client;
     /** @var string */
-    protected $route = '/api/schedule/run';
+    protected string $route = '/api/schedule/run';
 
     /**
      * HttpSender constructor.
@@ -31,7 +32,7 @@ class HttpSender implements ISender
      * @param AbstractPlugin $pre
      * @param $data
      * @return array|null
-     * @throws \Exception
+     * @throws Throwable
      */
     public function send(string $address, string $target, AbstractPlugin $pre, &$data): ?array
     {

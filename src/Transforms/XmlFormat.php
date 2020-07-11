@@ -3,9 +3,8 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Transforms;
 
-use common\Helpers\XmlFormatHelper;
 use Exception;
-use rabbit\helper\ArrayHelper;
+use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 
 /**
@@ -15,16 +14,17 @@ use Rabbit\Data\Pipeline\AbstractPlugin;
 class XmlFormat extends AbstractPlugin
 {
     /** @var string */
-    protected $rootTag;
+    protected string $rootTag;
     /** @var string */
-    protected $objectTag;
+    protected string $objectTag;
     /** @var string */
-    protected $itemTag;
-    protected $version;
-    protected $charset;
+    protected string $itemTag;
+    protected string $version;
+    protected string $charset;
 
     /**
      * @return mixed|void
+     * @throws Throwable
      */
     public function init()
     {
@@ -41,7 +41,7 @@ class XmlFormat extends AbstractPlugin
             'itemTag',
             'version',
             'charset',
-        ], null, [
+        ], [
             'root',
             '',
             'item',

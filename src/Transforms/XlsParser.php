@@ -4,9 +4,10 @@ declare(strict_types=1);
 namespace Rabbit\Data\Pipeline\Transforms;
 
 
+use Rabbit\Base\Exception\InvalidArgumentException;
+use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
-use rabbit\exception\InvalidArgumentException;
-use rabbit\helper\ArrayHelper;
+use Throwable;
 
 /**
  * Class XlsParser
@@ -15,12 +16,13 @@ use rabbit\helper\ArrayHelper;
 class XlsParser extends AbstractPlugin
 {
     /** @var int */
-    protected $columnLine = 0;
+    protected int $columnLine = 0;
     /** @var int */
-    protected $dataLine = 1;
+    protected int $dataLine = 1;
 
     /**
      * @return mixed|void
+     * @throws Throwable
      */
     public function init()
     {
@@ -34,7 +36,6 @@ class XlsParser extends AbstractPlugin
                 'columnLine',
                 'dataLine'
             ],
-            null,
             [
                 0,
                 1
@@ -43,7 +44,7 @@ class XlsParser extends AbstractPlugin
     }
 
     /**
-     * @throws \Exception
+     * @throws Throwable
      */
     public function run()
     {

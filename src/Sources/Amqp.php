@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sources;
 
+use ErrorException;
 use PhpAmqpLib\Message\AMQPMessage;
 use Rabbit\Amqp\Connection;
-use Rabbit\Amqp\Manager;
-use rabbit\core\ObjectFactory;
+use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractSingletonPlugin;
-use rabbit\helper\ArrayHelper;
-use rabbit\pool\BasePool;
-use rabbit\pool\BasePoolProperties;
+use Rabbit\Pool\BaseManager;
+use Rabbit\Pool\BasePool;
+use Rabbit\Pool\BasePoolProperties;
+use Throwable;
 
 /**
  * Class Amqp
@@ -20,13 +21,13 @@ use rabbit\pool\BasePoolProperties;
 class Amqp extends AbstractSingletonPlugin
 {
     /** @var Connection */
-    protected $conn;
+    protected Connection $conn;
     /** @var string */
-    protected $consumerTag;
+    protected string $consumerTag;
 
     /**
      * @return mixed|void
-     * @throws \Exception
+     * @throws Throwable
      */
     public function init()
     {
@@ -38,7 +39,6 @@ class Amqp extends AbstractSingletonPlugin
             $this->consumerTag,
             $queue,
             $exchange,
-            $count,
             $connParams,
             $queueDeclare,
             $exchangeDeclare,
@@ -46,26 +46,24 @@ class Amqp extends AbstractSingletonPlugin
             'consumerTag',
             'queue',
             'exchange',
-            'count',
             'connParams',
             'queueDeclare',
             'exchangeDeclare'
-        ], null, [
+        ], [
             '',
             '',
             '',
-            5,
             [],
             [],
             []
         ]);
         $name = uniqid();
-        /** @var Manager $amqp */
+        /** @var BaseManager $amqp */
         $amqp = getDI('amqp');
         $amqp->add([
-            $name => ObjectFactory::createObject([
+            $name => create([
                 'class' => BasePool::class,
-                'poolConfig' => ObjectFactory::createObject([
+                'poolConfig' => create([
                     'class' => BasePoolProperties::class,
                     'config' => [
                         'queue' => $queue,
@@ -81,6 +79,9 @@ class Amqp extends AbstractSingletonPlugin
         $this->conn = $amqp->get($name)->get();
     }
 
+    /**
+     * @throws ErrorException
+     */
     public function run()
     {
         $this->conn->consume($this->consumerTag, false, false, false, false, function (AMQPMessage $message) {

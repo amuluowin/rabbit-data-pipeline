@@ -3,9 +3,10 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Transforms;
 
-use rabbit\App;
+use Rabbit\Base\App;
+use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
-use rabbit\helper\ArrayHelper;
+use Throwable;
 
 /**
  * Class XmlParser
@@ -14,16 +15,16 @@ use rabbit\helper\ArrayHelper;
 class XmlParser extends AbstractPlugin
 {
     /** @var array */
-    protected $fields = [];
+    protected array $fields = [];
 
     public function init()
     {
         parent::init();
-        $this->fields = ArrayHelper::getValue($this->config, 'fields', []);
+        $this->fields = (array)ArrayHelper::getValue($this->config, 'fields', []);
     }
 
     /**
-     * @throws \Exception
+     * @throws Throwable
      */
     public function run(): void
     {

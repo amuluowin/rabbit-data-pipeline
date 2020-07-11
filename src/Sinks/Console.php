@@ -3,11 +3,10 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
 
-use common\Helpers\XmlFormatHelper;
-use rabbit\exception\InvalidCallException;
-use rabbit\helper\ArrayHelper;
-use rabbit\helper\JsonHelper;
-use rabbit\helper\VarDumper;
+use Rabbit\Base\Exception\InvalidCallException;
+use Rabbit\Base\Helper\ArrayHelper;
+use Rabbit\Base\Helper\JsonHelper;
+use Rabbit\Base\Helper\VarDumper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 
 /**
@@ -17,9 +16,9 @@ use Rabbit\Data\Pipeline\AbstractPlugin;
 class Console extends AbstractPlugin
 {
     /** @var string */
-    protected $encoding = 'text';
+    protected string $encoding;
     /** @var string */
-    protected $method = 'echo';
+    protected string $method;
 
     public function init()
     {
@@ -27,12 +26,11 @@ class Console extends AbstractPlugin
         [$this->encoding, $this->method] = ArrayHelper::getValueByArray($this->config, [
             'encoding',
             'method'
-        ], null, [
+        ], [
             'text',
             'echo'
         ]);
     }
-
 
     public function run(): void
     {

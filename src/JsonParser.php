@@ -3,9 +3,9 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
 
-use rabbit\exception\InvalidConfigException;
-use rabbit\helper\FileHelper;
-use rabbit\helper\JsonHelper;
+use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Base\Helper\FileHelper;
+use Rabbit\Base\Helper\JsonHelper;
 
 /**
  * Class JsonParser
@@ -14,7 +14,7 @@ use rabbit\helper\JsonHelper;
 class JsonParser implements ConfigParserInterface
 {
     /** @var string */
-    protected $path;
+    protected string $path;
 
     /**
      * JsonParser constructor.

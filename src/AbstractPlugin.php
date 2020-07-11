@@ -3,18 +3,17 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
 
-use common\Exception\IgnoreException;
+use Closure;
 use Exception;
 use Psr\SimpleCache\CacheInterface;
-use rabbit\App;
-use rabbit\contract\InitInterface;
-use rabbit\core\BaseObject;
-use rabbit\exception\InvalidArgumentException;
-use rabbit\exception\InvalidCallException;
-use rabbit\helper\ArrayHelper;
-use rabbit\helper\ExceptionHelper;
-use rabbit\helper\VarDumper;
-use rabbit\redis\Redis;
+use Rabbit\Base\App;
+use Rabbit\Base\Contract\InitInterface;
+use Rabbit\Base\Core\BaseObject;
+use Rabbit\Base\Exception\InvalidArgumentException;
+use Rabbit\Base\Exception\InvalidCallException;
+use Rabbit\Base\Helper\ArrayHelper;
+use Rabbit\Base\Helper\ExceptionHelper;
+use Throwable;
 
 /**
  * Interface AbstractPlugin
@@ -26,55 +25,51 @@ use rabbit\redis\Redis;
  */
 abstract class AbstractPlugin extends BaseObject implements InitInterface
 {
-    const LOG_SIMPLE = 0;
-    const LOG_INFO = 1;
     /** @var string */
-    public $taskName;
+    public string $taskName;
     /** @var string */
-    private $taskId;
+    private string $taskId;
     /** @var string */
-    public $key;
+    public string $key;
     /** @var array */
-    protected $config = [];
+    protected array $config = [];
     /** @var mixed */
     private $input;
     /** @var array */
-    private $request = [];
+    private array $request = [];
     /** @var array */
-    private $opt = [];
+    private array $opt = [];
     /** @var array */
-    public $locks = [];
+    public array $locks = [];
     /** @var array */
-    protected $output = [];
+    protected array $output = [];
     /** @var bool */
-    protected $start = false;
+    protected bool $start = false;
     /** @var int */
-    protected $lockEx = 0;
+    protected int $lockEx = 0;
     /** @var CacheInterface */
-    protected $cache;
+    protected ?CacheInterface $cache;
     /** @var string */
     const CACHE_KEY = 'cache';
     /** @var string */
     const LOCK_KEY = 'Plugin';
-    /** @var int */
-    protected $logInfo = self::LOG_SIMPLE;
-    /** @var callable */
-    protected $errHandler;
-    /** @var bool */
-    protected $wait = false;
-    /** @var string */
-    protected $pluginName;
     /** @var array */
-    protected $lockKey = [];
-    /** @var AbstractPlugin[] */
-    protected $inPlugin = [];
+    protected ?array $errHandler;
+    /** @var bool */
+    protected bool $wait = false;
     /** @var string */
-    protected $scName;
+    protected string $pluginName;
+    /** @var array */
+    protected ?array $lockKey = [];
+    /** @var AbstractPlugin[] */
+    protected array $inPlugin = [];
+    /** @var string */
+    protected string $scName;
 
     /**
      * AbstractPlugin constructor.
+     * @param string $scName
      * @param array $config
-     * @throws Exception
      */
     public function __construct(string $scName, array $config)
     {
@@ -84,6 +79,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
 
     /**
      * @param $name
+     * @return mixed|null
      */
     public function &__get($name)
     {
@@ -92,12 +88,16 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
         }
         $getter = 'get' . $name;
         if (method_exists($this, $getter)) {
-            $value = $this->$getter();
-            return $value;
+            return $this->$getter();
         }
-        return null;
+        $res = null;
+        return $res;
     }
 
+    /**
+     * @return mixed|void
+     * @throws Throwable
+     */
     public function init()
     {
         $this->cache = getDI(self::CACHE_KEY);
@@ -107,7 +107,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
 
     /**
      * @return SchedulerInterface
-     * @throws Exception
+     * @throws Throwable
      */
     public function getScheduler(): SchedulerInterface
     {
@@ -139,7 +139,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     }
 
     /**
-     * @param array $opt
+     * @param array $request
      */
     public function setRequest(array &$request): void
     {
@@ -184,9 +184,11 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     }
 
     /**
-     * @return int
+     * @param string|null $key
+     * @param int $ext
+     * @return bool
      */
-    public function getLock(string $key = null, $ext = null): bool
+    public function getLock(string $key = null, int $ext = null): bool
     {
         empty($ext) && $ext = $this->lockEx;
         if (($key || $key = $this->taskId) && $this->scheduler->getLock($key, $ext)) {
@@ -199,6 +201,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     /**
      * @param $key
      * @return string
+     * @throws Exception
      */
     public function makeLockKey($key): string
     {
@@ -211,33 +214,37 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
 
     public function deleteAllLock(): void
     {
-        $this->scheduler->deleteAllLock($this->opt, $this->taskName);
+        $this->scheduler->deleteAllLock($this->taskName, $this->opt);
     }
 
     /**
-     * @param string $lockKey
-     * @return bool
+     * @param string|null $key
+     * @return int
+     * @throws Throwable
      */
     public function deleteLock(string $key = null): int
     {
         ($key === null) && $key = $this->taskId;
-        return $this->scheduler->deleteLock($key, $this->taskName);
+        return $this->scheduler->deleteLock($this->taskName, $key);
     }
 
     /**
-     * @param \Closure $function
+     * @param string $key
+     * @param Closure $function
      * @param array $params
-     * @throws Exception
+     * @return mixed|null
+     * @throws Throwable
      */
-    public function redisLock(string $key, \Closure $function, array $params)
+    public function redisLock(string $key, Closure $function, array $params)
     {
         try {
             if ($this->scheduler->redis->setnx($key, true)) {
                 return call_user_func_array($function, $params);
             }
             return null;
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             App::error(ExceptionHelper::dumpExceptionToString($exception));
+            return null;
         } finally {
             $this->scheduler->redis->del($key);
         }
@@ -303,13 +310,13 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     }
 
     /**
-     * @throws Exception
+     * @throws Throwable
      */
     public function process(): void
     {
         try {
             $this->run();
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             if (empty($this->errHandler)) {
                 throw $exception;
             }
@@ -324,7 +331,12 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
         }
     }
 
-    public function dealException(&$errerrHandler, $exception)
+    /**
+     * @param array $errerrHandler
+     * @param Throwable $exception
+     * @throws Throwable
+     */
+    public function dealException(array &$errerrHandler, Throwable $exception)
     {
         while (!empty($errerrHandler)) {
             try {
@@ -334,7 +346,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
                 } else {
                     throw $exception;
                 }
-            } catch (\Throwable $exception) {
+            } catch (Throwable $exception) {
                 throw $exception;
             }
         }
@@ -344,7 +356,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
 
     /**
      * @param $data
-     * @throws Exception
+     * @throws Throwable
      */
     public function output(&$data): void
     {
@@ -365,10 +377,8 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
             }
             if (empty($data)) {
                 App::warning("「{$this->taskName}」 $this->key -> $output; data is empty", 'Data');
-            } elseif ($this->logInfo === self::LOG_SIMPLE) {
-                App::info("「{$this->taskName}」 $this->key -> $output;", 'Data');
             } else {
-                App::info("「{$this->taskName}」 $this->key -> $output; data: " . VarDumper::getDumper()->dumpAsString($data), 'Data');
+                App::info("「{$this->taskName}」 $this->key -> $output;", 'Data');
             }
             $this->getScheduler()->send($this, $output, $data, (bool)$transfer);
         }

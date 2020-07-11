@@ -5,14 +5,15 @@ namespace Rabbit\Data\Pipeline\Common;
 
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
-use rabbit\App;
-use rabbit\core\Exception;
+use Rabbit\Base\App;
+use Rabbit\Base\Core\Exception;
+use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Base\Helper\ArrayHelper;
+use Rabbit\Base\Helper\FileHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
-use rabbit\exception\InvalidConfigException;
-use rabbit\helper\ArrayHelper;
-use rabbit\helper\FileHelper;
-use rabbit\httpclient\Client;
+use Rabbit\HttpClient\Client;
 use Swlib\Saber\Request;
+use Throwable;
 
 /**
  * Class HttpRequest
@@ -21,29 +22,29 @@ use Swlib\Saber\Request;
 class HttpRequest extends AbstractPlugin
 {
     /** @var bool */
-    protected $usePool = false;
+    protected bool $usePool = false;
     /** @var int */
-    protected $timeout = 60;
+    protected int $timeout = 60;
     /** @var int */
-    protected $throttleTime;
+    protected ?int $throttleTime;
     /** @var string */
-    protected $error;
+    protected ?string $error;
     /** @var string */
-    protected $retry;
+    protected ?string $retry;
     /** @var string */
-    protected $format;
+    protected string $format;
     /** @var bool */
-    protected $download;
+    protected bool $download;
     /** @var string */
-    protected $checkResponseFunc;
+    protected ?string $checkResponseFunc;
     /** @var string */
-    protected $driver = 'saber';
+    protected string $driver = 'saber';
     /** @var Client */
-    protected $client;
+    protected Client $client;
 
     /**
      * @return mixed|void
-     * @throws InvalidConfigException
+     * @throws Throwable
      */
     public function init()
     {
@@ -68,7 +69,7 @@ class HttpRequest extends AbstractPlugin
             'download',
             'throttleTime',
             'checkResponseFunc'
-        ], null, [
+        ], [
             'saber',
             true,
             60,
@@ -86,12 +87,14 @@ class HttpRequest extends AbstractPlugin
     }
 
     /**
+     * @throws Throwable
      * @throws Exception
      */
     public function run(): void
     {
         $path = ArrayHelper::remove($this->input, 'download_dir');
         $throttleTime = ArrayHelper::remove($this->input, 'throttleTime', 0);
+        $throttleTime = $throttleTime > 0 ? $throttleTime : $this->throttleTime;
         $request_id = uniqid();
         if ($this->download && $path) {
             FileHelper::createDirectory(dirname($path), 777);
@@ -122,7 +125,7 @@ class HttpRequest extends AbstractPlugin
                 }]
             ], $options, $this->input);
             if ($this->retry) {
-                $options['retry'] = function (Request $request) {
+                $options['retry'] = function (Request $request, $throttleTime) {
                     return call_user_func($this->retry, $request, $this->throttleTime === null ? $throttleTime : $this->throttleTime);
                 };
             }

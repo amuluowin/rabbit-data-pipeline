@@ -3,12 +3,16 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
 
+use DI\DependencyException;
+use DI\NotFoundException;
+use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractSingletonPlugin;
-use rabbit\exception\InvalidConfigException;
-use rabbit\helper\ArrayHelper;
-use rabbit\nsq\Consumer;
-use rabbit\nsq\MakeNsqConnection;
-use rabbit\nsq\NsqClient;
+use Rabbit\Nsq\Consumer;
+use Rabbit\Nsq\MakeNsqConnection;
+use Rabbit\Nsq\NsqClient;
+use ReflectionException;
+use Throwable;
 
 /**
  * Class Nsq
@@ -17,9 +21,7 @@ use rabbit\nsq\NsqClient;
 class Nsq extends AbstractSingletonPlugin
 {
     /** @var string */
-    protected $topic;
-    /** @var string */
-    protected $connName;
+    protected ?string $topic;
 
     /**
      * @param string $class
@@ -27,9 +29,10 @@ class Nsq extends AbstractSingletonPlugin
      * @param array $pool
      * @throws DependencyException
      * @throws NotFoundException
-     * @throws Exception
+     * @throws ReflectionException
+     * @throws Throwable
      */
-    protected function createConnection(string $class, string $connName, string $dsn, array $pool): void
+    protected function createConnection(string $class, string $dsn, array $pool): void
     {
         [
             $poolConfig['min'],
@@ -39,15 +42,18 @@ class Nsq extends AbstractSingletonPlugin
         ] = ArrayHelper::getValueByArray(
             $pool,
             ['min', 'max', 'wait', 'retry'],
-            null,
             [1, 1, 0, 3]
         );
-        MakeNsqConnection::addConnection($class, $connName, $dsn, Consumer::class, $poolConfig);
+        MakeNsqConnection::addConnection($class, $this->topic, $dsn, Consumer::class, $poolConfig);
     }
 
     /**
      * @return mixed|void
-     * @throws Exception
+     * @throws DependencyException
+     * @throws InvalidConfigException
+     * @throws NotFoundException
+     * @throws ReflectionException
+     * @throws Throwable
      */
     public function init()
     {
@@ -60,24 +66,23 @@ class Nsq extends AbstractSingletonPlugin
         ] = ArrayHelper::getValueByArray(
             $this->config,
             ['topic', 'class', 'dsn', 'pool'],
-            null,
             [
                 'pool' => []
             ]
         );
-        if ($dsn === null || $class === null || $topic === null) {
+        if ($dsn === null || $class === null || $this->topic === null) {
             throw new InvalidConfigException("class, dsn,topic must be set in $this->key");
         }
-        $this->createConnection($class, $topic, $dsn, $pool);
+        $this->createConnection($class, $dsn, $pool);
     }
 
     /**
-     * @throws \Exception
+     * @throws Throwable
      */
     public function run()
     {
         /** @var NsqClient $nsq */
-        $nsq = getDI('nsq')->get($topic);
+        $nsq = getDI('nsq')->get($this->topic);
         if (!is_array($this->input)) {
             $this->input = [$this->input];
         }

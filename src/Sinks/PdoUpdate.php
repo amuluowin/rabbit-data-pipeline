@@ -5,16 +5,16 @@ namespace Rabbit\Data\Pipeline\Sinks;
 
 use DI\DependencyException;
 use DI\NotFoundException;
-use rabbit\activerecord\ActiveRecord;
-use rabbit\App;
-use rabbit\core\Context;
+use Rabbit\ActiveRecord\ActiveRecord;
+use Rabbit\Base\App;
+use Rabbit\Base\Core\Context;
+use Rabbit\Base\Exception\InvalidArgumentException;
+use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
-use rabbit\db\ConnectionInterface;
-use rabbit\db\Exception;
-use rabbit\db\MakePdoConnection;
-use rabbit\exception\InvalidArgumentException;
-use rabbit\exception\InvalidConfigException;
-use rabbit\helper\ArrayHelper;
+use Rabbit\DB\MakePdoConnection;
+use Rabbit\Pool\ConnectionInterface;
+use Throwable;
 
 /**
  * Class PdoUpdate
@@ -23,9 +23,9 @@ use rabbit\helper\ArrayHelper;
 class PdoUpdate extends AbstractPlugin
 {
     /** @var string */
-    protected $tableName;
+    protected ?string $tableName;
     /** @var string */
-    protected $dbName;
+    protected string $dbName;
 
     /**
      * @param string $class
@@ -33,7 +33,7 @@ class PdoUpdate extends AbstractPlugin
      * @param array $pool
      * @throws DependencyException
      * @throws NotFoundException
-     * @throws Exception
+     * @throws Throwable
      */
     private function createConnection(string $class, string $dsn, array $pool): void
     {
@@ -45,7 +45,6 @@ class PdoUpdate extends AbstractPlugin
         ] = ArrayHelper::getValueByArray(
             $pool,
             ['min', 'max', 'wait', 'retry'],
-            null,
             [10, 12, 0, 3]
         );
         MakePdoConnection::addConnection($class, $this->dbName, $dsn, $poolConfig);
@@ -53,7 +52,10 @@ class PdoUpdate extends AbstractPlugin
 
     /**
      * @return mixed|void
-     * @throws Exception
+     * @throws DependencyException
+     * @throws InvalidConfigException
+     * @throws NotFoundException
+     * @throws Throwable
      */
     public function init()
     {
@@ -79,7 +81,7 @@ class PdoUpdate extends AbstractPlugin
     }
 
     /**
-     * @throws Exception
+     * @throws Throwable
      */
     public function run(): void
     {
@@ -100,13 +102,12 @@ class PdoUpdate extends AbstractPlugin
             {
                 Context::set(md5(get_called_class() . 'tableName'), $tableName);
                 Context::set(md5(get_called_class() . 'dbName'), $dbName);
-                parent::__construct();
             }
 
             /**
              * @return mixed|string
              */
-            public static function tableName()
+            public static function tableName(): string
             {
                 return Context::get(md5(get_called_class() . 'tableName'));
             }

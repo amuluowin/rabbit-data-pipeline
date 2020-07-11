@@ -3,10 +3,11 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Transforms;
 
+use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Base\Helper\ArrayHelper;
+use Rabbit\Base\Helper\FileHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
-use rabbit\exception\InvalidConfigException;
-use rabbit\helper\ArrayHelper;
-use rabbit\helper\FileHelper;
+use Throwable;
 
 /**
  * Class LineParser
@@ -15,30 +16,31 @@ use rabbit\helper\FileHelper;
 class LineParser extends AbstractPlugin
 {
     /** @var string */
-    protected $split = PHP_EOL;
+    protected string $split = PHP_EOL;
     /** @var string */
-    protected $explode = "\t";
+    protected string $explode = "\t";
     /** @var int */
-    protected $columnLine = 0;
+    protected int $columnLine = 0;
     /** @var int */
-    protected $dataLine = 1;
+    protected int $dataLine = 1;
     /** @var array */
-    protected $field = [];
+    protected array $field = [];
     /** @var int */
-    protected $fieldLine = 0;
+    protected int $fieldLine = 0;
     /** @var string */
-    protected $fileType;
+    protected ?string $fileType;
     /** @var string */
-    protected $delimiter = ',';
+    protected string $delimiter = ',';
     /** @var string */
-    protected $enclosure = '"';
+    protected string $enclosure = '"';
     /** @var string */
-    protected $escape = '\\';
+    protected string $escape = '\\';
     /** @var string */
-    protected $idKey = 'id';
+    protected string $idKey = 'id';
 
     /**
      * @return mixed|void
+     * @throws Throwable
      */
     public function init()
     {
@@ -68,7 +70,6 @@ class LineParser extends AbstractPlugin
                 'escape',
                 'idKey'
             ],
-            null,
             [
                 PHP_EOL,
                 0,
@@ -89,7 +90,7 @@ class LineParser extends AbstractPlugin
     }
 
     /**
-     * @throws \Throwable
+     * @throws Throwable
      */
     public function run()
     {

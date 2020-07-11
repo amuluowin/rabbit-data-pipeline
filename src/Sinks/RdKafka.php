@@ -3,11 +3,14 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
 
+use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractSingletonPlugin;
-use rabbit\helper\ArrayHelper;
 use Rabbit\Rdkafka\KafkaManager;
 use RdKafka\Producer;
+use RdKafka\ProducerTopic;
 use RdKafka\Topic;
+use Throwable;
 
 /**
  * Class RdKafka
@@ -15,14 +18,15 @@ use RdKafka\Topic;
  */
 class RdKafka extends AbstractSingletonPlugin
 {
-    /** @var Topic */
-    protected $topic;
+    /** @var ProducerTopic */
+    protected ?ProducerTopic $topic;
     /** @var Producer */
-    protected $producer;
+    protected ?Producer $producer;
 
     /**
      * @return mixed|void
-     * @throws Exception
+     * @throws InvalidConfigException
+     * @throws Throwable
      */
     public function init()
     {
@@ -37,7 +41,7 @@ class RdKafka extends AbstractSingletonPlugin
             'topic',
             'options',
             'topicSet'
-        ], null, [
+        ], [
             'options' => [],
             'topicSet' => []
         ]);
