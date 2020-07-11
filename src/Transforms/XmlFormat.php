@@ -5,6 +5,7 @@ namespace Rabbit\Data\Pipeline\Transforms;
 
 use Exception;
 use Rabbit\Base\Helper\ArrayHelper;
+use Rabbit\Base\Helper\XmlHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 
 /**
@@ -15,8 +16,6 @@ class XmlFormat extends AbstractPlugin
 {
     /** @var string */
     protected string $rootTag;
-    /** @var string */
-    protected string $objectTag;
     /** @var string */
     protected string $itemTag;
     protected string $version;
@@ -31,19 +30,16 @@ class XmlFormat extends AbstractPlugin
         parent::init();
         [
             $this->rootTag,
-            $this->objectTag,
             $this->itemTag,
             $this->version,
             $this->charset
         ] = ArrayHelper::getValueByArray($this->config, [
             'rootTag',
-            'objectTag',
             'itemTag',
             'version',
             'charset',
         ], [
             'root',
-            '',
             'item',
             '1.0',
             'utf-8'
@@ -55,10 +51,9 @@ class XmlFormat extends AbstractPlugin
      */
     public function run(): void
     {
-        $data = XmlFormatHelper::format(
+        $data = XmlHelper::format(
             $this->input,
             $this->rootTag,
-            $this->objectTag,
             $this->itemTag,
             $this->version,
             $this->charset
