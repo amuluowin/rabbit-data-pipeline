@@ -28,7 +28,7 @@ class RdKafka extends AbstractSingletonPlugin
      * @throws InvalidConfigException
      * @throws Throwable
      */
-    public function init()
+    public function init(): void
     {
         parent::init();
         [

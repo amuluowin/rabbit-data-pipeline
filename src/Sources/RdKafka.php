@@ -26,7 +26,7 @@ class RdKafka extends AbstractSingletonPlugin
      * @throws Exception
      * @throws Throwable
      */
-    public function init()
+    public function init(): void
     {
         parent::init();
         array_walk($this->output, function (&$value) {

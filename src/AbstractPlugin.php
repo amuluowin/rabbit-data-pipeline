@@ -98,7 +98,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      * @return mixed|void
      * @throws Throwable
      */
-    public function init()
+    public function init(): void
     {
         $this->cache = getDI(self::CACHE_KEY);
         $this->errHandler = ArrayHelper::getValue($this->config, 'errHandler');

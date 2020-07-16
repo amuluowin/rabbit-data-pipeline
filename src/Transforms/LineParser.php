@@ -42,7 +42,7 @@ class LineParser extends AbstractPlugin
      * @return mixed|void
      * @throws Throwable
      */
-    public function init()
+    public function init(): void
     {
         parent::init();
         [
@@ -113,7 +113,7 @@ class LineParser extends AbstractPlugin
                         $data = explode($this->explode, $line);
                         $data[] = trim(array_pop($data));
                         if ($i === $this->columnLine) {
-                            $columns = explode($this->explode, str_replace('-','_', trim($line)));
+                            $columns = explode($this->explode, str_replace('-', '_', trim($line)));
                         } elseif ($this->fieldLine && $this->field && $i === $this->fieldLine) {
                             foreach ($this->field as $key => $index) {
                                 $field[array_search($key, $columns)] = $data[$index];

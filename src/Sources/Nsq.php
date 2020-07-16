@@ -57,7 +57,7 @@ class Nsq extends AbstractSingletonPlugin
      * @throws ReflectionException
      * @throws Throwable
      */
-    public function init()
+    public function init(): void
     {
         parent::init();
         $this->topics = (array)ArrayHelper::getValue($this->config, 'topics', []);

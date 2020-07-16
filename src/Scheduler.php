@@ -12,6 +12,7 @@ use Rabbit\Base\Exception\InvalidArgumentException;
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Base\Helper\ExceptionHelper;
+use Rabbit\Base\Helper\LockHelper;
 use Rabbit\DB\Redis\Redis;
 use Rabbit\DB\Redis\RedisLock;
 use ReflectionException;
@@ -29,8 +30,6 @@ class Scheduler implements SchedulerInterface, InitInterface
     protected ConfigParserInterface $parser;
     /** @var Redis */
     public ?Redis $redis;
-    /** @var RedisLock */
-    public ?RedisLock $lock;
     /** @var string */
     protected string $name = 'scheduler';
     /** @var array */
@@ -57,10 +56,10 @@ class Scheduler implements SchedulerInterface, InitInterface
      * @return mixed|void
      * @throws Throwable
      */
-    public function init()
+    public function init(): void
     {
-        $this->redis = getDI('redis');
-        $this->lock = new RedisLock($this->redis);
+        $this->redis = getDI('redis')->get();
+        LockHelper::add('redis', new RedisLock($this->redis));
     }
 
     /**

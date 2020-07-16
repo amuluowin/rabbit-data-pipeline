@@ -55,7 +55,7 @@ class Nsq extends AbstractSingletonPlugin
      * @throws ReflectionException
      * @throws Throwable
      */
-    public function init()
+    public function init(): void
     {
         parent::init();
         [

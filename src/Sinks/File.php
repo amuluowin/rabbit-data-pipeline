@@ -6,7 +6,6 @@ namespace Rabbit\Data\Pipeline\Sinks;
 use Rabbit\Base\App;
 use Rabbit\Base\Core\Exception;
 use Rabbit\Base\Exception\InvalidArgumentException;
-use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Base\Helper\ExceptionHelper;
 use Rabbit\Base\Helper\FileHelper;
@@ -31,7 +30,7 @@ class File extends AbstractPlugin
      * @return mixed|void
      * @throws Throwable
      */
-    public function init()
+    public function init(): void
     {
         parent::init();
         [$configPath, $this->fileName, $this->ext] = ArrayHelper::getValueByArray($this->config, ['path', 'fileName', 'ext']);

@@ -57,7 +57,7 @@ class PdoUpdate extends AbstractPlugin
      * @throws NotFoundException
      * @throws Throwable
      */
-    public function init()
+    public function init(): void
     {
         parent::init();
         [

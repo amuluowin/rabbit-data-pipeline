@@ -20,7 +20,7 @@ class Console extends AbstractPlugin
     /** @var string */
     protected string $method;
 
-    public function init()
+    public function init(): void
     {
         parent::init();
         [$this->encoding, $this->method] = ArrayHelper::getValueByArray($this->config, [

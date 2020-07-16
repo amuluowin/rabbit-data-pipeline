@@ -4,8 +4,6 @@ declare(strict_types=1);
 namespace Rabbit\Data\Pipeline\Sinks;
 
 use Co\System;
-use DI\DependencyException;
-use DI\NotFoundException;
 use Rabbit\Base\App;
 use Rabbit\Base\Core\Context;
 use Rabbit\Base\Core\Exception;
@@ -15,7 +13,6 @@ use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 use Rabbit\DB\ClickHouse\ActiveRecord;
 use Rabbit\DB\ClickHouse\BatchInsertCsv;
-use Rabbit\DB\ClickHouse\Connection;
 use Rabbit\DB\ClickHouse\MakeCKConnection;
 use Rabbit\DB\Expression;
 use Rabbit\Pool\ConnectionInterface;
@@ -45,7 +42,7 @@ class Clickhouse extends AbstractPlugin
      * @throws InvalidConfigException
      * @throws Throwable
      */
-    public function init()
+    public function init(): void
     {
         parent::init();
         [

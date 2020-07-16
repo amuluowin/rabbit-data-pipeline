@@ -17,7 +17,7 @@ class XmlParser extends AbstractPlugin
     /** @var array */
     protected array $fields = [];
 
-    public function init()
+    public function init(): void
     {
         parent::init();
         $this->fields = (array)ArrayHelper::getValue($this->config, 'fields', []);

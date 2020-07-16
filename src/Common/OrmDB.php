@@ -24,7 +24,7 @@ class OrmDB extends Pdo
      * @throws NotFoundException
      * @throws Throwable
      */
-    public function init()
+    public function init(): void
     {
         parent::init();
         if (!is_array($this->sql)) {
