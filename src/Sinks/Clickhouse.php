@@ -176,65 +176,35 @@ class Clickhouse extends AbstractPlugin
      */
     protected function updateFlag(array $updateFlagCondition): void
     {
-        if ($this->driver === 'clickhouse') {
-            $model = new class($this->tableName, $this->db) extends ActiveRecord {
-                /**
-                 *  constructor.
-                 * @param string $tableName
-                 * @param string $db
-                 */
-                public function __construct(string $tableName, string $db)
-                {
-                    Context::set(md5(get_called_class() . 'tableName'), $tableName);
-                    Context::set(md5(get_called_class() . 'db'), $db);
-                }
+        $model = new class($this->driver, $this->tableName, $this->db) extends ActiveRecord {
+            /**
+             *  constructor.
+             * @param string $tableName
+             * @param string $db
+             */
+            public function __construct(string $driver, string $tableName, string $db)
+            {
+                Context::set(md5(get_called_class() . 'driver'), $driver);
+                Context::set(md5(get_called_class() . 'tableName'), $tableName);
+                Context::set(md5(get_called_class() . 'db'), $db);
+            }
 
-                /**
-                 * @return mixed|string
-                 */
-                public static function tableName(): string
-                {
-                    return Context::get(md5(get_called_class() . 'tableName'));
-                }
+            /**
+             * @return mixed|string
+             */
+            public static function tableName(): string
+            {
+                return Context::get(md5(get_called_class() . 'tableName'));
+            }
 
-                /**
-                 * @return ConnectionInterface
-                 */
-                public static function getDb(): ConnectionInterface
-                {
-                    return getDI('clickhouse')->get(Context::get(md5(get_called_class() . 'db')));
-                }
-            };
-        } else {
-            $model = new class($this->tableName, $this->db) extends \Rabbit\DB\Click\ActiveRecord {
-                /**
-                 *  constructor.
-                 * @param string $tableName
-                 * @param string $db
-                 */
-                public function __construct(string $tableName, string $db)
-                {
-                    Context::set(md5(get_called_class() . 'tableName'), $tableName);
-                    Context::set(md5(get_called_class() . 'db'), $db);
-                }
-
-                /**
-                 * @return mixed|string
-                 */
-                public static function tableName(): string
-                {
-                    return Context::get(md5(get_called_class() . 'tableName'));
-                }
-
-                /**
-                 * @return ConnectionInterface
-                 */
-                public static function getDb(): ConnectionInterface
-                {
-                    return getDI('click')->get(Context::get(md5(get_called_class() . 'db')));
-                }
-            };
-        }
+            /**
+             * @return ConnectionInterface
+             */
+            public static function getDb(): ConnectionInterface
+            {
+                return getDI(Context::get(md5(get_called_class() . 'driver')))->get(Context::get(md5(get_called_class() . 'db')));
+            }
+        };
 
         $res = $model::updateAll([$this->flagField => new Expression("{$this->flagField}+1")], array_merge([
             $this->flagField => [0, 1]
