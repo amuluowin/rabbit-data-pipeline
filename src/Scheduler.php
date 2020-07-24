@@ -96,7 +96,7 @@ class Scheduler implements SchedulerInterface, InitInterface
                 });
             }
         } else {
-            throw new InvalidArgumentException("No such target $key");
+            throw new InvalidArgumentException("No such name $key");
         }
     }
 

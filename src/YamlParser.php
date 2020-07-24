@@ -14,6 +14,8 @@ class YamlParser implements ConfigParserInterface
 {
     /** @var string */
     protected string $path;
+    /** @var array|string[] */
+    protected array $exts = ['yaml', 'yml'];
 
     /**
      * YamlParser constructor.
@@ -49,7 +51,7 @@ class YamlParser implements ConfigParserInterface
                     if (!is_file($path)) {
                         return true;
                     }
-                    if (pathinfo($path, PATHINFO_EXTENSION) !== 'yaml') {
+                    if (!in_array(pathinfo($path, PATHINFO_EXTENSION), $this->exts)) {
                         return false;
                     }
                     $yaml = yaml_parse_file($path);
