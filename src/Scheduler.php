@@ -83,11 +83,11 @@ class Scheduler implements SchedulerInterface, InitInterface
             if ($target && isset($this->config[$key][$target])) {
                 ['taskId' => $taskId, 'input' => $input, 'opt' => $opt, 'request' => $request] = $params;
                 $target = $this->getTarget($key, $target);
-                $target->setTaskId($taskId);
-                $target->setInput($input);
-                $target->setOpt($opt);
-                $target->setRequest($request);
-                rgo(function () use ($target) {
+                rgo(function () use ($target, $taskId, &$input, &$opt, &$request) {
+                    $target->setTaskId($taskId);
+                    $target->setInput($input);
+                    $target->setOpt($opt);
+                    $target->setRequest($request);
                     $target->process();
                 });
             } else {
@@ -195,22 +195,22 @@ class Scheduler implements SchedulerInterface, InitInterface
                 }
             } else {
                 $target = $this->getTarget($pre->taskName, $key);
-                $target->setTaskId($pre->getTaskId());
-                $target->setInput($data);
-                $opt = $pre->getOpt();
-                $target->setOpt($opt);
-                $req = $pre->getRequest();
-                $target->setRequest($req);
                 if ($transfer) {
-                    rgo(function () use ($target, $pre, $key) {
+                    rgo(function () use ($target, $pre, $key, &$data) {
+                        $target->setTaskId($pre->getTaskId());
+                        $target->setInput($data);
+                        $opt = $pre->getOpt();
+                        $target->setOpt($opt);
+                        $req = $pre->getRequest();
+                        $target->setRequest($req);
                         $target->process();
-                        if ($pre->output === []) {
+                        if ($target->output === []) {
                             App::info("「{$pre->taskName}」 {$pre->getTaskId()} finished!");
                         }
                     });
                 } else {
                     $target->process();
-                    if ($pre->output === []) {
+                    if ($target->output === []) {
                         App::info("「{$pre->taskName}」 {$pre->getTaskId()} finished!");
                     }
                 }

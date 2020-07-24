@@ -83,13 +83,13 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      */
     public function &__get($name)
     {
-        if (property_exists($this, $name)) {
-            return $this->$name;
-        }
         $getter = 'get' . $name;
         if (method_exists($this, $getter)) {
             $value = $this->$getter();
             return $value;
+        }
+        if (property_exists($this, $name)) {
+            return $this->$name;
         }
         $res = null;
         return $res;
