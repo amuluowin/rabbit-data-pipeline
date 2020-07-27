@@ -15,10 +15,7 @@
     "rabbit/base": "dev-master",
     "rabbit/cache": "dev-master",
     "rabbit/httpclient": "dev-master",
-    "rabbit/db": "dev-master",
-    "rabbit/active-record": "dev-master",
     "rabbit/db-redis": "dev-master",
-    "rabbit/pool": "dev-master",
     "ext-json": "*",
     "ext-yaml": "*"
   },
@@ -32,6 +29,9 @@
     "rabbit/rdkafka": "dev-master",
     "rabbit/db-clickhouse": "dev-master",
     "rabbit/db-click": "dev-master",
+    "rabbit/db": "dev-master",
+    "rabbit/active-record": "dev-master",
+    "rabbit/pool": "dev-master",
     "kwn/php-rdkafka-stubs": "^2.0",
     "swoole/ide-helper": "@dev",
     "phpunit/phpunit": "*"
@@ -39,6 +39,8 @@
   "suggest": {
     "rabbit/server": "Use server to run",
     "rabbit/process": "Use process to run",
+    "rabbit/db": "Use db",
+    "rabbit/active-record": "Use ar",
     "ext-simplexml": "Support xml parse",
     "ext-rdkafka": "Use kafka"
   },
