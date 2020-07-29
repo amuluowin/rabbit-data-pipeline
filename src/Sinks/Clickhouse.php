@@ -11,6 +11,7 @@ use Rabbit\Base\Exception\InvalidArgumentException;
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\Data\Pipeline\Message;
 use Rabbit\DB\ClickHouse\ActiveRecord;
 use Rabbit\DB\ClickHouse\BatchInsertCsv;
 use Rabbit\DB\ClickHouse\MakeCKConnection;
@@ -71,39 +72,39 @@ class Clickhouse extends AbstractPlugin
     }
 
     /**
+     * @param Message $msg
      * @throws Throwable
      */
-    public function run()
+    public function run(Message $msg): void
     {
-        if (empty($this->tableName) && isset($this->input['tableName'])) {
-            $this->tableName = $this->input['tableName'];
+        if (empty($this->tableName) && isset($msg->data['tableName'])) {
+            $this->tableName = $msg->data['tableName'];
         }
-        if (empty($this->tableName) && isset($this->opt['tableName'])) {
-            $this->tableName = $this->opt['tableName'];
+        if (empty($this->tableName) && isset($msg->opt['tableName'])) {
+            $this->tableName = $msg->opt['tableName'];
         }
-        if (isset($this->input['flagField'])) {
-            $this->flagField = $this->input['flagField'];
+        if (isset($msg->data['flagField'])) {
+            $this->flagField = $msg->data['flagField'];
         }
-        if (isset($this->input['primaryKey'])) {
-            $this->primaryKey = $this->input['primaryKey'];
+        if (isset($msg->data['primaryKey'])) {
+            $this->primaryKey = $msg->data['primaryKey'];
         }
-        if (!isset($this->input['columns']) || !isset($this->input['data']) || empty($this->tableName)) {
+        if (!isset($msg->data['columns']) || !isset($msg->data['data']) || empty($this->tableName)) {
             throw new InvalidArgumentException("Get Args Failed: 「columus」「data」「tableName」");
         }
 
+        // 获取update flag的条件
+        [$updateFlagCondition, $lock] = $this->getUpdateFlagCondition($msg);
         try {
-            // 获取update flag的条件
-            [$updateFlagCondition, $lock] = $this->getUpdateFlagCondition();
-
             // 设置redis锁， 防止同时插入更新
             if ($this->primaryKey && !empty($updateFlagCondition)) {
-                while (!$this->getLock($lock)) {
+                while (!$msg->getLock($lock)) {
                     App::warning("wait update $this->flagField lock: $lock");
                     System::sleep(1);
                 }
             }
             // 存储数据
-            $rows = $this->saveWithLine();
+            $rows = $this->saveWithLine($msg);
             App::warning("$this->tableName insert succ: $rows");
 
             // 更新flag 删除锁
@@ -115,21 +116,22 @@ class Clickhouse extends AbstractPlugin
             App::error($e);
             throw $e;
         } finally {
-            $this->deleteLock($lock);
+            $msg->deleteLock($lock);
         }
 
-        $this->output($rows);
+        $this->sink($rows);
     }
 
     /**
+     * @param Message $msg
      * @return int
      * @throws Exception
      * @throws Throwable
      */
-    protected function saveWithLine(): int
+    protected function saveWithLine(Message $msg): int
     {
-        if (!ArrayHelper::isIndexed($this->input['data'])) {
-            $this->input['data'] = [$this->input['data']];
+        if (!ArrayHelper::isIndexed($msg->data['data'])) {
+            $msg->data['data'] = [$msg->data['data']];
         }
         if ($this->driver === 'clickhouse') {
             $batch = new BatchInsertCsv(
@@ -137,22 +139,23 @@ class Clickhouse extends AbstractPlugin
                 strval(getDI('idGen')->create()),
                 getDI($this->driver)->get($this->db)
             );
-            $batch->addColumns($this->input['columns']);
-            foreach ($this->input['data'] as $item) {
+            $batch->addColumns($msg->data['columns']);
+            foreach ($msg->data['data'] as $item) {
                 $batch->addRow($item);
             }
             $rows = $batch->execute();
         } else {
-            $rows = getDI($this->driver)->get($this->db)->insert($this->tableName, $this->input['columns'], $this->input['data']);
+            $rows = getDI($this->driver)->get($this->db)->insert($this->tableName, $msg->data['columns'], $msg->data['data']);
         }
         App::warning("$this->tableName success: $rows");
         return $rows;
     }
 
     /**
+     * @param Message $msg
      * @return array
      */
-    protected function getUpdateFlagCondition(): array
+    protected function getUpdateFlagCondition(Message $msg): array
     {
         $result = [];
         $lock = '';
@@ -160,7 +163,7 @@ class Clickhouse extends AbstractPlugin
             $this->primaryKey = [$this->primaryKey];
         }
         foreach ($this->primaryKey as $field) {
-            $fieldValue = array_unique(ArrayHelper::getColumn($this->input['data'], array_search($field, $this->input['columns']), []));
+            $fieldValue = array_unique(ArrayHelper::getColumn($msg->data['data'], array_search($field, $msg->data['columns']), []));
             $result[$field] = $fieldValue;
             $lock .= "{$field}" . implode('', $fieldValue);
         }
@@ -179,6 +182,7 @@ class Clickhouse extends AbstractPlugin
         $model = new class($this->driver, $this->tableName, $this->db) extends ActiveRecord {
             /**
              *  constructor.
+             * @param string $driver
              * @param string $tableName
              * @param string $db
              */
@@ -210,7 +214,6 @@ class Clickhouse extends AbstractPlugin
             $this->flagField => [0, 1]
         ], $updateFlagCondition));
         if (!empty($res) && $res !== true) {
-            ding()->at()->text("Update $this->flagField Failed; tableName: $this->tableName, condition: " . json_encode($updateFlagCondition, JSON_UNESCAPED_UNICODE));
             throw new Exception($res);
         }
     }

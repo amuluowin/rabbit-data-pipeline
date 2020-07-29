@@ -30,29 +30,9 @@ interface SchedulerInterface
     public function run(string $key = null, string $target = null, array $params = []): void;
 
     /**
-     * @param AbstractPlugin $pre
+     * @param Message $pre
      * @param string $key
-     * @param $data
      * @param bool $transfer
      */
-    public function send(AbstractPlugin $pre, string $key, &$data, bool $transfer): void;
-
-    /**
-     * @param string|null $key
-     * @return bool
-     */
-    public function getLock(string $key = null): bool;
-
-    /**
-     * @param array $opt
-     * @param string $taskName
-     */
-    public function deleteAllLock(string $taskName, array $opt = []): void;
-
-    /**
-     * @param string|null $key
-     * @param string $taskName
-     * @return int
-     */
-    public function deleteLock(string $taskName, string $key = null): int;
+    public function send(Message $pre, string $key, bool $transfer): void;
 }

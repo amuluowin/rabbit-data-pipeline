@@ -12,6 +12,7 @@ use Rabbit\Base\Exception\InvalidArgumentException;
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\Data\Pipeline\Message;
 use Rabbit\DB\MakePdoConnection;
 use Rabbit\Pool\ConnectionInterface;
 use Throwable;
@@ -81,14 +82,15 @@ class PdoUpdate extends AbstractPlugin
     }
 
     /**
+     * @param Message $msg
      * @throws Throwable
      */
-    public function run(): void
+    public function run(Message $msg): void
     {
         [
             $condition,
             $updates
-        ] = ArrayHelper::getValueByArray($this->input, ['where', 'updates']);
+        ] = ArrayHelper::getValueByArray($msg->data, ['where', 'updates']);
         if (empty($updates)) {
             throw new InvalidArgumentException("updates can not empty");
         }
@@ -120,10 +122,10 @@ class PdoUpdate extends AbstractPlugin
                 return getDI('db')->get(Context::get(md5(get_called_class() . 'dbName')));
             }
         };
-        $res = $model::updateAll($updates, $condition);
-        if (!$res) {
+        $msg->data = $model::updateAll($updates, $condition);
+        if (!$msg->data) {
             App::warning("$this->tableName update failed");
         }
-        $this->output($res);
+        $this->sink($msg);
     }
 }

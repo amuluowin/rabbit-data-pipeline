@@ -4,10 +4,16 @@ declare(strict_types=1);
 namespace Rabbit\Data\Pipeline\Transforms;
 
 
+use DI\DependencyException;
+use DI\NotFoundException;
 use Rabbit\Base\Exception\InvalidArgumentException;
+use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\Data\Pipeline\Message;
+use ReflectionException;
 use Throwable;
+use Vtiful\Kernel\Excel;
 
 /**
  * Class XlsParser
@@ -44,16 +50,20 @@ class XlsParser extends AbstractPlugin
     }
 
     /**
+     * @param Message $msg
      * @throws Throwable
+     * @throws DependencyException
+     * @throws NotFoundException
+     * @throws InvalidConfigException
+     * @throws ReflectionException
      */
-    public function run()
+    public function run(Message $msg): void
     {
-        if (!is_file($this->input)) {
+        if (!is_file($msg->data)) {
             throw new InvalidArgumentException("input is not a file!");
         }
-        $excel = new \Vtiful\Kernel\Excel(['path' => dirname($this->input)]);
-        $excel->openFile(pathinfo($this->input, PATHINFO_FILENAME))
-            ->openSheet();
+        $excel = new Excel(['path' => dirname($msg->data)]);
+        $excel->openFile(pathinfo($msg->data, PATHINFO_FILENAME))->openSheet();
         $i = 0;
         $columns = [];
         $rows = [];
@@ -64,7 +74,7 @@ class XlsParser extends AbstractPlugin
                 $rows[] = $row;
             }
         }
-        $output = ['columns' => &$columns, 'data' => &$rows];
-        $this->output($output);
+        $msg->data = ['columns' => &$columns, 'data' => &$rows];
+        $this->sink($msg);
     }
 }

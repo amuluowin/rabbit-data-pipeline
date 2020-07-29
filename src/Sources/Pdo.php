@@ -8,10 +8,12 @@ use DI\NotFoundException;
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\Data\Pipeline\Message;
 use Rabbit\DB\ConnectionInterface;
 use Rabbit\DB\DBHelper;
 use Rabbit\DB\MakePdoConnection;
 use Rabbit\DB\Query;
+use ReflectionException;
 use Throwable;
 
 /**
@@ -84,7 +86,6 @@ class Pdo extends AbstractPlugin
         ] = ArrayHelper::getValueByArray(
             $this->config,
             ['class', 'dsn', 'pool', 'retryHandler', self::CACHE_KEY, 'sql', 'duration', 'query', 'each', 'params'],
-            null,
             [
                 self::CACHE_KEY => 'memory',
                 'query' => 'queryAll',
@@ -103,30 +104,34 @@ class Pdo extends AbstractPlugin
     }
 
     /**
+     * @param Message $msg
+     * @throws DependencyException
+     * @throws NotFoundException
      * @throws Throwable
+     * @throws ReflectionException
      */
-    public function run(): void
+    public function run(Message $msg): void
     {
         if (is_array($this->sql)) {
             $batch = ArrayHelper::remove($this->sql, 'batch');
             $this->sql = ArrayHelper::merge([self::CACHE_KEY => $this->duration], $this->sql);
             if ($batch) {
-                foreach (DBHelper::Search(new Query(), $this->sql)->batch($batch) as $batchList) {
-                    $this->send($batchList);
+                foreach (DBHelper::Search(new Query(getDI('db')->get($this->dbName)), $this->sql)->batch($batch) as $msg->data) {
+                    $this->send($msg);
                 }
             } else {
-                $data = DBHelper::PubSearch(new Query(), $this->sql, $this->query, getDI('db')->get($this->dbName));
-                $this->send($data);
+                $msg->data = DBHelper::PubSearch(new Query(getDI('db')->get($this->dbName)), $this->sql, $this->query);
+                $this->send($msg);
             }
         } else {
             $params = [];
             foreach ($this->params as $key => $value) {
                 switch ($value) {
                     case 'getFromInput':
-                        $params[] = ArrayHelper::getValue($this->input, $key);
+                        $params[] = ArrayHelper::getValue($msg->data, $key);
                         break;
                     case 'input':
-                        $params[] = json_encode($this->input, JSON_UNESCAPED_UNICODE);
+                        $params[] = json_encode($msg->data, JSON_UNESCAPED_UNICODE);
                         break;
                     default:
                         if (method_exists($this, $value)) {
@@ -136,25 +141,31 @@ class Pdo extends AbstractPlugin
                         }
                 }
             }
-            $data = getDI('db')->get($this->dbName)->createCommand($this->sql, $params)->cache($this->duration, $this->cache->getDriver($this->cacheDriver))->{$this->query}();
-            $this->send($data);
+            $msg->data = getDI('db')->get($this->dbName)->createCommand($this->sql, $params)->cache($this->duration, $this->cache->getDriver($this->cacheDriver))->{$this->query}();
+            $this->send($msg);
         }
     }
 
     /**
-     * @param $data
+     * @param Message $msg
+     * @throws DependencyException
+     * @throws InvalidConfigException
+     * @throws NotFoundException
+     * @throws ReflectionException
      * @throws Throwable
      */
-    protected function send(&$data): void
+    protected function send(Message $msg): void
     {
-        if (ArrayHelper::isIndexed($data) && $this->each) {
-            foreach ($data as $item) {
-                rgo(function () use (&$item) {
-                    $this->output($item);
+        if (ArrayHelper::isIndexed($msg->data) && $this->each) {
+            foreach ($msg->data as $item) {
+                rgo(function () use (&$item, $msg) {
+                    $tmp = clone $msg;
+                    $tmp->data = $item;
+                    $this->sink($tmp);
                 });
             }
         } else {
-            $this->output($data);
+            $this->sink($msg);
         }
     }
 }

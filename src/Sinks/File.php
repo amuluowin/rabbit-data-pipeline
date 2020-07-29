@@ -10,7 +10,9 @@ use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Base\Helper\ExceptionHelper;
 use Rabbit\Base\Helper\FileHelper;
 use Rabbit\Base\Helper\VarDumper;
+use Rabbit\Base\Helper\XmlHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\Data\Pipeline\Message;
 use Throwable;
 
 /**
@@ -38,20 +40,21 @@ class File extends AbstractPlugin
     }
 
     /**
+     * @param Message $msg
      * @throws Exception
      * @throws Throwable
      */
-    public function run(): void
+    public function run(Message $msg): void
     {
-        if (is_array($this->input)) {
-            foreach ($this->input as $fileName => $data) {
+        if (is_array($msg->data)) {
+            foreach ($msg->data as $fileName => $data) {
                 if (pathinfo($fileName, PATHINFO_DIRNAME)) {
-                    $this->saveFile($fileName, $data);
+                    $this->saveFile($msg, $fileName, $data);
                 } else {
-                    $this->saveFile(strtr($this->path, ['{fileName}' => $fileName]), $data);
+                    $this->saveFile($msg, strtr($this->path, ['{fileName}' => $fileName]), $data);
                 }
             }
-        } elseif (is_string($this->input)) {
+        } elseif (is_string($msg->data)) {
             if (is_callable($this->fileName)) {
                 $fileName = call_user_func($this->fileName);
             } else {
@@ -66,19 +69,20 @@ class File extends AbstractPlugin
                         $fileName = $this->fileName;
                 }
             }
-            $this->saveFile($this->path . '/' . $fileName . ".$this->ext");
+            $this->saveFile($msg, $this->path . '/' . $fileName . ".$this->ext");
         } else {
             throw new InvalidArgumentException("$this->taskName $this->key must input array or string");
         }
     }
 
     /**
+     * @param Message $msg
      * @param string $fileName
      * @param string $data
      * @throws Exception
      * @throws Throwable
      */
-    protected function saveFile(string $fileName, string $data = null): void
+    protected function saveFile(Message $msg, string $fileName, string $data = null): void
     {
         FileHelper::createDirectory(dirname($fileName), 777);
         $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
@@ -89,7 +93,7 @@ class File extends AbstractPlugin
                     return;
                 }
                 try {
-                    foreach (ArrayHelper::toArray($data ?? $this->input) as $item) {
+                    foreach (ArrayHelper::toArray($data ?? $msg->data) as $item) {
                         fputcsv($fp, $item);
                     }
                 } catch (Throwable $throwable) {
@@ -99,18 +103,19 @@ class File extends AbstractPlugin
                 }
                 break;
             case 'xml':
-                $data = $data ?? $this->input;
+                $data = $data ?? $msg->data;
                 if (is_string($data)) {
                     $this->saveContents($fileName, $data);
-                } else {
-                    $this->saveContents($fileName, XmlFormatHelper::format($data));
+                } elseif (is_array($data)) {
+                    $this->saveContents($fileName, XmlHelper::format($data));
                 }
                 break;
             case 'txt':
             default:
                 $this->saveContents($fileName, VarDumper::getDumper()->dumpAsString($data));
         }
-        $this->output($fileName);
+        $msg->data = $fileName;
+        $this->sink($msg);
     }
 
     /**
@@ -120,8 +125,8 @@ class File extends AbstractPlugin
      */
     protected function saveContents(string $fileName, ?string $data): void
     {
-        $len = file_put_contents($fileName, $this->input);
-        if ($len !== strlen($this->input)) {
+        $len = file_put_contents($fileName, $data);
+        if ($len !== strlen($data)) {
             App::error("save to $fileName $len not enough");
         }
     }

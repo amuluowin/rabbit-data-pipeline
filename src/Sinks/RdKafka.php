@@ -5,18 +5,18 @@ namespace Rabbit\Data\Pipeline\Sinks;
 
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
-use Rabbit\Data\Pipeline\AbstractSingletonPlugin;
+use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\Data\Pipeline\Message;
 use Rabbit\Rdkafka\KafkaManager;
 use RdKafka\Producer;
 use RdKafka\ProducerTopic;
-use RdKafka\Topic;
 use Throwable;
 
 /**
  * Class RdKafka
  * @package Rabbit\Data\Pipeline\Sinks
  */
-class RdKafka extends AbstractSingletonPlugin
+class RdKafka extends AbstractPlugin
 {
     /** @var ProducerTopic */
     protected ?ProducerTopic $topic;
@@ -63,9 +63,9 @@ class RdKafka extends AbstractSingletonPlugin
         $this->topic = $manager->getProducerTopic($name, $topic, $topicSet);
     }
 
-    public function run()
+    public function run(Message $msg): void
     {
-        $this->topic->produce(RD_KAFKA_PARTITION_UA, 0, $this->getInput());
+        $this->topic->produce(RD_KAFKA_PARTITION_UA, 0, $msg->data);
         $this->producer->poll(0);
         $this->producer->flush(1000);
     }

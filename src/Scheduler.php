@@ -13,7 +13,6 @@ use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Base\Helper\ExceptionHelper;
 use Rabbit\Base\Helper\LockHelper;
-use Rabbit\DB\Redis\Redis;
 use Rabbit\DB\Redis\RedisLock;
 use ReflectionException;
 use Throwable;
@@ -28,8 +27,6 @@ class Scheduler implements SchedulerInterface, InitInterface
     protected array $targets = [];
     /** @var ConfigParserInterface */
     protected ConfigParserInterface $parser;
-    /** @var Redis */
-    public ?Redis $redis;
     /** @var string */
     protected string $name = 'scheduler';
     /** @var array */
@@ -38,6 +35,8 @@ class Scheduler implements SchedulerInterface, InitInterface
     protected array $taskKeys = [];
     /** @var ISender[] */
     protected array $senders = [];
+    /** @var string */
+    protected string $redisKey = 'default';
 
     /**
      * Scheduler constructor.
@@ -58,8 +57,7 @@ class Scheduler implements SchedulerInterface, InitInterface
      */
     public function init(): void
     {
-        $this->redis = getDI('redis')->get();
-        LockHelper::add('redis', new RedisLock($this->redis));
+        LockHelper::add('redis', new RedisLock(getDI('redis')->get($this->redisKey)));
     }
 
     /**
@@ -69,7 +67,7 @@ class Scheduler implements SchedulerInterface, InitInterface
      * @throws DependencyException
      * @throws InvalidConfigException
      * @throws NotFoundException
-     * @throws ReflectionException
+     * @throws Throwable
      */
     public function run(string $key = null, string $target = null, array $params = []): void
     {
@@ -81,14 +79,10 @@ class Scheduler implements SchedulerInterface, InitInterface
             }
         } elseif (isset($this->config[$key])) {
             if ($target && isset($this->config[$key][$target])) {
-                ['taskId' => $taskId, 'input' => $input, 'opt' => $opt, 'request' => $request] = $params;
                 $target = $this->getTarget($key, $target);
-                rgo(function () use ($target, $taskId, &$input, &$opt, &$request) {
-                    $target->setTaskId($taskId);
-                    $target->setInput($input);
-                    $target->setOpt($opt);
-                    $target->setRequest($request);
-                    $target->process();
+                $msg = create(Message::class, array_merge(['redis' => getDI('redis')->get($this->redisKey)], $params), false);
+                rgo(function () use ($target, $msg) {
+                    $target->process($msg);
                 });
             } else {
                 rgo(function () use ($key, $params) {
@@ -125,8 +119,6 @@ class Scheduler implements SchedulerInterface, InitInterface
         if (is_string($output)) {
             $output = [$output => true];
         }
-        $lockEx = ArrayHelper::remove($params, 'lockEx', 30);
-        $pluginName = ArrayHelper::remove($params, 'name', uniqid());
         $target = create(
             $class,
             [
@@ -136,15 +128,11 @@ class Scheduler implements SchedulerInterface, InitInterface
                 'output' => $output,
                 'start' => $start,
                 'taskName' => $name,
-                'pluginName' => $pluginName,
-                'lockEx' => $lockEx,
                 'wait' => $wait,
             ],
             false
         );
-        if ($target instanceof AbstractSingletonPlugin) {
-            $this->targets[$name][$key] = $target;
-        }
+        $this->targets[$name][$key] = $target;
         return $target;
     }
 
@@ -163,21 +151,19 @@ class Scheduler implements SchedulerInterface, InitInterface
         foreach ($this->config[$task] as $key => $tmp) {
             if (ArrayHelper::getValue($tmp, 'start') === true) {
                 $target = $this->getTarget($task, $key);
-                $target->setTaskId((string)getDI('idGen')->create());
-                $target->setRequest($params);
-                $target->process();
+                $msg = create(Message::class, ['redisKey' => $this->redisKey, 'taskName' => $task, 'taskId' => (string)getDI('idGen')->create()], false);
+                $target->process($msg);
             }
         }
     }
 
     /**
-     * @param AbstractPlugin $pre
+     * @param Message $msg
      * @param string $key
-     * @param $data
      * @param bool $transfer
      * @throws Throwable
      */
-    public function send(AbstractPlugin $pre, string $key, &$data, bool $transfer): void
+    public function send(Message $msg, string $key, bool $transfer): void
     {
         try {
             $keyArr = explode(':', $key);
@@ -187,76 +173,31 @@ class Scheduler implements SchedulerInterface, InitInterface
                     throw new Exception("Scheduler has no sender name $sender");
                 }
                 if ($transfer) {
-                    rgo(function () use ($sender, $address, $target, $pre, &$data) {
-                        $this->senders[$sender]->send($address, $target, $pre, $data);
+                    rgo(function () use ($sender, $address, $target, $msg) {
+                        $this->senders[$sender]->send($address, $target, $msg);
                     });
                 } else {
-                    $this->senders[$sender]->send($address, $target, $pre, $data);
+                    $this->senders[$sender]->send($address, $target, $msg);
                 }
             } else {
-                $target = $this->getTarget($pre->taskName, $key);
+                $target = $this->getTarget($msg->taskName, $key);
                 if ($transfer) {
-                    rgo(function () use ($target, $pre, $key, &$data) {
-                        $target->setTaskId($pre->getTaskId());
-                        $target->setInput($data);
-                        $opt = $pre->getOpt();
-                        $target->setOpt($opt);
-                        $req = $pre->getRequest();
-                        $target->setRequest($req);
-                        $target->process();
+                    rgo(function () use ($target, $msg, $key, &$data) {
+                        $target->process($msg);
                         if ($target->output === []) {
-                            App::info("「{$pre->taskName}」 {$pre->getTaskId()} finished!");
+                            App::info("「{$msg->taskName}」 {$msg->taskId} finished!");
                         }
                     });
                 } else {
                     $target->process();
                     if ($target->output === []) {
-                        App::info("「{$pre->taskName}」 {$pre->getTaskId()} finished!");
+                        App::info("「{$msg->taskName}」 {$msg->taskId} finished!");
                     }
                 }
             }
         } catch (Throwable $exception) {
-            App::error("「{$pre->taskName}」「{$key}」 {$pre->getTaskId()}" . ExceptionHelper::dumpExceptionToString($exception));
-            $this->deleteAllLock($pre->taskName, $pre->getOpt());
+            App::error("「{$msg->taskName}」「{$key}」 {$msg->taskId}" . ExceptionHelper::dumpExceptionToString($exception));
+            $this->deleteAllLock($msg->taskName, $msg->opt);
         }
-    }
-
-    /**
-     * @param string|null $key
-     * @param int $lockEx
-     * @return bool
-     */
-    public function getLock(string $key = null, $lockEx = 60): bool
-    {
-        return (bool)$this->redis->set($key, true, ['NX', 'EX' => $lockEx]);
-    }
-
-    /**
-     * @param string $taskName
-     * @param array $opt
-     * @throws Throwable
-     */
-    public function deleteAllLock(string $taskName = '', array $opt = []): void
-    {
-        $locks = isset($opt['Locks']) ? $opt['Locks'] : [];
-        foreach ($locks as $lock) {
-            !is_string($lock) && $lock = strval($lock);
-            $this->deleteLock($taskName, $lock);
-        }
-    }
-
-    /**
-     * @param string|null $key
-     * @param string $taskName
-     * @return int
-     * @throws Throwable
-     */
-    public function deleteLock(string $taskName, string $key = null): int
-    {
-        if ($flag = $this->redis->del($key)) {
-            App::warning("「{$taskName}」 Delete Lock: " . $key);
-        }
-        return (int)$flag;
-
     }
 }

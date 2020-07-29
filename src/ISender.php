@@ -16,5 +16,5 @@ interface ISender
      * @param $data
      * @return array|null
      */
-    public function send(string $address, string $target, AbstractPlugin $pre, &$data): ?array;
+    public function send(string $address, string $target, Message $msg): ?array;
 }

@@ -7,6 +7,7 @@ use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Base\Helper\FileHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\Data\Pipeline\Message;
 use Throwable;
 
 /**
@@ -90,16 +91,17 @@ class LineParser extends AbstractPlugin
     }
 
     /**
+     * @param Message $msg
      * @throws Throwable
      */
-    public function run()
+    public function run(Message $msg): void
     {
         $comField = [];
-        if (isset($this->opt['comField']) && is_array($this->opt['comField'])) {
-            $comField = $this->opt['comField'];
+        if (isset($msg->opt['comField']) && is_array($msg->opt['comField'])) {
+            $comField = $msg->opt['comField'];
         }
-        if (is_file($this->input)) {
-            FileHelper::fgetsExt($this->input, function ($fp) use ($comField) {
+        if (is_file($msg->data)) {
+            FileHelper::fgetsExt($msg->data, function ($fp) use ($comField, $msg) {
                 $i = 0;
                 $columns = $rows = $field = [];
                 while (!feof($fp)) {
@@ -129,12 +131,12 @@ class LineParser extends AbstractPlugin
                 }
                 $columns = array_merge($columns, array_keys($comField));
                 $columns[] = $this->idKey;
-                $output = ['columns' => &$columns, 'data' => &$rows];
-                $this->output($output);
+                $msg->data = ['columns' => &$columns, 'data' => &$rows];
+                $this->sink($msg);
             });
         } else {
             /** @var  $data */
-            $data = explode($this->split, $this->input);
+            $data = explode($this->split, $msg->data);
             $columns = ArrayHelper::remove($data, $this->columnLine);
             $rows = [];
             foreach ($data as &$item) {
@@ -146,8 +148,8 @@ class LineParser extends AbstractPlugin
                 }
                 $rows[] = $data;
             }
-            $output = ['columns' => &$columns, 'data' => &$rows];
-            $this->output($output);
+            $msg->data = ['columns' => &$columns, 'data' => &$rows];
+            $this->sink($msg);
         }
     }
 }

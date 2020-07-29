@@ -3,10 +3,12 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Transforms;
 
-use Exception;
+use DOMException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Base\Helper\XmlHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\Data\Pipeline\Message;
+use Throwable;
 
 /**
  * Class XmlFormat
@@ -47,17 +49,18 @@ class XmlFormat extends AbstractPlugin
     }
 
     /**
-     * @throws Exception
+     * @param Message $msg
+     * @throws DOMException
      */
-    public function run(): void
+    public function run(Message $msg): void
     {
-        $data = XmlHelper::format(
-            $this->input,
+        $msg->data = XmlHelper::format(
+            $msg->data,
             $this->rootTag,
             $this->itemTag,
             $this->version,
             $this->charset
         );
-        $this->output($data);
+        $this->sink($msg);
     }
 }

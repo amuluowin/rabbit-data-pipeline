@@ -6,6 +6,7 @@ namespace Rabbit\Data\Pipeline\Transforms;
 use Rabbit\Base\App;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\Data\Pipeline\Message;
 use Throwable;
 
 /**
@@ -24,17 +25,18 @@ class XmlParser extends AbstractPlugin
     }
 
     /**
+     * @param Message $msg
      * @throws Throwable
      */
-    public function run(): void
+    public function run(Message $msg): void
     {
-        if (!is_string($this->input)) {
+        if (!is_string($msg->data)) {
             App::warning("$this->taskName $this->key must input path or xml string");
         }
-        if (is_file($this->input) && file_exists($this->input)) {
-            $xml = json_decode(json_encode(simplexml_load_file($this->input), JSON_UNESCAPED_UNICODE), true);
+        if (is_file($msg->data) && file_exists($msg->data)) {
+            $xml = json_decode(json_encode(simplexml_load_file($msg->data), JSON_UNESCAPED_UNICODE), true);
         } else {
-            $xml = json_decode(json_encode(simplexml_load_string($this->input), JSON_UNESCAPED_UNICODE), true);
+            $xml = json_decode(json_encode(simplexml_load_string($msg->data), JSON_UNESCAPED_UNICODE), true);
         }
         $params = [];
         foreach ($this->fields as $field => $item) {
@@ -47,6 +49,7 @@ class XmlParser extends AbstractPlugin
             }
         }
         empty($params) && ($params = &$xml);
-        $this->output($params);
+        $msg->data = $params;
+        $this->sink($msg);
     }
 }

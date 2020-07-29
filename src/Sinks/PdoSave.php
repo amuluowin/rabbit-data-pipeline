@@ -9,8 +9,10 @@ use Rabbit\ActiveRecord\ActiveRecord;
 use Rabbit\ActiveRecord\ARHelper;
 use Rabbit\Base\Core\Context;
 use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Base\Exception\NotSupportedException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\Data\Pipeline\Message;
 use Rabbit\DB\ConnectionInterface;
 use Rabbit\DB\Exception;
 use Rabbit\DB\MakePdoConnection;
@@ -89,14 +91,15 @@ class PdoSave extends AbstractPlugin
     }
 
     /**
+     * @param Message $msg
      * @throws Throwable
      */
-    public function run(): void
+    public function run(Message $msg): void
     {
-        if (empty($this->tableName) && isset($this->opt['tableName'])) {
-            $this->tableName = $this->opt['tableName'];
+        if (empty($this->tableName) && isset($msg->opt['tableName'])) {
+            $this->tableName = $msg->opt['tableName'];
         }
-        if (isset($this->input['columns'])) {
+        if (isset($msg->data['columns'])) {
             $this->saveWithLine();
         } else {
             $this->saveWithModel();
@@ -104,19 +107,23 @@ class PdoSave extends AbstractPlugin
     }
 
     /**
+     * @param Message $msg
      * @throws Throwable
      */
-    protected function saveWithLine(): void
+    protected function saveWithLine(Message $msg): void
     {
         $db = getDI($this->driver)->get($this->dbName);
-        $res = $db->createCommand()->batchInsert($this->tableName, $this->input['columns'], $this->input['data'])->execute();
-        $this->output($res);
+        $msg->data = $db->createCommand()->batchInsert($this->tableName, $msg->data['columns'], $msg->data['data'])->execute();
+        $this->sink($msg);
     }
 
     /**
+     * @param Message $msg
+     * @throws Exception
      * @throws Throwable
+     * @throws NotSupportedException
      */
-    protected function saveWithModel(): void
+    protected function saveWithModel(Message $msg): void
     {
         $model = new class($this->tableName, $this->dbName) extends ActiveRecord {
             /**
@@ -147,10 +154,10 @@ class PdoSave extends AbstractPlugin
             }
         };
 
-        $res = ARHelper::create($model, $this->input);
+        $msg->data = ARHelper::create($model, $msg->data);
         if (empty($res)) {
             throw new Exception("save to " . $model::tableName() . ' failed!');
         }
-        $this->output($res);
+        $this->sink($res);
     }
 }

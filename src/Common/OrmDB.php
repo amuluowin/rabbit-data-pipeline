@@ -8,7 +8,9 @@ use DI\DependencyException;
 use DI\NotFoundException;
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
+use Rabbit\Data\Pipeline\Message;
 use Rabbit\Data\Pipeline\Sources\Pdo;
+use ReflectionException;
 use Throwable;
 
 /**
@@ -33,18 +35,23 @@ class OrmDB extends Pdo
     }
 
     /**
+     * @param Message $msg
+     * @throws DependencyException
+     * @throws InvalidConfigException
+     * @throws NotFoundException
      * @throws Throwable
+     * @throws ReflectionException
      */
-    public function run(): void
+    public function run(Message $msg): void
     {
         $params = [];
         foreach ($this->params as $key => $value) {
             switch ($value) {
                 case 'getFromInput':
-                    $params[] = ArrayHelper::getValue($this->input, $key);
+                    $params[] = ArrayHelper::getValue($msg->data, $key);
                     break;
                 case 'input':
-                    $params[] = json_encode($this->input, JSON_UNESCAPED_UNICODE);
+                    $params[] = json_encode($msg->data, JSON_UNESCAPED_UNICODE);
                     break;
                 default:
                     if (method_exists($this, $value)) {
@@ -54,7 +61,7 @@ class OrmDB extends Pdo
                     }
             }
         }
-        $data = getDI('db')->get($this->dbName)->createCommandExt($this->sql, $params)->cache($this->duration, $this->cache->getDriver($this->cacheDriver))->{$this->query}();
-        $this->send($data);
+        $msg->data = getDI('db')->get($this->dbName)->createCommandExt($this->sql, $params)->cache($this->duration, $this->cache->getDriver($this->cacheDriver))->{$this->query}();
+        $this->send($msg);
     }
 }

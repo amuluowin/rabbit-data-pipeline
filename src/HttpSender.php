@@ -34,27 +34,27 @@ class HttpSender implements ISender
      * @return array|null
      * @throws Throwable
      */
-    public function send(string $address, string $target, AbstractPlugin $pre, &$data): ?array
+    public function send(string $address, string $target, Message $msg): ?array
     {
         $response = $this->client->request([
             'uri' => $address . $this->route,
             'method' => 'POST',
             'json' => [
-                'key' => $pre->taskName,
+                'key' => $msg->taskName,
                 'target' => $target,
                 'data' => [
-                    'taskId' => &$pre->taskId,
-                    'input' => &$data,
-                    'opt' => &$pre->opt,
-                    'request' => &$pre->request
+                    'taskId' => $msg->taskId,
+                    'data' => &$msg->data,
+                    'opt' => $msg->opt,
+                    'request' => $msg->request
                 ]
             ]
         ]);
         if ($response->getStatusCode() === 200) {
-            App::info("send $pre->taskName $target success");
+            App::info("send $msg->taskName $target success");
             return $response->jsonArray();
         }
-        App::error("send $pre->taskName $target failed " . (string)$response->getBody());
+        App::error("send $msg->taskName $target failed " . (string)$response->getBody());
         return null;
     }
 

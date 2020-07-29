@@ -6,7 +6,8 @@ namespace Rabbit\Data\Pipeline\Sinks;
 use PhpAmqpLib\Message\AMQPMessage;
 use Rabbit\Amqp\Connection;
 use Rabbit\Base\Helper\ArrayHelper;
-use Rabbit\Data\Pipeline\AbstractSingletonPlugin;
+use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\Data\Pipeline\Message;
 use Rabbit\Pool\BaseManager;
 use Rabbit\Pool\BasePool;
 use Rabbit\Pool\BasePoolProperties;
@@ -16,7 +17,7 @@ use Throwable;
  * Class Amqp
  * @package Rabbit\Data\Pipeline\Sinks
  */
-class Amqp extends AbstractSingletonPlugin
+class Amqp extends AbstractPlugin
 {
     /** @var string */
     protected string $name;
@@ -81,13 +82,14 @@ class Amqp extends AbstractSingletonPlugin
     }
 
     /**
+     * @param Message $msg
      * @throws Throwable
      */
-    public function run()
+    public function run(Message $msg):void
     {
         /** @var BaseManager $amqp */
         $amqp = getDI('amqp');
         $conn = $amqp->get($this->name);
-        $conn->basic_publish(new AMQPMessage($this->input, $this->properties));
+        $conn->basic_publish(new AMQPMessage($msg->data, $this->properties));
     }
 }

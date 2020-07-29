@@ -5,7 +5,7 @@ namespace Rabbit\Data\Pipeline\Sources;
 
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
-use Rabbit\Data\Pipeline\AbstractSingletonPlugin;
+use Rabbit\Data\Pipeline\AbstractPlugin;
 use Rabbit\Rdkafka\KafkaManager;
 use RdKafka\Exception;
 use RdKafka\KafkaConsumer;
@@ -16,7 +16,7 @@ use Throwable;
  * Class RdKafka
  * @package Rabbit\Data\Pipeline\Sources
  */
-class RdKafka extends AbstractSingletonPlugin
+class RdKafka extends AbstractPlugin
 {
     /** @var KafkaConsumer */
     protected ?KafkaConsumer $consumer;
@@ -63,15 +63,18 @@ class RdKafka extends AbstractSingletonPlugin
     }
 
     /**
+     * @param \Rabbit\Data\Pipeline\Message $msg
      * @throws Exception
      * @throws Throwable
      */
-    public function run()
+    public function run(\Rabbit\Data\Pipeline\Message $msg): void
     {
         /** @var KafkaManager $manager */
         $manager = getDI('kafka');
-        $manager->consumeWithKafkaConsumer($this->consumer, function (Message $message) {
-            $this->output($message->payload);
+        $manager->consumeWithKafkaConsumer($this->consumer, function (Message $message) use ($msg) {
+            $tmp = clone $msg;
+            $tmp->data = $message->payload;
+            $this->sink($tmp);
         });
     }
 }

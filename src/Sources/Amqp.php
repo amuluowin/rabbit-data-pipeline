@@ -8,7 +8,8 @@ use ErrorException;
 use PhpAmqpLib\Message\AMQPMessage;
 use Rabbit\Amqp\Connection;
 use Rabbit\Base\Helper\ArrayHelper;
-use Rabbit\Data\Pipeline\AbstractSingletonPlugin;
+use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\Data\Pipeline\Message;
 use Rabbit\Pool\BaseManager;
 use Rabbit\Pool\BasePool;
 use Rabbit\Pool\BasePoolProperties;
@@ -18,7 +19,7 @@ use Throwable;
  * Class Amqp
  * @package Rabbit\Data\Pipeline\Sources
  */
-class Amqp extends AbstractSingletonPlugin
+class Amqp extends AbstractPlugin
 {
     /** @var Connection */
     protected Connection $conn;
@@ -80,12 +81,16 @@ class Amqp extends AbstractSingletonPlugin
     }
 
     /**
+     * @param Message $msg
      * @throws ErrorException
      */
-    public function run()
+    public function run(Message $msg): void
     {
-        $this->conn->consume($this->consumerTag, false, false, false, false, function (AMQPMessage $message) {
-            $this->output($message->body);
-        });
+        $this->conn->consume($this->consumerTag, false, false, false, false
+            , function (AMQPMessage $message) use ($msg) {
+                $tmp = clone $msg;
+                $tmp->data = $message->body;
+                $this->sink($tmp);
+            });
     }
 }

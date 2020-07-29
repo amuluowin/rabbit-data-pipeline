@@ -11,6 +11,7 @@ use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Base\Helper\FileHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\Data\Pipeline\Message;
 use Rabbit\HttpClient\Client;
 use Swlib\Saber\Request;
 use Throwable;
@@ -87,22 +88,22 @@ class HttpRequest extends AbstractPlugin
     }
 
     /**
-     * @throws Throwable
+     * @param Message $msg
      * @throws Exception
+     * @throws Throwable
      */
-    public function run(): void
+    public function run(Message $msg): void
     {
-        $path = ArrayHelper::remove($this->input, 'download_dir');
-        $throttleTime = ArrayHelper::remove($this->input, 'throttleTime', 0);
-        $throttleTime = $throttleTime > 0 ? $throttleTime : $this->throttleTime;
+        $path = ArrayHelper::remove($msg->data, 'download_dir');
+        $throttleTime = ArrayHelper::remove($msg->data, 'throttleTime', $this->throttleTime);
         $request_id = uniqid();
         if ($this->download && $path) {
             FileHelper::createDirectory(dirname($path), 777);
-            $this->input += ['download_dir' => $path];
+            $msg->data += ['download_dir' => $path];
         }
 
         $options = [
-            'timeout' => ArrayHelper::getValue($this->opt, 'requestTimeOut', $this->timeout),
+            'timeout' => ArrayHelper::getValue($msg->opt, 'requestTimeOut', $this->timeout),
         ];
         if ($this->driver === 'saber') {
             $options = array_merge([
@@ -123,10 +124,10 @@ class HttpRequest extends AbstractPlugin
                 'after' => [function (ResponseInterface $response) use ($request_id) {
                     App::info("Request $request_id finish");
                 }]
-            ], $options, $this->input);
+            ], $options, $msg->data);
             if ($this->retry) {
-                $options['retry'] = function (Request $request, $throttleTime) {
-                    return call_user_func($this->retry, $request, $this->throttleTime === null ? $throttleTime : $this->throttleTime);
+                $options['retry'] = function (Request $request) use ($throttleTime) {
+                    return call_user_func($this->retry, $request, $throttleTime);
                 };
             }
         }
@@ -135,16 +136,16 @@ class HttpRequest extends AbstractPlugin
         if (!$this->download) {
             $format = $this->format;
             if (method_exists($response, $format)) {
-                $outPutData = $response->$format();
+                $msg->data = $response->$format();
             } else {
-                $outPutData = (string)$response->getBody();
+                $msg->data = (string)$response->getBody();
             }
         } else {
-            $outPutData = $path;
+            $msg->data = $path;
         }
         if (is_callable($this->checkResponseFunc)) {
-            call_user_func_array($this->checkResponseFunc, [&$outPutData]);
+            call_user_func($this->checkResponseFunc, $msg);
         }
-        $this->output($outPutData);
+        $this->sink($msg);
     }
 }

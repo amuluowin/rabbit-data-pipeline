@@ -7,7 +7,8 @@ use DI\DependencyException;
 use DI\NotFoundException;
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
-use Rabbit\Data\Pipeline\AbstractSingletonPlugin;
+use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\Data\Pipeline\Message;
 use Rabbit\Nsq\Consumer;
 use Rabbit\Nsq\MakeNsqConnection;
 use Rabbit\Nsq\NsqClient;
@@ -18,7 +19,7 @@ use Throwable;
  * Class Nsq
  * @package Rabbit\Data\Pipeline\Sinks
  */
-class Nsq extends AbstractSingletonPlugin
+class Nsq extends AbstractPlugin
 {
     /** @var string */
     protected ?string $topic;
@@ -77,15 +78,16 @@ class Nsq extends AbstractSingletonPlugin
     }
 
     /**
+     * @param Message $msg
      * @throws Throwable
      */
-    public function run()
+    public function run(Message $msg):void
     {
         /** @var NsqClient $nsq */
         $nsq = getDI('nsq')->get($this->topic);
-        if (!is_array($this->input)) {
-            $this->input = [$this->input];
+        if (!is_array($msg->data)) {
+            $msg->data = [$msg->data];
         }
-        $nsq->publishMulti($this->input);
+        $nsq->publishMulti($msg->data);
     }
 }

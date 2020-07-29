@@ -8,7 +8,8 @@ use DI\NotFoundException;
 use Rabbit\Base\App;
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
-use Rabbit\Data\Pipeline\AbstractSingletonPlugin;
+use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\Data\Pipeline\Message;
 use Rabbit\Nsq\Consumer;
 use Rabbit\Nsq\MakeNsqConnection;
 use Rabbit\Nsq\NsqClient;
@@ -19,7 +20,7 @@ use Throwable;
  * Class Nsq
  * @package Rabbit\Data\Pipeline\Sources
  */
-class Nsq extends AbstractSingletonPlugin
+class Nsq extends AbstractPlugin
 {
     /** @var array */
     protected array $topics = [];
@@ -82,11 +83,12 @@ class Nsq extends AbstractSingletonPlugin
     }
 
     /**
+     * @param Message $msg
      * @throws Throwable
      */
-    public function run()
+    public function run(Message $msg): void
     {
-        if (empty($topic = ArrayHelper::getValue($this->input, 'topic'))) {
+        if (empty($topic = ArrayHelper::getValue($msg->data, 'topic'))) {
             $needRun = $this->topics;
         } else {
             $needRun = [$this->topics[$topic]];
@@ -102,8 +104,10 @@ class Nsq extends AbstractSingletonPlugin
             $nsq->subscribe([
                 'rdy' => ArrayHelper::getValue($config, 'rdy', swoole_cpu_num()),
                 'timeout' => ArrayHelper::getValue($config, 'timeout', 5)
-            ], function (array $message) {
-                $this->output($message);
+            ], function (array $message) use ($msg) {
+                $out = clone $msg;
+                $out->data = $message;
+                $this->sink($out);
             });
         }
     }
