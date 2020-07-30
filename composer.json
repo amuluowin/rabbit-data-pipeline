@@ -34,6 +34,7 @@
     "rabbit/pool": "dev-master",
     "kwn/php-rdkafka-stubs": "^2.0",
     "swoole/ide-helper": "@dev",
+    "viest/php-ext-xlswriter-ide-helper": "dev-master",
     "phpunit/phpunit": "*"
   },
   "suggest": {
@@ -42,7 +43,8 @@
     "rabbit/db": "Use db",
     "rabbit/active-record": "Use ar",
     "ext-simplexml": "Support xml parse",
-    "ext-rdkafka": "Use kafka"
+    "ext-rdkafka": "Use kafka",
+    "ext-xlswriter": "Use xlswriter to deal excel"
   },
   "autoload": {
     "psr-4": {

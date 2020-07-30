@@ -124,7 +124,7 @@ class LineParser extends AbstractPlugin
             $i = 0;
             if (in_array($this->fileType, ['xls', 'xlsx'])) {
                 $config = ['path' => dirname($msg->data)];
-                $excel = new Excel($config);
+                $excel = new \Vtiful\Kernel\Excel($config);
                 $excel->openFile(basename($msg->data))->openSheet($this->sheet, Excel::SKIP_EMPTY_ROW);
                 while ($line = $excel->nextRow()) {
                     $this->makeData($i, $field, $line, $columns, $rows);
