@@ -107,6 +107,9 @@ class LineParser extends AbstractPlugin
         if (in_array($this->fileType, ['xls', 'xlsx']) && !$this->sheet) {
             throw new InvalidConfigException("When xls or xlsx you must set sheet");
         }
+        if (in_array($this->fileType, ['xls', 'xlsx']) && !extension_loaded('xlswriter')) {
+            throw new InvalidConfigException("When xls or xlsx you must use ext-xlswriter");
+        }
     }
 
     /**
