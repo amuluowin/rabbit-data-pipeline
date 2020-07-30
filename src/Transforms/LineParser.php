@@ -27,7 +27,7 @@ class LineParser extends AbstractPlugin
     /** @var array */
     protected array $field = [];
     /** @var int */
-    protected int $fieldLine = 0;
+    protected ?int $fieldLine = 0;
     /** @var string */
     protected ?string $fileType;
     /** @var string */
@@ -37,7 +37,18 @@ class LineParser extends AbstractPlugin
     /** @var string */
     protected string $escape = '\\';
     /** @var string */
-    protected string $idKey = 'id';
+    protected ?string $idKey = null;
+    /** @var array */
+    protected array $cols = [];
+    /** @var string|null */
+    protected ?string $sheet = null;
+
+    const SUPPORT_EXT = [
+        'xls',
+        'xlsx',
+        'txt',
+        'csv'
+    ];
 
     /**
      * @return mixed|void
@@ -48,6 +59,7 @@ class LineParser extends AbstractPlugin
         parent::init();
         [
             $this->split,
+            $this->explode,
             $this->columnLine,
             $this->dataLine,
             $this->field,
@@ -56,11 +68,13 @@ class LineParser extends AbstractPlugin
             $this->delimiter,
             $this->enclosure,
             $this->escape,
-            $this->idKey
+            $this->idKey,
+            $this->sheet
         ] = ArrayHelper::getValueByArray(
             $this->config,
             [
                 'split',
+                'explode',
                 'columnLine',
                 'dataLine',
                 'field',
@@ -69,10 +83,12 @@ class LineParser extends AbstractPlugin
                 'delimiter',
                 'enclosure',
                 'escape',
-                'idKey'
+                'idKey',
+                'sheet'
             ],
             [
                 PHP_EOL,
+                "\t",
                 0,
                 1,
                 [],
@@ -81,13 +97,16 @@ class LineParser extends AbstractPlugin
                 ',',
                 '"',
                 '\\',
-                'id'
+                null,
+                null
             ]
         );
-        if (!$this->fileType) {
-            throw new InvalidConfigException("fileType must be set in $this->key");
+        if (!$this->fileType || !in_array($this->fileType, self::SUPPORT_EXT)) {
+            throw new InvalidConfigException(sprintf("fileType only support (%s)", implode(' & ', self::SUPPORT_EXT)));
         }
-        $this->fileType = strtolower($this->fileType);
+        if (in_array($this->fileType, ['xls', 'xlsx']) && !$this->sheet) {
+            throw new InvalidConfigException("When xls or xlsx you must set sheet");
+        }
     }
 
     /**
@@ -101,55 +120,78 @@ class LineParser extends AbstractPlugin
             $comField = $msg->opt['comField'];
         }
         if (is_file($msg->data)) {
-            FileHelper::fgetsExt($msg->data, function ($fp) use ($comField, $msg) {
-                $i = 0;
-                $columns = $rows = $field = [];
-                while (!feof($fp)) {
-                    if ($this->fileType === 'txt') {
-                        $line = fgets($fp);
-                    } elseif ($this->fileType === 'csv') {
-                        $line = fgetcsv($fp, $this->delimiter, $this->enclosure, $this->escape);
-                    }
-                    if ($line) {
-                        $i++;
-                        $data = explode($this->explode, $line);
-                        $data[] = trim(array_pop($data));
-                        if ($i === $this->columnLine) {
-                            $columns = explode($this->explode, str_replace('-', '_', trim($line)));
-                        } elseif ($this->fieldLine && $this->field && $i === $this->fieldLine) {
-                            foreach ($this->field as $key => $index) {
-                                $field[array_search($key, $columns)] = $data[$index];
-                            }
-                            array_splice($columns, 0, 0, array_keys($field));
+            $field = $columns = $rows = [];
+            $i = 0;
+            if (in_array($this->fileType, ['xls', 'xlsx'])) {
+                $config = ['path' => dirname($msg->data)];
+                $excel = new Excel($config);
+                $excel->openFile(basename($msg->data))->openSheet($this->sheet, Excel::SKIP_EMPTY_ROW);
+                while ($line = $excel->nextRow()) {
+                    $this->makeData($i, $field, $line, $columns, $rows);
+                }
+            } else {
+                FileHelper::fgetsExt($msg->data, function ($fp) use ($comField, &$i, &$field, &$columns, &$rows, $msg) {
+                    while (!feof($fp)) {
+                        if ($this->fileType === 'txt') {
+                            $line = fgets($fp);
+                            $line = explode($this->explode, trim($line));
                         } else {
-                            array_splice($data, 0, 0, array_values($field));
-                            $data = array_merge($data, array_values($comField));
-                            $data[] = getDI('idGen')->create();
-                            $rows[] = $data;
+                            $line = fgetcsv($fp, $this->delimiter, $this->enclosure, $this->escape);
+                        }
+                        if ($line) {
+                            $this->makeData($i, $field, $line, $columns, $rows);
                         }
                     }
-                }
-                $columns = array_merge($columns, array_keys($comField));
-                $columns[] = $this->idKey;
-                $msg->data = ['columns' => &$columns, 'data' => &$rows];
-                $this->sink($msg);
-            });
+                });
+            }
+            $columns = array_merge($columns, array_keys($comField));
+            $this->idKey && ($columns[] = $this->idKey);
+            $msg->data = ['columns' => &$columns, 'data' => &$rows];
+            $this->sink($msg);
         } else {
-            /** @var  $data */
-            $data = explode($this->split, $msg->data);
-            $columns = ArrayHelper::remove($data, $this->columnLine);
-            $rows = [];
-            foreach ($data as &$item) {
-                if ($this->field && $this->fieldLine) {
-                    $fields = ArrayHelper::remove($data, $this->fieldLine);
-                    foreach ($this->field as $key => $index) {
-                        $item = array_splice($item[array_search($key, $columns)], $fields[$index]);
-                    }
+            $rows = explode($this->split, $msg->data);
+            $columns = explode($this->explode, ArrayHelper::remove($data, $this->columnLine, []));
+            if ($this->field && $this->fieldLine) {
+                $line = explode($this->explode, ArrayHelper::remove($data, $this->fieldLine));
+                foreach ($this->field as $key => $index) {
+                    $field[array_search($key, $columns, true)] = $line[$index];
                 }
-                $rows[] = $data;
+            }
+            foreach ($rows as &$item) {
+                $item = explode($this->explode, $item);
+                if (isset($field)) {
+                    array_splice($item, 0, 0, array_values($field));
+                }
             }
             $msg->data = ['columns' => &$columns, 'data' => &$rows];
             $this->sink($msg);
+        }
+    }
+
+    /**
+     * @param int $i
+     * @param array $field
+     * @param array $line
+     * @param array $rows
+     * @throws Throwable
+     */
+    private function makeData(int &$i, array &$field, array &$line, array &$columns, array &$rows): void
+    {
+        $i++;
+        if ($i === $this->columnLine) {
+            if ($this->cols) {
+                $columns = ArrayHelper::getValueByArray($columns, $this->cols);
+            }
+        } elseif ($this->fieldLine && $this->field && $i === $this->fieldLine) {
+            foreach ($this->field as $key => $index) {
+                $field[array_search($key, $columns, true)] = $line[$index];
+            }
+            array_splice($columns, 0, 0, array_keys($field));
+        } else {
+            array_splice($data, 0, 0, array_values($field));
+            $line = array_merge($data, array_values($comField));
+            $this->idKey && ($data[] = getDI('idGen')->create());
+            $rows[] = $line;
         }
     }
 }
