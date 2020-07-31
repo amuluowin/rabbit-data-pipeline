@@ -197,7 +197,7 @@ class Scheduler implements SchedulerInterface, InitInterface
             }
         } catch (Throwable $exception) {
             App::error("「{$msg->taskName}」「{$key}」 {$msg->taskId}" . ExceptionHelper::dumpExceptionToString($exception));
-            $this->deleteAllLock($msg->taskName, $msg->opt);
+            $msg->deleteAllLock();
         }
     }
 }

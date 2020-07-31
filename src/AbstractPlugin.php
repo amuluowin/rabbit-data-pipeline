@@ -30,7 +30,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     /** @var array */
     public array $locks = [];
     /** @var array */
-    protected array $output = [];
+    public array $output = [];
     /** @var bool */
     protected bool $start = false;
     /** @var CacheInterface */

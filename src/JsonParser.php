@@ -45,8 +45,8 @@ class JsonParser implements ConfigParserInterface
     {
         $config = [];
         if (is_dir($this->path)) {
-            FileHelper::findFiles($this->path, [
-                'filter' => function ($path) use (&$config) {
+            FileHelper::dealFiles($this->path, [
+                'filter' => function (string $path) use (&$config) {
                     if (!is_file($path)) {
                         return true;
                     }
