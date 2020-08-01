@@ -163,7 +163,7 @@ class Scheduler implements SchedulerInterface, InitInterface
      * @param bool $transfer
      * @throws Throwable
      */
-    public function send(Message $msg, string $key, bool $transfer): void
+    public function next(Message $msg, string $key): void
     {
         try {
             $keyArr = explode(':', $key);
@@ -172,27 +172,12 @@ class Scheduler implements SchedulerInterface, InitInterface
                 if (!array_key_exists($sender, $this->senders)) {
                     throw new Exception("Scheduler has no sender name $sender");
                 }
-                if ($transfer) {
-                    rgo(function () use ($sender, $address, $target, $msg) {
-                        $this->senders[$sender]->send($address, $target, $msg);
-                    });
-                } else {
-                    $this->senders[$sender]->send($address, $target, $msg);
-                }
+                $this->senders[$sender]->send($address, $target, $msg);
             } else {
                 $target = $this->getTarget($msg->taskName, $key);
-                if ($transfer) {
-                    rgo(function () use ($target, $msg, $key, &$data) {
-                        $target->process($msg);
-                        if ($target->output === []) {
-                            App::info("「{$msg->taskName}」 {$msg->taskId} finished!");
-                        }
-                    });
-                } else {
-                    $target->process();
-                    if ($target->output === []) {
-                        App::info("「{$msg->taskName}」 {$msg->taskId} finished!");
-                    }
+                $target->process($msg);
+                if ($target->output === []) {
+                    App::info("「{$msg->taskName}」 {$msg->taskId} finished!");
                 }
             }
         } catch (Throwable $exception) {

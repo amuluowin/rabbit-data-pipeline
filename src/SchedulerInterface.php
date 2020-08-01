@@ -34,5 +34,5 @@ interface SchedulerInterface
      * @param string $key
      * @param bool $transfer
      */
-    public function send(Message $pre, string $key, bool $transfer): void;
+    public function next(Message $pre, string $key): void;
 }

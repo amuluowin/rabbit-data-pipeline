@@ -29,9 +29,6 @@ class RdKafka extends AbstractPlugin
     public function init(): void
     {
         parent::init();
-        array_walk($this->output, function (&$value) {
-            $value = false;
-        });
         [
             $dsn,
             $topics,
