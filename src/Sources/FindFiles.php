@@ -3,14 +3,11 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sources;
 
-use DI\DependencyException;
-use DI\NotFoundException;
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Base\Helper\FileHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 use Rabbit\Data\Pipeline\Message;
-use ReflectionException;
 use Throwable;
 
 /**
@@ -50,10 +47,6 @@ class FindFiles extends AbstractPlugin
 
     /**
      * @param Message $msg
-     * @throws InvalidConfigException
-     * @throws DependencyException
-     * @throws NotFoundException
-     * @throws ReflectionException
      * @throws Throwable
      */
     public function run(Message $msg): void
@@ -63,7 +56,7 @@ class FindFiles extends AbstractPlugin
             $this->sink($msg);
         } else {
             FileHelper::dealFiles($this->scanDir, [
-                'filter' => function (string $path) use ($msg) {
+                'filter' => function (string $path) use ($msg): bool {
                     if (!is_file($path)) {
                         return true;
                     }

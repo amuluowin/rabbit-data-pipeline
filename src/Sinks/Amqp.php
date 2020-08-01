@@ -19,9 +19,7 @@ use Throwable;
  */
 class Amqp extends AbstractPlugin
 {
-    /** @var string */
     protected string $name;
-    /** @var array */
     protected array $properties = [
         'content_type' => 'text/plain',
         'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT

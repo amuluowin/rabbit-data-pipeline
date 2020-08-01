@@ -61,7 +61,7 @@ class Nsq extends AbstractPlugin
     public function init(): void
     {
         parent::init();
-        $this->topics = (array)ArrayHelper::getValue($this->config, 'topics', []);
+        $this->topics = $this->config['topics'] ?? [];
         foreach ($this->topics as $topic => $config) {
             [
                 $dsn,
@@ -102,9 +102,9 @@ class Nsq extends AbstractPlugin
             /** @var NsqClient $nsq */
             $nsq = getDI('nsq')->get($topic);
             $nsq->subscribe([
-                'rdy' => ArrayHelper::getValue($config, 'rdy', swoole_cpu_num()),
-                'timeout' => ArrayHelper::getValue($config, 'timeout', 5)
-            ], function (array $message) use ($msg) {
+                'rdy' => $config['rdy'] ?? swoole_cpu_num(),
+                'timeout' => $config['timeout'] ?? 5
+            ], function (array $message) use ($msg): void {
                 $out = clone $msg;
                 $out->data = $message;
                 $this->sink($out);

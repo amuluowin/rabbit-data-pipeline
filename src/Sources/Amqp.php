@@ -21,9 +21,7 @@ use Throwable;
  */
 class Amqp extends AbstractPlugin
 {
-    /** @var Connection */
     protected Connection $conn;
-    /** @var string */
     protected string $consumerTag;
 
     /**
@@ -84,7 +82,7 @@ class Amqp extends AbstractPlugin
     public function run(Message $msg): void
     {
         $this->conn->consume($this->consumerTag, false, false, false, false
-            , function (AMQPMessage $message) use ($msg) {
+            , function (AMQPMessage $message) use ($msg): void {
                 $tmp = clone $msg;
                 $tmp->data = $message->body;
                 $this->sink($tmp);

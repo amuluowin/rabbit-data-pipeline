@@ -21,7 +21,7 @@ class XmlParser extends AbstractPlugin
     public function init(): void
     {
         parent::init();
-        $this->fields = (array)ArrayHelper::getValue($this->config, 'fields', []);
+        $this->fields = $this->config['fields'] ?? [];
     }
 
     /**
@@ -42,7 +42,7 @@ class XmlParser extends AbstractPlugin
         foreach ($this->fields as $field => $item) {
             if (is_array($item)) {
                 foreach ($item as $key) {
-                    $params[$field] = ArrayHelper::getValue($xml, $key, ArrayHelper::getValue($params, $field));
+                    $params[$field] = $xml[$key] ?? ArrayHelper::getValue($params, $field);
                 }
             } else {
                 $params[$field] = ArrayHelper::getValue($xml, $item);

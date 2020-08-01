@@ -73,21 +73,15 @@ class Scheduler implements SchedulerInterface, InitInterface
     {
         if ($key === null) {
             foreach (array_keys($this->config) as $key) {
-                rgo(function () use ($key, $params) {
-                    $this->process((string)$key, $params);
-                });
+                rgo(fn() => $this->process((string)$key, $params));
             }
         } elseif (isset($this->config[$key])) {
             if ($target && isset($this->config[$key][$target])) {
                 $target = $this->getTarget($key, $target);
                 $msg = create(Message::class, array_merge(['redis' => getDI('redis')->get($this->redisKey)], $params), false);
-                rgo(function () use ($target, $msg) {
-                    $target->process($msg);
-                });
+                rgo(fn() => $target->process($msg));
             } else {
-                rgo(function () use ($key, $params) {
-                    $this->process((string)$key, $params);
-                });
+                rgo(fn() => $this->process((string)$key, $params));
             }
         } else {
             throw new InvalidArgumentException("No such name $key");
@@ -160,7 +154,6 @@ class Scheduler implements SchedulerInterface, InitInterface
     /**
      * @param Message $msg
      * @param string $key
-     * @param bool $transfer
      * @throws Throwable
      */
     public function next(Message $msg, string $key): void

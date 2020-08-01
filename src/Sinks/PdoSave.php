@@ -24,11 +24,8 @@ use Throwable;
  */
 class PdoSave extends AbstractPlugin
 {
-    /** @var string */
     protected ?string $tableName;
-    /** @var string */
     protected string $dbName;
-    /** @var string */
     protected string $driver = 'db';
 
     /**
@@ -100,9 +97,9 @@ class PdoSave extends AbstractPlugin
             $this->tableName = $msg->opt['tableName'];
         }
         if (isset($msg->data['columns'])) {
-            $this->saveWithLine();
+            $this->saveWithLine($msg);
         } else {
-            $this->saveWithModel();
+            $this->saveWithModel($msg);
         }
     }
 
@@ -155,9 +152,9 @@ class PdoSave extends AbstractPlugin
         };
 
         $msg->data = ARHelper::create($model, $msg->data);
-        if (empty($res)) {
+        if (empty($msg->data)) {
             throw new Exception("save to " . $model::tableName() . ' failed!');
         }
-        $this->sink($res);
+        $this->sink($msg);
     }
 }

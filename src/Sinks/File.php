@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
 
+use DOMException;
 use Rabbit\Base\App;
 use Rabbit\Base\Core\Exception;
 use Rabbit\Base\Exception\InvalidArgumentException;
@@ -21,11 +22,8 @@ use Throwable;
  */
 class File extends AbstractPlugin
 {
-    /** @var string */
     protected ?string $path;
-    /** @var string */
     protected string $fileName;
-    /** @var string */
     protected string $ext;
 
     /**
@@ -78,9 +76,10 @@ class File extends AbstractPlugin
     /**
      * @param Message $msg
      * @param string $fileName
-     * @param string $data
+     * @param string|null $data
      * @throws Exception
      * @throws Throwable
+     * @throws DOMException
      */
     protected function saveFile(Message $msg, string $fileName, string $data = null): void
     {

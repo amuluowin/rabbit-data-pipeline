@@ -22,26 +22,16 @@ use Throwable;
  */
 class HttpRequest extends AbstractPlugin
 {
-    /** @var bool */
     protected bool $usePool = false;
-    /** @var int */
     protected int $timeout = 60;
-    /** @var int */
     protected ?int $throttleTime;
-    /** @var string */
-    protected ?string $error;
-    /** @var string */
     protected ?string $retry;
-    /** @var string */
     protected string $format;
-    /** @var bool */
     protected bool $download;
-    /** @var string */
     protected ?string $checkResponseFunc;
-    /** @var string */
     protected string $driver = 'saber';
-    /** @var Client */
     protected Client $client;
+    protected ?bool $isLog;
 
     /**
      * @return mixed|void
@@ -54,32 +44,32 @@ class HttpRequest extends AbstractPlugin
             $this->driver,
             $this->usePool,
             $this->timeout,
-            $this->error,
             $this->retry,
             $this->format,
             $this->download,
             $this->throttleTime,
             $this->checkResponseFunc,
+            $this->isLog,
         ] = ArrayHelper::getValueByArray($this->config, [
             'driver',
             'usePool',
             'timeout',
-            'error',
             'retry',
             'format',
             'download',
             'throttleTime',
-            'checkResponseFunc'
+            'checkResponseFunc',
+            'isLog'
         ], [
             'saber',
             true,
             60,
             null,
-            null,
             'string',
             false,
             null,
-            null
+            null,
+            true
         ]);
         if ($this->retry && !is_callable($this->retry)) {
             throw new InvalidConfigException("The retry must be callable");
@@ -103,28 +93,32 @@ class HttpRequest extends AbstractPlugin
         }
 
         $options = [
-            'timeout' => ArrayHelper::getValue($msg->opt, 'requestTimeOut', $this->timeout),
+            'timeout' => $msg->opt['requestTimeOut'] ?? $this->timeout
         ];
         if ($this->driver === 'saber') {
             $options = array_merge([
-                'use_pool' => $this->usePool,
-                "before" => [function (RequestInterface $request) use ($request_id) {
-                    $uri = $request->getUri();
-                    App::info(
-                        sprintf(
-                            "Request %s %s %s with body [%s]",
-                            $request_id,
-                            $request->getMethod(),
-                            $uri->getScheme() . "://" . $uri->getHost() . $uri->getPath(),
-                            (string)$request->getBody()
-                        ),
-                        "http"
-                    );
-                }],
-                'after' => [function (ResponseInterface $response) use ($request_id) {
-                    App::info("Request $request_id finish");
-                }]
+                'use_pool' => $this->usePool
             ], $options, $msg->data);
+            if ($this->isLog) {
+                $options = ArrayHelper::merge($options, [
+                    "before" => [function (RequestInterface $request) use ($request_id) {
+                        $uri = $request->getUri();
+                        App::info(
+                            sprintf(
+                                "Request %s %s %s with body [%s]",
+                                $request_id,
+                                $request->getMethod(),
+                                $uri->getScheme() . "://" . $uri->getHost() . $uri->getPath(),
+                                (string)$request->getBody()
+                            ),
+                            "http"
+                        );
+                    }],
+                    'after' => [function (ResponseInterface $response) use ($request_id) {
+                        App::info("Request $request_id finish");
+                    }]
+                ]);
+            }
             if ($this->retry) {
                 $options['retry'] = function (Request $request) use ($throttleTime) {
                     return call_user_func($this->retry, $request, $throttleTime);

@@ -21,7 +21,6 @@ use Throwable;
  */
 class Nsq extends AbstractPlugin
 {
-    /** @var string */
     protected ?string $topic;
 
     /**
@@ -81,12 +80,13 @@ class Nsq extends AbstractPlugin
      * @param Message $msg
      * @throws Throwable
      */
-    public function run(Message $msg):void
+    public function run(Message $msg): void
     {
         /** @var NsqClient $nsq */
         $nsq = getDI('nsq')->get($this->topic);
         if (!is_array($msg->data)) {
-            $msg->data = [$msg->data];
+            $nsq->publish((string)$msg->data);
+            return;
         }
         $nsq->publishMulti($msg->data);
     }

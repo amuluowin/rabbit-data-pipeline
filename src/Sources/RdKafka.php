@@ -68,7 +68,7 @@ class RdKafka extends AbstractPlugin
     {
         /** @var KafkaManager $manager */
         $manager = getDI('kafka');
-        $manager->consumeWithKafkaConsumer($this->consumer, function (Message $message) use ($msg) {
+        $manager->consumeWithKafkaConsumer($this->consumer, function (Message $message) use ($msg): void {
             $tmp = clone $msg;
             $tmp->data = $message->payload;
             $this->sink($tmp);

@@ -47,7 +47,7 @@ class YamlParser implements ConfigParserInterface
         $config = [];
         if (is_dir($this->path)) {
             FileHelper::dealFiles($this->path, [
-                'filter' => function (string $path) use (&$config) {
+                'filter' => function (string $path) use (&$config): bool {
                     if (!is_file($path)) {
                         return true;
                     }

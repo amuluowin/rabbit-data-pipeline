@@ -25,17 +25,11 @@ use Throwable;
  */
 class Clickhouse extends AbstractPlugin
 {
-    /** @var string */
     protected string $db;
-    /** @var string */
     protected ?string $tableName = null;
-    /** @var array */
     protected ?array $primaryKey;
-    /** @var string */
     protected string $flagField;
-    /** @var int */
     protected int $maxCount;
-    /** @var string */
     protected string $driver;
 
     /**
@@ -104,7 +98,7 @@ class Clickhouse extends AbstractPlugin
                 }
             }
             // 存储数据
-            $rows = $this->saveWithLine($msg);
+            $msg->data = $this->saveWithLine($msg);
             App::warning("$this->tableName insert succ: $rows");
 
             // 更新flag 删除锁
@@ -118,8 +112,7 @@ class Clickhouse extends AbstractPlugin
         } finally {
             $msg->deleteLock($lock);
         }
-
-        $this->sink($rows);
+        $this->sink($msg);
     }
 
     /**

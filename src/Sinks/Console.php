@@ -18,9 +18,7 @@ use Rabbit\Data\Pipeline\Message;
  */
 class Console extends AbstractPlugin
 {
-    /** @var string */
     protected string $encoding;
-    /** @var string */
     protected string $method;
 
     public function init(): void

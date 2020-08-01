@@ -23,9 +23,7 @@ use Throwable;
  */
 class PdoUpdate extends AbstractPlugin
 {
-    /** @var string */
     protected ?string $tableName;
-    /** @var string */
     protected string $dbName;
 
     /**

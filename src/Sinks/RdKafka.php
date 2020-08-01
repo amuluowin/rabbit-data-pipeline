@@ -18,9 +18,7 @@ use Throwable;
  */
 class RdKafka extends AbstractPlugin
 {
-    /** @var ProducerTopic */
     protected ?ProducerTopic $topic;
-    /** @var Producer */
     protected ?Producer $producer;
 
     /**
