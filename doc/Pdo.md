@@ -20,8 +20,8 @@
 * 插件配置
 
 ```yaml
-common_orm:
-  type: Rabbit\Data\Pipeline\Common\OrmDB
+source_pdo:
+  type: Rabbit\Data\Pipeline\Sources\Pdo
   sql: select * from test
   params:
   query: queryAll
@@ -32,12 +32,23 @@ common_orm:
   pool:
     min: 5
     max: 6
+
+sink_pdo:
+  type: Rabbit\Data\Pipeline\Sinks\Pdo
+  tableName: test
+  dbName: default
+  class: \Rabbit\DB\Mysql\Connection
+  dsn: 'mysql://root:root@localhost:3306/?dbname=test&charset=utf8'
+  pool:
+    min: 5
+    max: 6
 ```
 
-* `sql`sql语句或`Query`数组
-* `params`参数`[]`
-* `query`执行操作方法
-* `duration`缓存时间`null不缓存`，`0无限`
+* `tableName`要写入的数据库表,<big>sink插件用</big>
+* `sql`sql语句或`Query`数组,<big>source插件用</big>
+* `params`参数`[]`,<big>source插件用</big>
+* `query`执行操作方法,<big>source插件用</big>
+* `duration`缓存时间`null不缓存`，`0无限`,<big>source插件用</big>
 * `dbName`获取db配置的连接名，忽略此配置的数据库连接
 * `class`数据库连接类
 * `dsn`数据库连接dsn

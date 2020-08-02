@@ -32,8 +32,17 @@ source_kafka:
     BrokerVersion: 1.0.0
     OffsetReset: earliest
     MetadataRefreshIntervalMs: 10000
+
+sink_kafka:
+  type: Rabbit\Data\Pipeline\Sinks\Kafka
+  topic: test
+  topicSet: 
+    acks: '0'
+  dsn: localhost:9092, localhost:9093, localhost:9094
+  options:
+    socket.keepalive.enable: 'true'
 ```
 
 * `topic`消息主题
 * `dsn`kaaka服务器地址
-* `options`__参考__:<https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
+* `options & topicSet`__参考__:<https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>

@@ -2,7 +2,7 @@
 
 ## 介绍
 
-* <big>RabbitMQ消费者插件</big>
+* <big>RabbitMQ插件</big>
 
 ## 依赖
 
@@ -45,6 +45,11 @@ source_amqp:
     - 'false'
     - 'true'
     - 'false'
+
+sink_amqp:
+  properties:
+    content_type: text/plain
+    delivery_mode: 2
 ```
 
 * __参考文档__: <https://github.com/php-amqplib/php-amqplib>

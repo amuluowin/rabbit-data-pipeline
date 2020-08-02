@@ -25,11 +25,10 @@ use Throwable;
  */
 class Clickhouse extends AbstractPlugin
 {
-    protected string $db;
+    protected string $dbName;
     protected ?string $tableName = null;
     protected ?array $primaryKey;
     protected string $flagField;
-    protected int $maxCount;
     protected string $driver;
 
     /**
@@ -43,26 +42,29 @@ class Clickhouse extends AbstractPlugin
         [
             $class,
             $dsn,
-            $config,
+            $pool,
+            $this->dbName,
+            $this->driver,
             $this->tableName,
             $this->flagField,
-            $this->primaryKey,
-            $this->maxCount
+            $this->primaryKey
         ] = ArrayHelper::getValueByArray(
             $this->config,
-            ['class', 'dsn', 'config', 'tableName', 'flagField', 'primaryKey', 'maxCount'],
+            ['class', 'dsn', 'pool', 'dbName', 'driver', 'tableName', 'flagField', 'primaryKey'],
             [
-                'config' => [],
-                'flagField' => 'flag',
-                'maxCount' => 10000,
+                'pool' => [],
+                'flagField' => 'flag'
             ]
         );
         if ($dsn === null || $class === null || $this->primaryKey === null) {
             throw new InvalidConfigException("class, dsn, primaryKey must be set in $this->key");
         }
-        $dbName = md5($dsn);
-        $this->driver = MakeCKConnection::addConnection($class, $dbName, $dsn, $config);
-        $this->db = $dbName;
+        if (!$this->dbName && !$this->driver) {
+            $this->dbName = md5($dsn);
+            $this->driver = MakeCKConnection::addConnection($class, $this->dbName, $dsn, $pool);
+        } elseif (($this->dbName && !$this->driver) || (!$this->dbName && $this->driver)) {
+            throw new InvalidConfigException("dbName & driver must both has value or has no value");
+        }
     }
 
     /**
@@ -130,7 +132,7 @@ class Clickhouse extends AbstractPlugin
             $batch = new BatchInsertCsv(
                 $this->tableName,
                 strval(getDI('idGen')->create()),
-                getDI($this->driver)->get($this->db)
+                getDI($this->driver)->get($this->dbName)
             );
             $batch->addColumns($msg->data['columns']);
             foreach ($msg->data['data'] as $item) {
@@ -138,7 +140,7 @@ class Clickhouse extends AbstractPlugin
             }
             $rows = $batch->execute();
         } else {
-            $rows = getDI($this->driver)->get($this->db)->insert($this->tableName, $msg->data['columns'], $msg->data['data']);
+            $rows = getDI($this->driver)->get($this->dbName)->insert($this->tableName, $msg->data['columns'], $msg->data['data']);
         }
         App::warning("$this->tableName success: $rows");
         return $rows;
@@ -152,9 +154,6 @@ class Clickhouse extends AbstractPlugin
     {
         $result = [];
         $lock = '';
-        if (!is_array($this->primaryKey)) {
-            $this->primaryKey = [$this->primaryKey];
-        }
         foreach ($this->primaryKey as $field) {
             $fieldValue = array_unique(ArrayHelper::getColumn($msg->data['data'], array_search($field, $msg->data['columns']), []));
             $result[$field] = $fieldValue;
@@ -172,7 +171,7 @@ class Clickhouse extends AbstractPlugin
      */
     protected function updateFlag(array $updateFlagCondition): void
     {
-        $model = new class($this->driver, $this->tableName, $this->db) extends ActiveRecord {
+        $model = new class($this->driver, $this->tableName, $this->dbName) extends ActiveRecord {
             /**
              *  constructor.
              * @param string $driver

@@ -7,6 +7,8 @@ use DI\DependencyException;
 use DI\NotFoundException;
 use Rabbit\ActiveRecord\ActiveRecord;
 use Rabbit\ActiveRecord\ARHelper;
+use Rabbit\ActiveRecord\BaseActiveRecord;
+use Rabbit\Base\App;
 use Rabbit\Base\Core\Context;
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Exception\NotSupportedException;
@@ -22,7 +24,7 @@ use Throwable;
  * Class Pdo
  * @package Rabbit\Data\Pipeline\Sinks
  */
-class PdoSave extends AbstractPlugin
+class Pdo extends AbstractPlugin
 {
     protected ?string $tableName;
     protected string $dbName;
@@ -61,27 +63,25 @@ class PdoSave extends AbstractPlugin
     {
         parent::init();
         [
-            $mysql,
             $class,
+            $this->dbName,
             $dsn,
             $pool,
             $this->tableName
         ] = ArrayHelper::getValueByArray(
             $this->config,
-            ['mysql', 'class', 'dsn', 'pool', 'tableName'],
+            ['dbName', 'class', 'dsn', 'pool', 'tableName'],
             [
-                'pool' => [],
+                'pool' => []
             ]
         );
-        if ($this->taskName === null) {
+        if ($this->tableName === null) {
             throw new InvalidConfigException("taskName must be set in $this->key");
         }
-        if ($mysql === null && ($dsn === null || $class === null)) {
-            throw new InvalidConfigException("$this->key must need prams: mysql or class, dsn");
+        if ($dsn === null || $class === null) {
+            throw new InvalidConfigException("$this->key must need prams: class, dsn");
         }
-        if (!empty($mysql)) {
-            [$this->driver, $this->dbName] = explode('.', trim($mysql));
-        } else {
+        if (!$this->dbName) {
             $this->dbName = md5($dsn);
             $this->createConnection($class, $dsn, $pool);
         }
@@ -96,8 +96,14 @@ class PdoSave extends AbstractPlugin
         if (empty($this->tableName) && isset($msg->opt['tableName'])) {
             $this->tableName = $msg->opt['tableName'];
         }
+        [
+            $condition,
+            $updates
+        ] = ArrayHelper::getValueByArray($msg->data, ['where', 'updates']);
         if (isset($msg->data['columns'])) {
             $this->saveWithLine($msg);
+        } elseif ($condition && $updates) {
+            $this->saveWithCondition($condition, $updates);
         } else {
             $this->saveWithModel($msg);
         }
@@ -115,6 +121,20 @@ class PdoSave extends AbstractPlugin
     }
 
     /**
+     * @param array $updates
+     * @param array $condition
+     * @throws Throwable
+     */
+    protected function saveWithCondition(array $updates, array $condition): void
+    {
+        $msg->data = $model::updateAll($updates, $condition);
+        if (!$msg->data) {
+            App::warning("$this->tableName update failed");
+        }
+        $this->sink($msg);
+    }
+
+    /**
      * @param Message $msg
      * @throws Exception
      * @throws Throwable
@@ -122,7 +142,20 @@ class PdoSave extends AbstractPlugin
      */
     protected function saveWithModel(Message $msg): void
     {
-        $model = new class($this->tableName, $this->dbName) extends ActiveRecord {
+        $model = $this->getModel();
+        $msg->data = ARHelper::create($model, $msg->data);
+        if (empty($msg->data)) {
+            throw new Exception("save to " . $model::tableName() . ' failed!');
+        }
+        $this->sink($msg);
+    }
+
+    /**
+     * @return BaseActiveRecord
+     */
+    protected function getModel(): BaseActiveRecord
+    {
+        return new class($this->tableName, $this->dbName) extends ActiveRecord {
             /**
              *  constructor.
              * @param string $tableName
@@ -150,11 +183,5 @@ class PdoSave extends AbstractPlugin
                 return getDI('db')->get(Context::get(md5(get_called_class() . 'dbName')));
             }
         };
-
-        $msg->data = ARHelper::create($model, $msg->data);
-        if (empty($msg->data)) {
-            throw new Exception("save to " . $model::tableName() . ' failed!');
-        }
-        $this->sink($msg);
     }
 }

@@ -24,6 +24,11 @@ class Message extends BaseObject
     public array $request = [];
     protected string $redisKey = 'default';
 
+    public function __clone()
+    {
+        $this->data = null;
+    }
+
     /**
      * @param string $key
      * @return mixed|null

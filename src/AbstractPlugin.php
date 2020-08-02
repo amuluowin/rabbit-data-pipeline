@@ -7,7 +7,6 @@ use Psr\SimpleCache\CacheInterface;
 use Rabbit\Base\App;
 use Rabbit\Base\Contract\InitInterface;
 use Rabbit\Base\Core\BaseObject;
-use Rabbit\Base\Helper\ArrayHelper;
 use Throwable;
 use function Swoole\Coroutine\batch;
 
@@ -48,7 +47,6 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     public function init(): void
     {
         $this->cache = getDI(self::CACHE_KEY);
-        $this->errHandler = ArrayHelper::getValue($this->config, 'errHandler');
         $this->lockKey = $this->config['lockKey'] ?? [];
     }
 

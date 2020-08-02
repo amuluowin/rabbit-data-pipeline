@@ -46,11 +46,14 @@ class File extends AbstractPlugin
     {
         if (is_array($msg->data)) {
             foreach ($msg->data as $fileName => $data) {
+                is_array($data) && ($data = json_encode($data, JSON_UNESCAPED_UNICODE));
+                $tmp = clone $msg;
                 if (pathinfo($fileName, PATHINFO_DIRNAME)) {
-                    $this->saveFile($msg, $fileName, $data);
+                    $tmp->data = $this->saveFile($msg, $fileName, $data);
                 } else {
-                    $this->saveFile($msg, strtr($this->path, ['{fileName}' => $fileName]), $data);
+                    $tmp->data = $this->saveFile($msg, strtr($this->path, ['{fileName}' => $fileName]), $data);
                 }
+                $this->sink($tmp);
             }
         } elseif (is_string($msg->data)) {
             if (is_callable($this->fileName)) {
@@ -67,21 +70,21 @@ class File extends AbstractPlugin
                         $fileName = $this->fileName;
                 }
             }
-            $this->saveFile($msg, $this->path . '/' . $fileName . ".$this->ext");
+            $msg->data = $this->saveFile($msg, $this->path . '/' . $fileName . ".$this->ext");
+            $this->sink($msg);
         } else {
             throw new InvalidArgumentException("$this->taskName $this->key must input array or string");
         }
     }
 
     /**
-     * @param Message $msg
      * @param string $fileName
-     * @param string|null $data
+     * @param string $data
      * @throws Exception
      * @throws Throwable
      * @throws DOMException
      */
-    protected function saveFile(Message $msg, string $fileName, string $data = null): void
+    protected function saveFile(string $fileName, string $data): string
     {
         FileHelper::createDirectory(dirname($fileName), 777);
         $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
@@ -92,7 +95,7 @@ class File extends AbstractPlugin
                     return;
                 }
                 try {
-                    foreach (ArrayHelper::toArray($data ?? $msg->data) as $item) {
+                    foreach (ArrayHelper::toArray($data) as $item) {
                         fputcsv($fp, $item);
                     }
                 } catch (Throwable $throwable) {
@@ -102,7 +105,6 @@ class File extends AbstractPlugin
                 }
                 break;
             case 'xml':
-                $data = $data ?? $msg->data;
                 if (is_string($data)) {
                     $this->saveContents($fileName, $data);
                 } elseif (is_array($data)) {
@@ -113,8 +115,7 @@ class File extends AbstractPlugin
             default:
                 $this->saveContents($fileName, VarDumper::getDumper()->dumpAsString($data));
         }
-        $msg->data = $fileName;
-        $this->sink($msg);
+        return $fileName;
     }
 
     /**

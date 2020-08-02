@@ -19,12 +19,12 @@ class LineParser extends AbstractPlugin
 {
     protected string $split = PHP_EOL;
     protected string $explode = "\t";
-    protected int $columnLine = 0;
+    protected ?int $headLine = null;
     protected array $columns = [];
     protected array $dataLine = [1];
     protected ?int $endLine = null;
     protected array $field = [];
-    protected ?int $fieldLine = 0;
+    protected ?int $fieldLine = null;
     protected ?string $fileType;
     protected string $delimiter = ',';
     protected string $enclosure = '"';
@@ -34,7 +34,7 @@ class LineParser extends AbstractPlugin
     protected array $exclude = [];
     protected ?string $sheet = null;
     protected array $map = [];
-    protected array $deal = [];
+    protected array $addField = [];
 
     const SUPPORT_EXT = [
         'xls',
@@ -53,7 +53,7 @@ class LineParser extends AbstractPlugin
         [
             $this->split,
             $this->explode,
-            $this->columnLine,
+            $this->headLine,
             $this->columns,
             $this->dataLine,
             $this->field,
@@ -67,13 +67,13 @@ class LineParser extends AbstractPlugin
             $this->include,
             $this->exclude,
             $this->map,
-            $this->deal,
+            $this->addField,
         ] = ArrayHelper::getValueByArray(
             $this->config,
             [
                 'split',
                 'explode',
-                'columnLine',
+                'headLine',
                 'columns',
                 'dataLine',
                 'field',
@@ -87,12 +87,12 @@ class LineParser extends AbstractPlugin
                 'include',
                 'exclude',
                 'map',
-                'deal'
+                'addField'
             ],
             [
                 PHP_EOL,
                 "\t",
-                0,
+                null,
                 [],
                 [1],
                 [],
@@ -126,9 +126,10 @@ class LineParser extends AbstractPlugin
      */
     public function run(Message $msg): void
     {
-        $comField = $field = $columns = $rows = [];
+        $comField = $this->addField;
+        $field = $columns = $rows = [];
         if (isset($msg->opt['comField']) && is_array($msg->opt['comField'])) {
-            $comField = $msg->opt['comField'];
+            $comField = array_merge($this->addField, $msg->opt['comField']);
         }
         $i = 1;
         if (is_file($msg->data)) {
@@ -140,7 +141,7 @@ class LineParser extends AbstractPlugin
                     if ($this->endLine && $i >= $this->endLine) {
                         break;
                     }
-                    if ($i === $this->columnLine || ($this->field && $i === $this->fieldLine) || in_array($i, $this->dataLine) || $i >= max($this->dataLine)) {
+                    if ($i === $this->headLine || ($this->field && $i === $this->fieldLine) || in_array($i, $this->dataLine) || $i >= max($this->dataLine)) {
                         $this->makeData($i, $field, $comField, $line, $columns, $rows);
                     }
                     $i++;
@@ -157,7 +158,7 @@ class LineParser extends AbstractPlugin
                         } else {
                             $line = fgetcsv($fp, $this->delimiter, $this->enclosure, $this->escape);
                         }
-                        if ($line && ($i === $this->columnLine || ($this->field && $i === $this->fieldLine) || in_array($i, $this->dataLine) || $i >= max($this->dataLine))) {
+                        if ($line && ($i === $this->headLine || ($this->field && $i === $this->fieldLine) || in_array($i, $this->dataLine) || $i >= max($this->dataLine))) {
                             $this->makeData($i, $field, $comField, $line, $columns, $rows);
                         }
                         $i++;
@@ -166,7 +167,7 @@ class LineParser extends AbstractPlugin
             }
         } else {
             $rows = explode($this->split, $msg->data);
-            $columns = explode($this->explode, ArrayHelper::remove($data, $this->columnLine, []));
+            $columns = explode($this->explode, ArrayHelper::remove($data, $this->headLine, []));
             if ($this->field && $this->fieldLine) {
                 $line = explode($this->explode, ArrayHelper::remove($data, $this->fieldLine));
                 foreach ($this->field as $key => $index) {
@@ -177,7 +178,7 @@ class LineParser extends AbstractPlugin
                 if ($this->endLine && $i >= $this->endLine) {
                     break;
                 }
-                if ($i === $this->columnLine || ($this->field && $i === $this->fieldLine) || in_array($i, $this->dataLine) || $i >= max($this->dataLine)) {
+                if ($i === $this->headLine || ($this->field && $i === $this->fieldLine) || in_array($i, $this->dataLine) || $i >= max($this->dataLine)) {
                     $item = explode($this->explode, $item);
                     foreach ($this->exclude as $index) {
                         unset($item[$index]);
@@ -215,7 +216,7 @@ class LineParser extends AbstractPlugin
         foreach ($this->exclude as $index) {
             unset($line[$index]);
         }
-        if ($i === $this->columnLine) {
+        if ($i === $this->headLine) {
             if ($this->include) {
                 $columns = ArrayHelper::getValueByArray($line, array_keys($this->include));
             }
@@ -241,7 +242,7 @@ class LineParser extends AbstractPlugin
         if ($this->include) {
             $tmpCols = [];
             foreach ($this->include as $index => $deal) {
-                $deal && ($line[$index] = eval('$col=$line[$index];' . $deal));
+                $deal && is_string($deal) && ($line[$index] = eval('$col=$line[$index];' . $deal));
             }
             $remove = array_diff(array_keys($line), array_keys($this->include));
             foreach ($remove as $index) {

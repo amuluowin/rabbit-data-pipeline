@@ -26,13 +26,14 @@ class Nsq extends AbstractPlugin
     /**
      * @param string $class
      * @param string $dsn
+     * @param string $dsnd
      * @param array $pool
      * @throws DependencyException
      * @throws NotFoundException
      * @throws ReflectionException
      * @throws Throwable
      */
-    protected function createConnection(string $class, string $dsn, array $pool): void
+    protected function createConnection(string $class, string $dsn, string $dsnd, array $pool): void
     {
         [
             $poolConfig['min'],
@@ -44,7 +45,7 @@ class Nsq extends AbstractPlugin
             ['min', 'max', 'wait', 'retry'],
             [1, 1, 0, 3]
         );
-        MakeNsqConnection::addConnection($class, $this->topic, $dsn, Consumer::class, $poolConfig);
+        MakeNsqConnection::addConnection($class, $this->topic, $dsn, $dsnd, Consumer::class, $poolConfig);
     }
 
     /**
@@ -62,18 +63,19 @@ class Nsq extends AbstractPlugin
             $this->topic,
             $class,
             $dsn,
+            $dsnd,
             $pool
         ] = ArrayHelper::getValueByArray(
             $this->config,
-            ['topic', 'class', 'dsn', 'pool'],
+            ['topic', 'class', 'dsn', 'dsnd', 'pool'],
             [
                 'pool' => []
             ]
         );
-        if ($dsn === null || $class === null || $this->topic === null) {
+        if ($dsn === null || $dsnd = null || $class === null || $this->topic === null) {
             throw new InvalidConfigException("class, dsn,topic must be set in $this->key");
         }
-        $this->createConnection($class, $dsn, $pool);
+        $this->createConnection($class, $dsn, $dsnd, $pool);
     }
 
     /**
