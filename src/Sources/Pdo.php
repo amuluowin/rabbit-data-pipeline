@@ -14,7 +14,6 @@ use Rabbit\DB\MakePdoConnection;
 use Rabbit\DB\Query;
 use ReflectionException;
 use Throwable;
-use function Swoole\Coroutine\batch;
 
 /**
  * Class Pdo
@@ -110,12 +109,11 @@ class Pdo extends AbstractPlugin
             $this->sql = ArrayHelper::merge([self::CACHE_KEY => $this->duration], $this->sql);
             if ($batchNum) {
                 foreach (DBHelper::Search(new Query(getDI('db')->get($this->dbName)), $this->sql)->batch($batchNum) as $list) {
-                    $batchCo = [];
-                    foreach ($list as $msg->data) {
+                    wgeach($list, function ($datum) use ($msg) {
                         $tmp = clone $msg;
-                        $batchCo[] = fn() => $this->send($tmp);
-                    }
-                    batch($batchCo);
+                        $tmp->data = $datum;
+                        $this->send($tmp);
+                    });
                 }
             } else {
                 $msg->data = DBHelper::PubSearch(new Query(getDI('db')->get($this->dbName)), $this->sql, $this->query);
