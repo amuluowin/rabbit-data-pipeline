@@ -4,6 +4,10 @@
 
 * <big>发起Http请求，输出返回内容或者下载文件路径</big>
 
+## 依赖
+
+* `rabbit/httpclient`
+
 ## 插件配置
 
 ```yaml

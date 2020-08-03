@@ -2,7 +2,7 @@
 
 ## 介绍
 
-* <big>`txt,CSV,Excel`文档读取转换</big>
+* <big>`TXT,CSV,Excel`文档读取转换</big>
 
 ## 配置
 
@@ -26,11 +26,11 @@ trans_parse:
     工作时长(分钟): woke_time
 ```
 
-* `fileType`文件类型,支持`txt,CSV,Excel`
+* `fileType`文件类型,支持`TXT,CSV,Excel`
 * `headLine`标题行，默认`null`，下标从`1`开始
 * `dataLine`内容行`[]`类型,默认`[1]`，下标从`1`开始
-* `split`行分隔符,默认`PHP_EOF`,`txt`类型用
-* `explode`列分隔符,默认`\t`,`txt`类型用
+* `split`行分隔符,默认`PHP_EOF`,`TXT`类型用
+* `explode`列分隔符,默认`\t`,`TXT`类型用
 * `endLine`最后一行位置,默认`null`,读取全部行
 * `field`特殊行字段配置`[]`类型，<font color=red>有些文件为了减少体积会把相同内容列提取为一行</font>
 * `fieldLine`特殊字段行位置，配合`field`使用
