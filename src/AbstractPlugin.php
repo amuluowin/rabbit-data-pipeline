@@ -20,7 +20,6 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     public string $taskName;
     public string $key;
     protected array $config = [];
-    public array $locks = [];
     public array $output = [];
     protected bool $start = false;
     protected ?CacheInterface $cache;

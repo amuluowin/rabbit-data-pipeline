@@ -27,7 +27,7 @@ interface SchedulerInterface
      * @param string|null $target
      * @param array $params
      */
-    public function run(string $key = null, string $target = null, array $params = []): void;
+    public function run(string $key = null, string $target = null, array $params = []): array;
 
     /**
      * @param Message $pre

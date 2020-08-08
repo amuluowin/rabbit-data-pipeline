@@ -31,8 +31,6 @@ class Scheduler implements SchedulerInterface, InitInterface
     protected string $name = 'scheduler';
     /** @var array */
     protected array $config = [];
-    /** @var array */
-    protected array $taskKeys = [];
     /** @var ISender[] */
     protected array $senders = [];
     /** @var string */
@@ -46,9 +44,6 @@ class Scheduler implements SchedulerInterface, InitInterface
     {
         $this->parser = $parser;
         $this->config = $this->parser->parse();
-        foreach ($this->config as $name => $item) {
-            $this->taskKeys[$name] = array_keys($item);
-        }
     }
 
     /**
@@ -69,23 +64,42 @@ class Scheduler implements SchedulerInterface, InitInterface
      * @throws NotFoundException
      * @throws Throwable
      */
-    public function run(string $key = null, string $target = null, array $params = []): void
+    public function run(string $key = null, string $target = null, array $params = []): array
     {
+        $taskResult = [];
         if ($key === null) {
             foreach (array_keys($this->config) as $key) {
-                rgo(fn() => $this->process((string)$key, $params));
+                $taskResult[$key] = $this->start((string)$key, $params);
             }
         } elseif (isset($this->config[$key])) {
             if ($target && isset($this->config[$key][$target])) {
-                $target = $this->getTarget($key, $target);
+                $runTarget = $this->getTarget($key, $target);
                 $msg = create(Message::class, array_merge(['redis' => getDI('redis')->get($this->redisKey)], $params), false);
-                rgo(fn() => $target->process($msg));
+                rgo(fn() => $runTarget->process($msg));
+                $taskResult = ["$key.$target" => 'proxy run success'];
             } else {
-                rgo(fn() => $this->process((string)$key, $params));
+                $taskResult[$key] = $this->start((string)$key, $params);
             }
         } else {
             throw new InvalidArgumentException("No such name $key");
         }
+        return $taskResult;
+    }
+
+    private function start(string $key, array &$params): string
+    {
+        $result = '';
+        $lock = ArrayHelper::getValue($this->config[$key], 'lock');
+        if ($lock && false === lock('redis', function () use ($key, &$params) {
+                rgo(fn() => $this->process($key, $params));
+            }, $this->name . '.' . $key, $lock)) {
+            App::warning("$key is running");
+            $result = "$key is running";
+        } else {
+            $result = "$key start run";
+            rgo(fn() => $this->process($key, $params));
+        }
+        return $result;
     }
 
     /**
@@ -145,6 +159,9 @@ class Scheduler implements SchedulerInterface, InitInterface
     {
         /** @var AbstractPlugin $target */
         foreach ($this->config[$task] as $key => $tmp) {
+            if ($key === 'lock') {
+                continue;
+            }
             if (ArrayHelper::getValue($tmp, 'start') === true) {
                 $target = $this->getTarget($task, $key);
                 $msg = create(Message::class, ['redisKey' => $this->redisKey, 'taskName' => $task, 'taskId' => (string)getDI('idGen')->create()], false);
