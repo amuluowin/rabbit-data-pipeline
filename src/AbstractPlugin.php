@@ -27,6 +27,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected ?array $errHandler;
     protected ?array $lockKey = [];
     protected string $scName;
+    protected bool $canEmpty = false;
 
     /**
      * AbstractPlugin constructor.
@@ -120,14 +121,19 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     {
         foreach ($this->output as $output => $wait) {
             if (empty($msg->data)) {
-                App::warning("「{$this->taskName}」 $this->key -> $output; data is empty", 'Data');
+                $log = "「{$this->taskName}」 $this->key -> $output; data is empty, %s";
+                if (!$this->canEmpty) {
+                    App::warning(sprintf($log, 'canEmpty is false so not sink next'), 'Data');
+                    return;
+                }
+                App::warning(sprintf($log, 'canEmpty is true so continue sink next'), 'Data');
             } else {
                 App::info("「{$this->taskName}」 $this->key -> $output;", 'Data');
             }
             if ($wait) {
                 batch([fn() => $this->getScheduler()->next($msg, $output)], in_array((int)$wait, [0, 1]) ? -1 : (float)$wait);
             } else {
-                $this->getScheduler()->next($msg, $output);
+                rgo(fn() => $this->getScheduler()->next($msg, $output));
             }
         }
     }

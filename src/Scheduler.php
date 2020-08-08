@@ -124,6 +124,7 @@ class Scheduler implements SchedulerInterface, InitInterface
         $output = ArrayHelper::remove($params, 'output', []);
         $start = ArrayHelper::remove($params, 'start', false);
         $wait = ArrayHelper::remove($params, 'wait', false);
+        $canEmpty = ArrayHelper::remove($params, 'canEmpty', false);
         $errHandler = ArrayHelper::remove($params, 'errHandler');
         if (is_string($output)) {
             $output = [$output => true];
@@ -137,6 +138,7 @@ class Scheduler implements SchedulerInterface, InitInterface
                 'output' => $output,
                 'start' => $start,
                 'taskName' => $name,
+                'canEmpty' => $canEmpty,
                 'wait' => $wait,
                 'errHandler' => $errHandler
             ],
