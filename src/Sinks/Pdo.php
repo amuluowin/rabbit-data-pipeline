@@ -121,12 +121,15 @@ class Pdo extends AbstractPlugin
     }
 
     /**
+     * @param Message $msg
      * @param array $updates
      * @param array $condition
+     * @throws NotSupportedException
      * @throws Throwable
      */
-    protected function saveWithCondition(array $updates, array $condition): void
+    protected function saveWithCondition(Message $msg, array $updates, array $condition): void
     {
+        $model = $this->getModel();
         $msg->data = $model::updateAll($updates, $condition);
         if (!$msg->data) {
             App::warning("$this->tableName update failed");
@@ -177,6 +180,7 @@ class Pdo extends AbstractPlugin
 
             /**
              * @return ConnectionInterface
+             * @throws Throwable
              */
             public static function getDb(): ConnectionInterface
             {
