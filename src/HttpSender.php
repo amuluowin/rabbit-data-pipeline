@@ -16,7 +16,7 @@ class HttpSender implements ISender
     /** @var Client */
     protected Client $client;
     /** @var string */
-    protected string $route = '/api/schedule/run';
+    protected string $route = '/schedule/run';
 
     /**
      * HttpSender constructor.
@@ -34,7 +34,7 @@ class HttpSender implements ISender
      * @return array|null
      * @throws Throwable
      */
-    public function send(string $address, string $target, Message $msg): ?array
+    public function send(string $target, Message $msg, string $address = null): ?array
     {
         $response = $this->client->request([
             'uri' => $address . $this->route,

@@ -1,5 +1,5 @@
 <?php
-declare(strict_types=1);
+declare (strict_types = 1);
 
 namespace Rabbit\Data\Pipeline;
 
@@ -10,11 +10,11 @@ namespace Rabbit\Data\Pipeline;
 interface ISender
 {
     /**
-     * @param string $address
+     * @author Albert <63851587@qq.com>
      * @param string $target
-     * @param AbstractPlugin $pre
-     * @param $data
+     * @param Message $msg
+     * @param string $address
      * @return array|null
      */
-    public function send(string $address, string $target, Message $msg): ?array;
+    public function send(string $target, Message $msg, string $address = null): ?array;
 }

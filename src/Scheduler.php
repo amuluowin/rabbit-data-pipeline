@@ -186,7 +186,7 @@ class Scheduler implements SchedulerInterface, InitInterface
                 if (!array_key_exists($sender, $this->senders)) {
                     throw new Exception("Scheduler has no sender name $sender");
                 }
-                $this->senders[$sender]->send($address, $target, $msg);
+                $this->senders[$sender]->send($target, $msg, $address);
             } else {
                 $target = $this->getTarget($msg->taskName, $key);
                 $target->process($msg);
