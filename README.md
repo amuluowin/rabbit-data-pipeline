@@ -24,10 +24,10 @@ errHandler: callable
 
 * `type`插件完整类名
 * `start`是否开始插件,默认`false`
-* `output`输出到下一个插件,支持`Http`输出到远程插件,格式
-  1. `PluginName String|http:address:PluginName String`，默认启用协程
-  2. `['PluginName String|http:address:PluginName String':true|false|int]`
-  * PS：`true`启用协程，不设超时;`int`启用协程，值为超时时间;`false`不启用协程
+* `output`输出到下一个插件,支持`Http`输出到远程插件,`worker`多进程任务,格式
+  1. `PluginName String|(http|worker):address:PluginName String`，默认不等待
+  2. `['PluginName String|(http|worker):address:PluginName String':true|false|int]`
+  * PS：`true`启用协程等待，不设超时;`int`启用协程等待，值为超时时间;`false`不等待
 * `errHandler`错误处理函数
 
 ## 内置插件
