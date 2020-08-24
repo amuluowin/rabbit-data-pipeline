@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Transforms;
@@ -56,6 +57,7 @@ class LineParser extends AbstractPlugin
             $this->headLine,
             $this->columns,
             $this->dataLine,
+            $this->endLine,
             $this->field,
             $this->fieldLine,
             $this->fileType,
@@ -76,6 +78,7 @@ class LineParser extends AbstractPlugin
                 'headLine',
                 'columns',
                 'dataLine',
+                'endLine',
                 'field',
                 'fieldLine',
                 'fileType',
@@ -95,6 +98,7 @@ class LineParser extends AbstractPlugin
                 null,
                 [],
                 [1],
+                null,
                 [],
                 null,
                 null,

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sources;
@@ -29,7 +30,7 @@ class FindFiles extends AbstractPlugin
             $this->fileName,
             $this->scanDir,
             $this->extends,
-        ] = ArrayHelper::getValueByArray($this->config, ['fileName', 'scanDir'], ['extends' => []]);
+        ] = ArrayHelper::getValueByArray($this->config, ['fileName', 'scanDir', 'extends'], ['extends' => []]);
 
         if (!$this->fileName && !$this->scanDir) {
             throw new InvalidConfigException("fileName or scanDir has one and only one");

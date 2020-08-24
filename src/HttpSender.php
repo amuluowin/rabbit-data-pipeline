@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
@@ -34,7 +35,7 @@ class HttpSender implements ISender
      * @return array|null
      * @throws Throwable
      */
-    public function send(string $target, Message $msg, string $address = null): ?array
+    public function send(string $target, Message $msg, string $address = null, float $wait = 0): ?array
     {
         $response = $this->client->request([
             'uri' => $address . $this->route,
@@ -48,7 +49,8 @@ class HttpSender implements ISender
                     'opt' => $msg->opt,
                     'request' => $msg->request
                 ]
-            ]
+            ],
+            'timeout' => $wait > 0 ? $wait : -1
         ]);
         if ($response->getStatusCode() === 200) {
             App::info("send $msg->taskName $target success");
@@ -57,5 +59,4 @@ class HttpSender implements ISender
         App::error("send $msg->taskName $target failed " . (string)$response->getBody());
         return null;
     }
-
 }

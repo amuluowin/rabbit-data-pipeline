@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
@@ -33,5 +34,5 @@ interface SchedulerInterface
      * @param Message $pre
      * @param string $key
      */
-    public function next(Message $pre, string $key): void;
+    public function next(Message $pre, string $key, float $wait = 0): void;
 }

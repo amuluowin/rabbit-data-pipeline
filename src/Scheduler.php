@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
@@ -23,17 +24,11 @@ use Throwable;
  */
 class Scheduler implements SchedulerInterface, InitInterface
 {
-    /** @var array */
     protected array $targets = [];
-    /** @var ConfigParserInterface */
     protected ConfigParserInterface $parser;
-    /** @var string */
     protected string $name = 'scheduler';
-    /** @var array */
     protected array $config = [];
-    /** @var ISender[] */
     protected array $senders = [];
-    /** @var string */
     protected string $redisKey = 'default';
 
     /**
@@ -75,7 +70,7 @@ class Scheduler implements SchedulerInterface, InitInterface
             if ($target && isset($this->config[$key][$target])) {
                 $runTarget = $this->getTarget($key, $target);
                 $msg = create(Message::class, array_merge(['redis' => getDI('redis')->get($this->redisKey)], $params), false);
-                rgo(fn() => $runTarget->process($msg));
+                rgo(fn () => $runTarget->process($msg));
                 $taskResult = ["$key.$target" => 'proxy run success'];
             } else {
                 $taskResult[$key] = $this->start((string)$key, $params);
@@ -91,13 +86,13 @@ class Scheduler implements SchedulerInterface, InitInterface
         $result = '';
         $lock = ArrayHelper::getValue($this->config[$key], 'lock');
         if ($lock && false === lock('redis', function () use ($key, &$params) {
-                rgo(fn() => $this->process($key, $params));
-            }, $this->name . '.' . $key, $lock)) {
+            rgo(fn () => $this->process($key, $params));
+        }, $this->name . '.' . $key, $lock)) {
             App::warning("$key is running");
             $result = "$key is running";
         } else {
             $result = "$key start run";
-            rgo(fn() => $this->process($key, $params));
+            rgo(fn () => $this->process($key, $params));
         }
         return $result;
     }
@@ -177,7 +172,7 @@ class Scheduler implements SchedulerInterface, InitInterface
      * @param string $key
      * @throws Throwable
      */
-    public function next(Message $msg, string $key): void
+    public function next(Message $msg, string $key, float $wait = 0): void
     {
         try {
             $keyArr = explode(':', $key);
@@ -186,7 +181,7 @@ class Scheduler implements SchedulerInterface, InitInterface
                 if (!array_key_exists($sender, $this->senders)) {
                     throw new Exception("Scheduler has no sender name $sender");
                 }
-                $this->senders[$sender]->send($target, $msg, $address);
+                $this->senders[$sender]->send($target, $msg, (string)$address, $wait);
             } else {
                 $target = $this->getTarget($msg->taskName, $key);
                 $target->process($msg);

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
@@ -23,6 +24,15 @@ class Message extends BaseObject
     public array $opt = [];
     public array $request = [];
     protected string $redisKey = 'default';
+
+    /**
+     * @author Albert <63851587@qq.com>
+     * @param array $configs
+     */
+    public function __construct(array $configs = [])
+    {
+        \configure($this, $configs);
+    }
 
     public function __clone()
     {

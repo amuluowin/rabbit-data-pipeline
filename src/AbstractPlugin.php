@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
@@ -131,9 +132,10 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
                 App::info("「{$this->taskName}」 $this->key -> $output;", 'Data');
             }
             if ($wait) {
-                batch([fn() => $this->getScheduler()->next($msg, $output)], in_array((int)$wait, [0, 1]) ? -1 : (float)$wait);
+                $wait = in_array((int)$wait, [0, 1]) ? -1 : (float)$wait;
+                wgo(fn () => $this->getScheduler()->next($msg, $output, $wait), $wait);
             } else {
-                rgo(fn() => $this->getScheduler()->next($msg, $output));
+                rgo(fn () => $this->getScheduler()->next($msg, $output));
             }
         }
     }

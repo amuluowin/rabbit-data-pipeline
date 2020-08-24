@@ -1,5 +1,6 @@
 <?php
-declare (strict_types = 1);
+
+declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
 
@@ -16,5 +17,5 @@ interface ISender
      * @param string $address
      * @return array|null
      */
-    public function send(string $target, Message $msg, string $address = null): ?array;
+    public function send(string $target, Message $msg, string $address = null, float $wait = 0): ?array;
 }
