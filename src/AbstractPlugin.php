@@ -132,7 +132,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
                 App::info("「{$this->taskName}」 $this->key -> $output;", 'Data');
             }
             if ($wait) {
-                $wait = in_array((int)$wait, [0, 1]) ? -1 : (float)$wait;
+                $wait = in_array((float)$wait, [0, 1]) ? -1 : (float)$wait;
                 wgo(fn () => $this->getScheduler()->next($msg, $output, $wait), $wait);
             } else {
                 rgo(fn () => $this->getScheduler()->next($msg, $output));
