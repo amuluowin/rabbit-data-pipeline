@@ -18,11 +18,14 @@ use Throwable;
  */
 class Message extends BaseObject
 {
+    const STATUS_RUNING = 1;
+    const STATUS_END = 99;
     public $data;
     public string $taskName;
     public string $taskId;
     public array $opt = [];
     public array $request = [];
+    public ?int $status = self::STATUS_RUNING;
     protected string $redisKey = 'default';
 
     /**

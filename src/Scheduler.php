@@ -80,7 +80,13 @@ class Scheduler implements SchedulerInterface, InitInterface
         }
         return $taskResult;
     }
-
+    
+    /**
+     * @author Albert <63851587@qq.com>
+     * @param string $key
+     * @param array $params
+     * @return string
+     */
     private function start(string $key, array &$params): string
     {
         $result = '';
