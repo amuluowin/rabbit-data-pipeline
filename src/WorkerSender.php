@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
 
+use Rabbit\Base\App;
 use Rabbit\Server\Server;
 use Rabbit\Server\ServerHelper;
+use Rabbit\Server\CommonHandler;
 use Rabbit\Base\Exception\InvalidConfigException;
 
 class WorkerSender implements ISender
@@ -21,7 +23,11 @@ class WorkerSender implements ISender
     public function send(string $target, Message $msg, string $address = null, float $wait = 0): ?array
     {
         $tmp = ['scheduler->next', [$msg, $target, $wait]];
-        $server = ServerHelper::getServer();
+        if (null === $server = ServerHelper::getServer()) {
+            App::warning("Not running in server, use local process");
+            $msg !== null && CommonHandler::handler($this, $tmp);
+            return null;
+        }
         if (!$server instanceof Server) {
             throw new InvalidConfigException("only use for swoole_server");
         }
