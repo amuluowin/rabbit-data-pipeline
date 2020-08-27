@@ -80,7 +80,22 @@ class Scheduler implements SchedulerInterface, InitInterface
         }
         return $taskResult;
     }
-    
+
+    /**
+     * @author Albert <63851587@qq.com>
+     * @param array $tasks
+     * @param array $params
+     * @return array
+     */
+    public function multi(array $tasks, array $params = []): array
+    {
+        $taskResult = [];
+        foreach ($tasks as $key) {
+            $taskResult = array_merge($taskResult, $this->run($key, null, $params));
+        }
+        return $taskResult;
+    }
+
     /**
      * @author Albert <63851587@qq.com>
      * @param string $key
