@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Rabbit\Data\Pipeline;
+namespace Rabbit\Data\Pipeline\Senders;
 
 use Rabbit\Base\App;
 use Rabbit\Server\Server;
 use Rabbit\Server\ServerHelper;
 use Rabbit\Server\CommonHandler;
 use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Data\Pipeline\Message;
 
 class WorkerSender implements ISender
 {

@@ -24,11 +24,13 @@ interface SchedulerInterface
     public function process(string $task, array $params = []): void;
 
     /**
-     * @param string|null $key
-     * @param string|null $target
+     * @author Albert <63851587@qq.com>
+     * @param string $key
+     * @param string $target
      * @param array $params
+     * @return array
      */
-    public function run(string $key = null, string $target = null, array $params = []): array;
+    public function run(string $key, string $target = null, array $params = []): array;
 
     /**
      * @param Message $pre

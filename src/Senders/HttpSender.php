@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Rabbit\Data\Pipeline;
+namespace Rabbit\Data\Pipeline\Senders;
 
 use Rabbit\Base\App;
+use Rabbit\Data\Pipeline\Message;
 use Rabbit\HttpClient\Client;
 use Throwable;
 

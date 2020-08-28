@@ -59,21 +59,22 @@ class Scheduler implements SchedulerInterface, InitInterface
      * @throws NotFoundException
      * @throws Throwable
      */
-    public function run(string $key = null, string $target = null, array $params = []): array
+    public function run(string $key, string $target = null, array $params = []): array
     {
         $taskResult = [];
-        if ($key === null) {
-            foreach (array_keys($this->config) as $key) {
-                $taskResult[$key] = $this->start((string)$key, $params);
-            }
-        } elseif (isset($this->config[$key])) {
-            if ($target && isset($this->config[$key][$target])) {
-                $runTarget = $this->getTarget($key, $target);
-                $msg = create(Message::class, array_merge(['redis' => getDI('redis')->get($this->redisKey)], $params), false);
-                rgo(fn () => $runTarget->process($msg));
-                $taskResult = ["$key.$target" => 'proxy run success'];
-            } else {
-                $taskResult[$key] = $this->start((string)$key, $params);
+        if (isset($this->config[$key])) {
+            try {
+                if ($target && isset($this->config[$key][$target])) {
+                    $runTarget = $this->getTarget($key, $target);
+                    $msg = create(Message::class, array_merge(['redis' => getDI('redis')->get($this->redisKey)], $params), false);
+                    $runTarget->process($msg);
+                    $taskResult[$key] = [$target => 'proxy run success'];
+                } else {
+                    $taskResult[$key] = $this->start((string)$key, $params);
+                }
+            } catch (Throwable $exception) {
+                App::error(ExceptionHelper::dumpExceptionToString($exception));
+                $taskResult[$key] = "faild!msg=" . $exception->getMessage();
             }
         } else {
             throw new InvalidArgumentException("No such name $key");
@@ -87,12 +88,12 @@ class Scheduler implements SchedulerInterface, InitInterface
      * @param array $params
      * @return array
      */
-    public function multi(array $tasks, array $params = []): array
+    public function multi(array $tasks, float $wait = -1, array $params = []): array
     {
         $taskResult = [];
-        foreach ($tasks as $key) {
+        wgeach($tasks, function (int $i, string $key) use (&$taskResult, $params) {
             $taskResult = array_merge($taskResult, $this->run($key, null, $params));
-        }
+        }, $wait);
         return $taskResult;
     }
 
@@ -107,13 +108,13 @@ class Scheduler implements SchedulerInterface, InitInterface
         $result = '';
         $lock = ArrayHelper::getValue($this->config[$key], 'lock');
         if ($lock && false === lock('redis', function () use ($key, &$params) {
-            rgo(fn () => $this->process($key, $params));
+            $this->process($key, $params);
         }, $this->name . '.' . $key, $lock)) {
             App::warning("$key is running");
             $result = "$key is running";
         } else {
             $result = "$key start run";
-            rgo(fn () => $this->process($key, $params));
+            $this->process($key, $params);
         }
         return $result;
     }

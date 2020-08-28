@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Rabbit\Data\Pipeline;
+namespace Rabbit\Data\Pipeline\Senders;
+
+use Rabbit\Data\Pipeline\Message;
 
 /**
  * Interface ISender
