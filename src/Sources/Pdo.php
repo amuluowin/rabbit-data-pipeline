@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sources;
@@ -75,8 +76,9 @@ class Pdo extends AbstractPlugin
             $this->params
         ] = ArrayHelper::getValueByArray(
             $this->config,
-            ['class', 'dsn', 'pool', 'retryHandler', self::CACHE_KEY, 'sql', 'duration', 'query', 'each', 'params'],
+            ['dbName', 'class', 'dsn', 'pool', 'retryHandler', self::CACHE_KEY, 'sql', 'duration', 'query', 'each', 'params'],
             [
+                'dbName' => null,
                 self::CACHE_KEY => 'memory',
                 'query' => 'queryAll',
                 'duration' => -1,
