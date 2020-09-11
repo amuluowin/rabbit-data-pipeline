@@ -11,6 +11,11 @@ namespace Rabbit\Data\Pipeline;
 interface SchedulerInterface
 {
     /**
+     * @author Albert <63851587@qq.com>
+     * @return array
+     */
+    public function getConfig(): array;
+    /**
      * @param string $taskName
      * @param string $name
      * @return AbstractPlugin|null

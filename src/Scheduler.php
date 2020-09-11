@@ -40,6 +40,14 @@ class Scheduler implements SchedulerInterface, InitInterface
         $this->parser = $parser;
         $this->config = $this->parser->parse();
     }
+    /**
+     * @author Albert <63851587@qq.com>
+     * @return array
+     */
+    public function getConfig(): array
+    {
+        return $this->config;
+    }
 
     /**
      * @return mixed|void
