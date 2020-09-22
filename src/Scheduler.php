@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
 
-use DI\DependencyException;
-use DI\NotFoundException;
 use Exception;
-use Rabbit\Base\App;
-use Rabbit\Base\Contract\InitInterface;
-use Rabbit\Base\Exception\InvalidArgumentException;
-use Rabbit\Base\Exception\InvalidConfigException;
-use Rabbit\Base\Helper\ArrayHelper;
-use Rabbit\Base\Helper\ExceptionHelper;
-use Rabbit\Base\Helper\LockHelper;
-use Rabbit\DB\Redis\RedisLock;
-use ReflectionException;
 use Throwable;
+use Rabbit\Base\App;
+use Rabbit\Cron\CronJob;
+use ReflectionException;
+use DI\NotFoundException;
+use DI\DependencyException;
+use Rabbit\DB\Redis\RedisLock;
+use Rabbit\Base\Helper\LockHelper;
+use Rabbit\Base\Helper\ArrayHelper;
+use Rabbit\Base\Contract\InitInterface;
+use Rabbit\Base\Helper\ExceptionHelper;
+use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Base\Exception\InvalidArgumentException;
 
 /**
  * Class Scheduler
@@ -30,6 +31,7 @@ class Scheduler implements SchedulerInterface, InitInterface
     protected array $config = [];
     protected array $senders = [];
     protected string $redisKey = 'default';
+    protected ?CronJob $cron = null;
 
     /**
      * Scheduler constructor.
@@ -115,15 +117,33 @@ class Scheduler implements SchedulerInterface, InitInterface
     {
         $result = '';
         $lock = ArrayHelper::getValue($this->config[$key], 'lock');
-        if ($lock && false === lock('redis', function () use ($key, &$params) {
-            $this->process($key, $params);
+        $expression = ArrayHelper::getValue($this->config[$key], 'cron');
+        if ($lock && false === lock('redis', function () use ($key, $expression, &$params) {
+            if ($this->cron && $expression) {
+                $this->cron->add($key, [$expression, function () use ($key, &$params) {
+                    $this->process($key, $params);
+                }]);
+                $this->cron->run($key);
+                App::info("$key run with cron: $expression");
+            } else {
+                $this->process($key, $params);
+            }
         }, $this->name . '.' . $key, $lock)) {
             App::warning("$key is running");
             $result = "$key is running";
         } else {
             $result = "$key start run";
-            $this->process($key, $params);
+            if ($this->cron && $expression) {
+                $this->cron->add($key, [$expression, function () use ($key, &$params) {
+                    $this->process($key, $params);
+                }]);
+                $this->cron->run($key);
+                App::info("$key run with cron: $expression");
+            } else {
+                $this->process($key, $params);
+            }
         }
+
         return $result;
     }
 
