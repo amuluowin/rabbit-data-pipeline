@@ -1,24 +1,25 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
 
-use DI\DependencyException;
-use DI\NotFoundException;
-use Rabbit\ActiveRecord\ActiveRecord;
-use Rabbit\ActiveRecord\ARHelper;
-use Rabbit\ActiveRecord\BaseActiveRecord;
+use Throwable;
 use Rabbit\Base\App;
+use Rabbit\DB\Exception;
+use DI\NotFoundException;
+use DI\DependencyException;
 use Rabbit\Base\Core\Context;
-use Rabbit\Base\Exception\InvalidConfigException;
-use Rabbit\Base\Exception\NotSupportedException;
-use Rabbit\Base\Helper\ArrayHelper;
-use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\DB\MakePdoConnection;
+use Rabbit\ActiveRecord\ARHelper;
 use Rabbit\Data\Pipeline\Message;
 use Rabbit\DB\ConnectionInterface;
-use Rabbit\DB\Exception;
-use Rabbit\DB\MakePdoConnection;
-use Throwable;
+use Rabbit\Base\Helper\ArrayHelper;
+use Rabbit\ActiveRecord\ActiveRecord;
+use Rabbit\Data\Pipeline\AbstractPlugin;
+use Rabbit\ActiveRecord\BaseActiveRecord;
+use Rabbit\Base\Exception\NotSupportedException;
+use Rabbit\Base\Exception\InvalidConfigException;
 
 /**
  * Class Pdo
@@ -103,7 +104,7 @@ class Pdo extends AbstractPlugin
         if (isset($msg->data['columns'])) {
             $this->saveWithLine($msg);
         } elseif ($condition && $updates) {
-            $this->saveWithCondition($condition, $updates);
+            $this->saveWithCondition($msg, $condition, $updates);
         } else {
             $this->saveWithModel($msg);
         }
@@ -158,7 +159,8 @@ class Pdo extends AbstractPlugin
      */
     protected function getModel(): BaseActiveRecord
     {
-        return new class($this->tableName, $this->dbName) extends ActiveRecord {
+        return new class ($this->tableName, $this->dbName) extends ActiveRecord
+        {
             /**
              *  constructor.
              * @param string $tableName
