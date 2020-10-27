@@ -3,21 +3,20 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
 
-use Co\System;
+use Throwable;
 use Rabbit\Base\App;
+use Rabbit\DB\Expression;
 use Rabbit\Base\Core\Context;
 use Rabbit\Base\Core\Exception;
-use Rabbit\Base\Exception\InvalidArgumentException;
-use Rabbit\Base\Exception\InvalidConfigException;
-use Rabbit\Base\Helper\ArrayHelper;
-use Rabbit\Data\Pipeline\AbstractPlugin;
 use Rabbit\Data\Pipeline\Message;
+use Rabbit\Base\Helper\ArrayHelper;
+use Rabbit\Pool\ConnectionInterface;
 use Rabbit\DB\ClickHouse\ActiveRecord;
+use Rabbit\Data\Pipeline\AbstractPlugin;
 use Rabbit\DB\ClickHouse\BatchInsertCsv;
 use Rabbit\DB\ClickHouse\MakeCKConnection;
-use Rabbit\DB\Expression;
-use Rabbit\Pool\ConnectionInterface;
-use Throwable;
+use Rabbit\Base\Exception\InvalidConfigException;
+use Rabbit\Base\Exception\InvalidArgumentException;
 
 /**
  * Class Clickhouse
@@ -96,7 +95,7 @@ class Clickhouse extends AbstractPlugin
             if ($this->primaryKey && !empty($updateFlagCondition)) {
                 while (!$msg->getLock($lock)) {
                     App::warning("wait update $this->flagField lock: $lock");
-                    System::sleep(1);
+                    sleep(1);
                 }
             }
             // 存储数据

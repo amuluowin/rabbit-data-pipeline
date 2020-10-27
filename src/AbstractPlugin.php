@@ -9,7 +9,6 @@ use Rabbit\Base\App;
 use Rabbit\Base\Contract\InitInterface;
 use Rabbit\Base\Core\BaseObject;
 use Throwable;
-use function Swoole\Coroutine\batch;
 
 /**
  * Interface AbstractPlugin
