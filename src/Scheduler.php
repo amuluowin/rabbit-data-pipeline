@@ -93,12 +93,14 @@ class Scheduler implements SchedulerInterface, InitInterface
     }
 
     /**
-     * @author Albert <63851587@qq.com>
+     * @Author Albert 63851587@qq.com
+     * @DateTime 2020-11-03
      * @param array $tasks
+     * @param integer $wait
      * @param array $params
      * @return array
      */
-    public function multi(array $tasks, float $wait = -1, array $params = []): array
+    public function multi(array $tasks, int $wait = -1, array $params = []): array
     {
         $taskResult = [];
         wgeach($tasks, function (int $i, string $key) use (&$taskResult, $params) {
