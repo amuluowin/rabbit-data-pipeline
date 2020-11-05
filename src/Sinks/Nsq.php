@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
@@ -23,6 +24,7 @@ class Nsq extends AbstractPlugin
 {
     protected ?string $topic;
 
+    protected string $name;
     /**
      * @param string $class
      * @param string $dsn
@@ -33,7 +35,7 @@ class Nsq extends AbstractPlugin
      * @throws ReflectionException
      * @throws Throwable
      */
-    protected function createConnection(string $class, string $dsn, string $dsnd, array $pool): void
+    protected function createConnection(string $dsn, string $dsnd, array $pool): void
     {
         [
             $poolConfig['min'],
@@ -45,7 +47,8 @@ class Nsq extends AbstractPlugin
             ['min', 'max', 'wait', 'retry'],
             [1, 1, 0, 3]
         );
-        MakeNsqConnection::addConnection($class, $this->topic, $dsn, $dsnd, Consumer::class, $poolConfig);
+        $this->name = md5($dsn);
+        MakeNsqConnection::addConnection($this->name, $dsn, $dsnd, Consumer::class, $poolConfig);
     }
 
     /**
@@ -61,21 +64,20 @@ class Nsq extends AbstractPlugin
         parent::init();
         [
             $this->topic,
-            $class,
             $dsn,
             $dsnd,
             $pool
         ] = ArrayHelper::getValueByArray(
             $this->config,
-            ['topic', 'class', 'dsn', 'dsnd', 'pool'],
+            ['topic', 'dsn', 'dsnd', 'pool'],
             [
                 'pool' => []
             ]
         );
-        if ($dsn === null || $dsnd = null || $class === null || $this->topic === null) {
-            throw new InvalidConfigException("class, dsn,topic must be set in $this->key");
+        if ($dsn === null || $dsnd === null || $this->topic === null) {
+            throw new InvalidConfigException("dsn,topic must be set in $this->key");
         }
-        $this->createConnection($class, $dsn, $dsnd, $pool);
+        $this->createConnection($dsn, $dsnd, $pool);
     }
 
     /**
@@ -85,11 +87,11 @@ class Nsq extends AbstractPlugin
     public function run(Message $msg): void
     {
         /** @var NsqClient $nsq */
-        $nsq = getDI('nsq')->get($this->topic);
+        $nsq = getDI('nsq')->get($this->name);
         if (!is_array($msg->data)) {
-            $nsq->publish((string)$msg->data);
+            $nsq->publish($this->topic, (string)$msg->data);
             return;
         }
-        $nsq->publishMulti($msg->data);
+        $nsq->publishMulti($this->topic, $msg->data);
     }
 }

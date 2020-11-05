@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sources;
@@ -78,7 +79,11 @@ class Nsq extends AbstractPlugin
                 throw new InvalidConfigException("dsn & dsnd must be set in $this->key");
             }
             $this->topics[$topic]['isRunning'] = false;
-            $this->createConnection($topic, $dsn, $dsnd, $pool);
+            $this->topics[$topic]['name'] = md5($dsn);
+            $this->createConnection($this->topics[$topic]['name'], $dsn, $dsnd, $pool);
+            /** @var NsqClient $nsq */
+            $nsq = getDI('nsq')->get($this->topics[$topic]['name']);
+            $nsq->setTopicAdd(...explode(':', $topic));
         }
     }
 
@@ -100,8 +105,9 @@ class Nsq extends AbstractPlugin
             }
             $this->topics[$topic]['isRunning'] = true;
             /** @var NsqClient $nsq */
-            $nsq = getDI('nsq')->get($topic);
-            $nsq->subscribe([
+            $nsq = getDI('nsq')->get($topic['name']);
+            [$name, $channel] = explode(':', $topic);
+            $nsq->subscribe($name, $channel, [
                 'rdy' => $config['rdy'] ?? swoole_cpu_num(),
                 'timeout' => $config['timeout'] ?? 5
             ], function (array $message) use ($msg): void {
