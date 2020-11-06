@@ -64,8 +64,8 @@ class Pdo extends AbstractPlugin
     {
         parent::init();
         [
-            $class,
             $this->dbName,
+            $class,
             $dsn,
             $pool,
             $this->tableName
@@ -79,10 +79,10 @@ class Pdo extends AbstractPlugin
         if ($this->tableName === null) {
             throw new InvalidConfigException("taskName must be set in $this->key");
         }
-        if ($dsn === null || $class === null) {
-            throw new InvalidConfigException("$this->key must need prams: class, dsn");
-        }
         if (!$this->dbName) {
+            if ($dsn === null || $class === null) {
+                throw new InvalidConfigException("when not set dbName then dsn & class must be set in $this->key");
+            }
             $this->dbName = md5($dsn);
             $this->createConnection($class, $dsn, $pool);
         }
@@ -100,11 +100,11 @@ class Pdo extends AbstractPlugin
         [
             $condition,
             $updates
-        ] = ArrayHelper::getValueByArray($msg->data, ['where', 'updates']);
+        ] = ArrayHelper::getValueByArray($msg->data, ['where', 'updates'], ['where' => []]);
         if (isset($msg->data['columns'])) {
             $this->saveWithLine($msg);
-        } elseif ($condition && $updates) {
-            $this->saveWithCondition($msg, $condition, $updates);
+        } elseif ($updates) {
+            $this->saveWithCondition($msg, $updates, $condition);
         } else {
             $this->saveWithModel($msg);
         }

@@ -24,11 +24,12 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected bool $start = false;
     protected ?CacheInterface $cache;
     const CACHE_KEY = 'cache';
+    const CALL_PREFIX = 'outputs';
     protected ?array $errHandler;
     protected ?array $lockKey = [];
     protected string $scName;
     protected bool $canEmpty = false;
-
+    private string $callKey;
     /**
      * AbstractPlugin constructor.
      * @param string $scName
@@ -40,6 +41,11 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
         $this->scName = $scName;
     }
 
+    public function getCallKey(): string
+    {
+        return $this->callKey;
+    }
+
     /**
      * @return mixed|void
      * @throws Throwable
@@ -48,6 +54,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     {
         $this->cache = getDI(self::CACHE_KEY);
         $this->lockKey = $this->config['lockKey'] ?? [];
+        $this->callKey = self::CALL_PREFIX . '.' . $this->key;
     }
 
     /**
@@ -119,7 +126,13 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      */
     protected function sink(Message $msg): void
     {
-        foreach ($this->output as $output => $wait) {
+        $func = $msg->opt[$this->callKey] ?? null;
+        if ($func !== null && is_callable($func)) {
+            $outputs = $func($msg);
+        } else {
+            $outputs = $this->output;
+        }
+        foreach ($outputs as $output => $wait) {
             if (empty($msg->data)) {
                 $log = "「{$this->taskName}」 $this->key -> $output; data is empty, %s";
                 if (!$this->canEmpty) {

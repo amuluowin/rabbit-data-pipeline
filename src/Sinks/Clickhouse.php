@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
@@ -55,10 +56,13 @@ class Clickhouse extends AbstractPlugin
                 'flagField' => 'flag'
             ]
         );
-        if ($dsn === null || $class === null || $this->primaryKey === null) {
-            throw new InvalidConfigException("class, dsn, primaryKey must be set in $this->key");
+        if ($this->primaryKey === null) {
+            throw new InvalidConfigException("primaryKey must be set in $this->key");
         }
         if (!$this->dbName && !$this->driver) {
+            if ($dsn === null || $class === null) {
+                throw new InvalidConfigException("when not set dbName then dsn & class must be set in $this->key");
+            }
             $this->dbName = md5($dsn);
             $this->driver = MakeCKConnection::addConnection($class, $this->dbName, $dsn, $pool);
         } elseif (($this->dbName && !$this->driver) || (!$this->dbName && $this->driver)) {
@@ -170,7 +174,8 @@ class Clickhouse extends AbstractPlugin
      */
     protected function updateFlag(array $updateFlagCondition): void
     {
-        $model = new class($this->driver, $this->tableName, $this->dbName) extends ActiveRecord {
+        $model = new class ($this->driver, $this->tableName, $this->dbName) extends ActiveRecord
+        {
             /**
              *  constructor.
              * @param string $driver

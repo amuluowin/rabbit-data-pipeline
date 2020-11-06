@@ -64,6 +64,7 @@ class Pdo extends AbstractPlugin
     {
         parent::init();
         [
+            $this->dbName,
             $class,
             $dsn,
             $pool,
@@ -88,10 +89,13 @@ class Pdo extends AbstractPlugin
                 'params' => []
             ]
         );
-        if ($dsn === null || $class === null || $this->sql === null) {
-            throw new InvalidConfigException("class, dsn and sql must be set in $this->key");
+        if ($this->sql === null) {
+            throw new InvalidConfigException("sql must be set in $this->key");
         }
-        if (empty($this->dbName)) {
+        if (!$this->dbName) {
+            if ($dsn === null || $class === null) {
+                throw new InvalidConfigException("when not set dbName then dsn & class must be set in $this->key");
+            }
             $this->dbName = md5($dsn);
             $this->createConnection($class, $dsn, $pool, $retryHandler);
         }
