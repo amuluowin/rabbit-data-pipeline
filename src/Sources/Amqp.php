@@ -32,6 +32,7 @@ class Amqp extends AbstractPlugin
     {
         parent::init();
         [
+            $name,
             $this->consumerTag,
             $queue,
             $exchange,
@@ -39,6 +40,7 @@ class Amqp extends AbstractPlugin
             $queueDeclare,
             $exchangeDeclare,
         ] = ArrayHelper::getValueByArray($this->config, [
+            'name',
             'consumerTag',
             'queue',
             'exchange',
@@ -46,6 +48,7 @@ class Amqp extends AbstractPlugin
             'queueDeclare',
             'exchangeDeclare'
         ], [
+            null,
             '',
             '',
             '',
@@ -53,26 +56,30 @@ class Amqp extends AbstractPlugin
             [],
             []
         ]);
-        $name = uniqid();
-        /** @var BaseManager $amqp */
-        $amqp = getDI('amqp');
-        $amqp->add([
-            $name => create([
-                'class' => BasePool::class,
-                'poolConfig' => create([
-                    'class' => BasePoolProperties::class,
-                    'config' => [
-                        'queue' => $queue,
-                        'exchange' => $exchange,
-                        'connParams' => $connParams,
-                        'queueDeclare' => $queueDeclare,
-                        'exchangeDeclare' => $exchangeDeclare
-                    ]
-                ]),
-                'objClass' => Connection::class
-            ])
-        ]);
-        $this->conn = $amqp->get($name)->get();
+        if (!$name) {
+            $name = uniqid();
+            /** @var BaseManager $amqp */
+            $amqp = getDI('amqp');
+            $amqp->add([
+                $name => create([
+                    'class' => BasePool::class,
+                    'poolConfig' => create([
+                        'class' => BasePoolProperties::class,
+                        'config' => [
+                            'queue' => $queue,
+                            'exchange' => $exchange,
+                            'connParams' => $connParams,
+                            'queueDeclare' => $queueDeclare,
+                            'exchangeDeclare' => $exchangeDeclare
+                        ]
+                    ]),
+                    'objClass' => Connection::class
+                ])
+            ]);
+        }
+        $pool = $amqp->get($name);
+        $this->conn = $pool->get();
+        $pool->sub();
     }
 
     /**
@@ -81,11 +88,17 @@ class Amqp extends AbstractPlugin
      */
     public function run(Message $msg): void
     {
-        $this->conn->consume($this->consumerTag, false, false, false, false
-            , function (AMQPMessage $message) use ($msg): void {
+        $this->conn->consume(
+            $this->consumerTag,
+            false,
+            false,
+            false,
+            false,
+            function (AMQPMessage $message) use ($msg): void {
                 $tmp = clone $msg;
                 $tmp->data = $message->body;
                 $this->sink($tmp);
-            });
+            }
+        );
     }
 }

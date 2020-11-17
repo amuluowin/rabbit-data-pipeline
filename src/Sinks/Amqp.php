@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
@@ -33,6 +34,7 @@ class Amqp extends AbstractPlugin
     {
         parent::init();
         [
+            $name,
             $queue,
             $exchange,
             $connParams,
@@ -40,6 +42,7 @@ class Amqp extends AbstractPlugin
             $exchangeDeclare,
             $this->properties
         ] = ArrayHelper::getValueByArray($this->config, [
+            'name',
             'queue',
             'exchange',
             'connParams',
@@ -47,6 +50,7 @@ class Amqp extends AbstractPlugin
             'exchangeDeclare',
             'properties'
         ], [
+            null,
             '',
             '',
             '',
@@ -55,36 +59,38 @@ class Amqp extends AbstractPlugin
             [],
             $this->properties
         ]);
-        $name = uniqid();
-        /** @var BaseManager $amqp */
-        $amqp = getDI('amqp');
-        $amqp->add([
-            $name => create([
-                'class' => BasePool::class,
-                'poolConfig' => create([
-                    'class' => BasePoolProperties::class,
-                    'config' => [
-                        'queue' => $queue,
-                        'exchange' => $exchange,
-                        'connParams' => $connParams,
-                        'queueDeclare' => $queueDeclare,
-                        'exchangeDeclare' => $exchangeDeclare
-                    ]
-                ]),
-                'objClass' => Connection::class
-            ])
-        ]);
+        if (!$name) {
+            $name = uniqid();
+            /** @var BaseManager $amqp */
+            $amqp = getDI('amqp');
+            $amqp->add([
+                $name => create([
+                    'class' => BasePool::class,
+                    'poolConfig' => create([
+                        'class' => BasePoolProperties::class,
+                        'config' => [
+                            'queue' => $queue,
+                            'exchange' => $exchange,
+                            'connParams' => $connParams,
+                            'queueDeclare' => $queueDeclare,
+                            'exchangeDeclare' => $exchangeDeclare
+                        ]
+                    ]),
+                    'objClass' => Connection::class
+                ])
+            ]);
+        }
     }
 
     /**
      * @param Message $msg
      * @throws Throwable
      */
-    public function run(Message $msg):void
+    public function run(Message $msg): void
     {
         /** @var BaseManager $amqp */
         $amqp = getDI('amqp');
-        $conn = $amqp->get($this->name);
+        $conn = $amqp->get($this->name)->get();
         $conn->basic_publish(new AMQPMessage($msg->data, $this->properties));
     }
 }
