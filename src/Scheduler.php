@@ -215,6 +215,7 @@ class Scheduler implements SchedulerInterface, InitInterface
                 $target = $this->getTarget($task, $key);
                 $msg = create(Message::class, ['redisKey' => $this->redisKey, 'taskName' => $task, 'taskId' => (string)getDI('idGen')->create()], false);
                 $target->process($msg);
+                break;
             }
         }
     }

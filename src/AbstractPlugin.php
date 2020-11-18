@@ -132,7 +132,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
         } else {
             $outputs = $this->output;
         }
-        foreach ($outputs as $output => $wait) {
+        wgeach($outputs, function ($output, $wait) use ($msg) {
             if (empty($msg->data)) {
                 $log = "「{$this->taskName}」 $this->key -> $output; data is empty, %s";
                 if (!$this->canEmpty) {
@@ -143,12 +143,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
             } else {
                 App::info("「{$this->taskName}」 $this->key -> $output;", 'Data');
             }
-            if ($wait) {
-                $wait = in_array((float)$wait, [0, 1]) ? -1 : (float)$wait;
-                wgo(fn () => $this->getScheduler()->next($msg, $output, $wait), $wait);
-            } else {
-                rgo(fn () => $this->getScheduler()->next($msg, $output));
-            }
-        }
+            $this->getScheduler()->next($msg, $output);
+        });
     }
 }
