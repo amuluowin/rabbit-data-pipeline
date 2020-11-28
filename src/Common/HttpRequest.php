@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Common;
@@ -30,7 +31,6 @@ class HttpRequest extends AbstractPlugin
     protected bool $download;
     protected ?string $checkResponseFunc;
     protected string $driver = 'saber';
-    protected Client $client;
     protected ?bool $isLog;
 
     /**
@@ -74,7 +74,6 @@ class HttpRequest extends AbstractPlugin
         if ($this->retry && !is_callable($this->retry)) {
             throw new InvalidConfigException("The retry must be callable");
         }
-        $this->client = new Client();
     }
 
     /**
@@ -126,7 +125,7 @@ class HttpRequest extends AbstractPlugin
             }
         }
 
-        $response = $this->client->request($options, $this->driver);
+        $response = (new Client())->request($options, $this->driver);
         if (!$this->download) {
             $format = $this->format;
             if (method_exists($response, $format)) {
