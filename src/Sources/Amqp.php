@@ -99,6 +99,6 @@ class Amqp extends AbstractPlugin
                 $tmp->data = $message->body;
                 $this->sink($tmp);
             }
-        );
+        )->wait();
     }
 }
