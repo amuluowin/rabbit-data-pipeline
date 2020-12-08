@@ -11,9 +11,8 @@ use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 use Rabbit\Data\Pipeline\Message;
-use Rabbit\Nsq\Consumer;
 use Rabbit\Nsq\MakeNsqConnection;
-use Rabbit\Nsq\NsqClient;
+use Rabbit\Nsq\Consumer;
 use ReflectionException;
 use Throwable;
 
@@ -48,7 +47,7 @@ class Nsq extends AbstractPlugin
             ['min', 'max', 'wait', 'retry'],
             [1, 1, 0, 3]
         );
-        MakeNsqConnection::addConnection($connName, $dsn, $dsnd, Consumer::class, $poolConfig);
+        MakeNsqConnection::addConnection($connName, $dsn, $dsnd, 'consumer', $poolConfig);
     }
 
     /**
@@ -81,9 +80,6 @@ class Nsq extends AbstractPlugin
             $this->topics[$topic]['isRunning'] = false;
             $this->topics[$topic]['name'] = md5($dsn);
             $this->createConnection($this->topics[$topic]['name'], $dsn, $dsnd, $pool);
-            /** @var NsqClient $nsq */
-            $nsq = getDI('nsq')->get($this->topics[$topic]['name']);
-            $nsq->setTopicAdd(...explode(':', $topic));
         }
     }
 
@@ -104,7 +100,7 @@ class Nsq extends AbstractPlugin
                 return;
             }
             $this->topics[$topic]['isRunning'] = true;
-            /** @var NsqClient $nsq */
+            /** @var Consumer $nsq */
             $nsq = getDI('nsq')->get($topic['name']);
             [$name, $channel] = explode(':', $topic);
             $nsq->subscribe($name, $channel, [

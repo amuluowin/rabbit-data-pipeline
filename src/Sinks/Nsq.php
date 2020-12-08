@@ -10,9 +10,8 @@ use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 use Rabbit\Data\Pipeline\Message;
-use Rabbit\Nsq\Consumer;
+use Rabbit\Nsq\Producer;
 use Rabbit\Nsq\MakeNsqConnection;
-use Rabbit\Nsq\NsqClient;
 use ReflectionException;
 use Throwable;
 
@@ -48,7 +47,7 @@ class Nsq extends AbstractPlugin
             [1, 1, 0, 3]
         );
         $this->name = md5($dsn);
-        MakeNsqConnection::addConnection($this->name, $dsn, $dsnd, Consumer::class, $poolConfig);
+        MakeNsqConnection::addConnection($this->name, $dsn, $dsnd, 'producer', $poolConfig);
     }
 
     /**
@@ -78,6 +77,9 @@ class Nsq extends AbstractPlugin
             throw new InvalidConfigException("dsn,topic must be set in $this->key");
         }
         $this->createConnection($dsn, $dsnd, $pool);
+        /** @var Producer $nsq */
+        $nsq = getDI('nsq')->getProducer($this->name);
+        $nsq->makeTopic($this->topic);
     }
 
     /**
@@ -86,8 +88,8 @@ class Nsq extends AbstractPlugin
      */
     public function run(Message $msg): void
     {
-        /** @var NsqClient $nsq */
-        $nsq = getDI('nsq')->get($this->name);
+        /** @var Producer $nsq */
+        $nsq = getDI('nsq')->getProducer($this->name);
         if (!is_array($msg->data)) {
             $nsq->publish($this->topic, (string)$msg->data);
             return;
