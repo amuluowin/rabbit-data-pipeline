@@ -100,7 +100,7 @@ class Pdo extends AbstractPlugin
      */
     public function run(Message $msg): void
     {
-        if (empty($this->tableName) && isset($msg->opt['tableName'])) {
+        if (isset($msg->opt['tableName'])) {
             $this->tableName = $msg->opt['tableName'];
         }
         [
