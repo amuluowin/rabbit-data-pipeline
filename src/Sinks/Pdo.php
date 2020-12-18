@@ -100,9 +100,6 @@ class Pdo extends AbstractPlugin
      */
     public function run(Message $msg): void
     {
-        if (isset($msg->opt['tableName'])) {
-            $this->tableName = $msg->opt['tableName'];
-        }
         [
             $condition,
             $updates
@@ -136,7 +133,7 @@ class Pdo extends AbstractPlugin
      */
     protected function saveWithCondition(Message $msg, array $updates, array $condition): void
     {
-        $model = $this->getModel();
+        $model = $this->getModel($msg);
         $msg->data = $model::updateAll($updates, $condition);
         if (!$msg->data) {
             App::warning("$this->tableName update failed");
@@ -152,7 +149,7 @@ class Pdo extends AbstractPlugin
      */
     protected function saveWithModel(Message $msg): void
     {
-        $model = $this->getModel();
+        $model = $this->getModel($msg);
         $func = $this->func;
         $msg->data = ARHelper::$func($model, $msg->data);
         if (empty($msg->data)) {
@@ -164,9 +161,11 @@ class Pdo extends AbstractPlugin
     /**
      * @return BaseActiveRecord
      */
-    protected function getModel(): BaseActiveRecord
+    protected function getModel(Message $msg): BaseActiveRecord
     {
-        return new class ($this->tableName, $this->dbName) extends ActiveRecord
+        $tableName = $msg->opt['tableName'] ?? $this->tableName;
+        $dbname = $msg->opt['dbName'] ?? $this->dbName;
+        return new class ($tableName, $dbname) extends ActiveRecord
         {
             /**
              *  constructor.
