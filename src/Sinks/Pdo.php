@@ -30,6 +30,7 @@ class Pdo extends AbstractPlugin
     protected ?string $tableName;
     protected string $dbName;
     protected string $driver = 'db';
+    protected string $func;
 
     /**
      * @param string $class
@@ -68,16 +69,21 @@ class Pdo extends AbstractPlugin
             $class,
             $dsn,
             $pool,
-            $this->tableName
+            $this->tableName,
+            $this->func,
         ] = ArrayHelper::getValueByArray(
             $this->config,
-            ['dbName', 'class', 'dsn', 'pool', 'tableName'],
+            ['dbName', 'class', 'dsn', 'pool', 'tableName', 'func'],
             [
-                'pool' => []
+                'pool' => [],
+                'func' => 'create'
             ]
         );
         if ($this->tableName === null) {
             throw new InvalidConfigException("taskName must be set in $this->key");
+        }
+        if (!in_array($this->func, ['create', 'update'])) {
+            throw new InvalidConfigException("func only both set create or update");
         }
         if (!$this->dbName) {
             if ($dsn === null || $class === null) {
@@ -147,7 +153,8 @@ class Pdo extends AbstractPlugin
     protected function saveWithModel(Message $msg): void
     {
         $model = $this->getModel();
-        $msg->data = ARHelper::create($model, $msg->data);
+        $func = $this->func;
+        $msg->data = ARHelper::$func($model, $msg->data);
         if (empty($msg->data)) {
             throw new Exception("save to " . $model::tableName() . ' failed!');
         }
