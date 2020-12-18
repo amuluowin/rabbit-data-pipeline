@@ -120,30 +120,29 @@ class Scheduler implements SchedulerInterface, InitInterface
         $result = '';
         $lock = ArrayHelper::getValue($this->config[$key], 'lock');
         $expression = ArrayHelper::getValue($this->config[$key], 'cron');
-        if ($lock && false === lock('redis', function () use ($key, $expression, &$params) {
+        $func = function (string $key, ?string $expression, array &$params) {
             if ($this->cron && $expression) {
-                $this->cron->add($key, [$expression, function () use ($key, &$params) {
-                    $this->process($key, $params);
-                }]);
-                $this->cron->run($key);
-                App::info("$key run with cron: $expression");
+                if ($expression === 'loop') {
+                    loop(fn () => $this->process($key, $params), 'schedule.' . $key);
+                } else {
+                    $this->cron->add($key, [$expression, function () use ($key, &$params) {
+                        $this->process($key, $params);
+                    }]);
+                    $this->cron->run($key);
+                    App::info("$key run with cron: $expression");
+                }
             } else {
                 $this->process($key, $params);
             }
+        };
+        if ($lock && false === lock('redis', function () use ($func, $key, $expression, &$params) {
+            $func($key, $expression, $params);
         }, $this->name . '.' . $key, $lock)) {
             App::warning("$key is running");
             $result = "$key is running";
         } else {
             $result = "$key start run";
-            if ($this->cron && $expression) {
-                $this->cron->add($key, [$expression, function () use ($key, &$params) {
-                    $this->process($key, $params);
-                }]);
-                $this->cron->run($key);
-                App::info("$key run with cron: $expression");
-            } else {
-                $this->process($key, $params);
-            }
+            $func($key, $expression, $params);
         }
 
         return $result;
