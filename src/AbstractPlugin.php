@@ -29,7 +29,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected ?array $lockKey = [];
     protected string $scName;
     protected bool $canEmpty = false;
-    private string $callKey;
+    private ?string $callKey = null;
     /**
      * AbstractPlugin constructor.
      * @param string $scName
@@ -41,7 +41,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
         $this->scName = $scName;
     }
 
-    public function getCallKey(): string
+    public function getCallKey(): ?string
     {
         return $this->callKey;
     }
