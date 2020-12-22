@@ -31,6 +31,9 @@ class Pdo extends AbstractPlugin
     protected string $dbName;
     protected string $driver = 'db';
     protected string $func;
+    protected int $retry = 1;
+    protected ?int $sleep = null;
+    protected array $retryCode = [];
 
     /**
      * @param string $class
@@ -71,12 +74,17 @@ class Pdo extends AbstractPlugin
             $pool,
             $this->tableName,
             $this->func,
+            $this->retry,
+            $this->retryCode,
+            $this->sleep
         ] = ArrayHelper::getValueByArray(
             $this->config,
-            ['dbName', 'class', 'dsn', 'pool', 'tableName', 'func'],
+            ['dbName', 'class', 'dsn', 'pool', 'tableName', 'func', 'retry', 'retryCode', 'sleep'],
             [
                 'pool' => [],
-                'func' => 'create'
+                'func' => 'create',
+                'retry' => 1,
+                'retryCode' => [],
             ]
         );
         if ($this->tableName === null) {
@@ -104,12 +112,27 @@ class Pdo extends AbstractPlugin
             $condition,
             $updates
         ] = ArrayHelper::getValueByArray($msg->data, ['where', 'updates'], ['where' => []]);
-        if (isset($msg->data['columns'])) {
-            $this->saveWithLine($msg);
-        } elseif ($updates) {
-            $this->saveWithCondition($msg, $updates, $condition);
-        } else {
-            $this->saveWithModel($msg);
+
+        $retry = $this->retry;
+        while ($retry--) {
+            try {
+                if (isset($msg->data['columns'])) {
+                    $this->saveWithLine($msg);
+                } elseif ($updates) {
+                    $this->saveWithCondition($msg, $updates, $condition);
+                } else {
+                    $this->saveWithModel($msg);
+                }
+                return;
+            } catch (Exception $e) {
+                $errorInfo = $e->errorInfo;
+                if (!empty($errorInfo) &&  in_array($errorInfo[1], $this->retryCode)) {
+                    App::error("Error code=$errorInfo[1],waiting & retry...");
+                    $this->sleep && sleep($this->sleep);
+                    continue;
+                }
+                throw $e;
+            }
         }
     }
 
