@@ -126,7 +126,7 @@ class Pdo extends AbstractPlugin
                 return;
             } catch (Exception $e) {
                 $errorInfo = $e->errorInfo;
-                if (!empty($errorInfo) &&  in_array((int)$errorInfo[0], $this->retryCode)) {
+                if (!empty($errorInfo) &&  in_array($errorInfo[1], $this->retryCode)) {
                     App::error("Error code=$errorInfo[1],waiting & retry...");
                     $this->sleep && sleep($this->sleep);
                     continue;
