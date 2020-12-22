@@ -123,11 +123,11 @@ class Scheduler implements SchedulerInterface, InitInterface
         $func = function (string $key, string $expression, array &$params) {
             if ($this->cron && $expression) {
                 if ((int)$expression > 0) {
-                    loop(function () use ($key, &$params, $expression) {
+                    while (true) {
                         $this->process($key, $params);
                         App::info("$key finished once! Go on with {$expression}s later");
                         sleep((int)$expression);
-                    }, 'schedule.' . $key);
+                    }
                 } else {
                     $this->cron->add($key, [$expression, function () use ($key, &$params) {
                         $this->process($key, $params);
