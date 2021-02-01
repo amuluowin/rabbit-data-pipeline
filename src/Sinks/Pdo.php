@@ -186,9 +186,16 @@ class Pdo extends AbstractPlugin
      */
     protected function getModel(Message $msg): BaseActiveRecord
     {
+        if (isset($msg->opt['model'])) {
+            if (is_string($msg->opt['model'])) {
+                return new $msg->opt['model']();
+            } elseif ($msg->opt['model'] instanceof BaseActiveRecord) {
+                return clone $msg->opt['model'];
+            }
+        }
         $tableName = $msg->opt['tableName'] ?? $this->tableName;
         $dbname = $msg->opt['dbName'] ?? $this->dbName;
-        return new class ($tableName, $dbname) extends ActiveRecord
+        return new class($tableName, $dbname) extends ActiveRecord
         {
             /**
              *  constructor.
