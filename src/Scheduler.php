@@ -241,9 +241,6 @@ class Scheduler implements SchedulerInterface, InitInterface
             } else {
                 $target = $this->getTarget($msg->taskName, $key);
                 $target->process($msg);
-                if ($target->output === []) {
-                    App::info("「{$msg->taskName}」 {$msg->taskId} finished!");
-                }
             }
         } catch (Throwable $exception) {
             App::error("「{$msg->taskName}」「{$key}」 {$msg->taskId}" . ExceptionHelper::dumpExceptionToString($exception));
