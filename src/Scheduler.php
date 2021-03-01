@@ -141,7 +141,7 @@ class Scheduler implements SchedulerInterface, InitInterface
         };
         if ($lock && false === lock('redis', function () use ($func, $key, $expression, &$params) {
             $func($key, $expression, $params);
-        }, $this->name . '.' . $key, $lock)) {
+        }, false, $this->name . '.' . $key, $lock)) {
             App::warning("$key is running");
             $result = "$key is running";
         } else {
