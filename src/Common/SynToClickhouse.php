@@ -51,9 +51,9 @@ class SynToClickhouse extends BaseSyncData
           ANTI LEFT JOIN {$this->to} t on $on
          WHERE ({$primary}) NOT IN(
         SELECT {$this->primary} FROM {$this->to}
-         WHERE flag= 0)
-                ";
+         WHERE flag= 0)";
         getDI('click')->get($this->db)->createCommand($sql)->execute();
+        
         $sql = "ALTER TABLE {$this->to}
             UPDATE flag= flag+ 1
              WHERE {$this->primary}  in(
