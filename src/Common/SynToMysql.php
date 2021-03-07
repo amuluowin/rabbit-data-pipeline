@@ -17,7 +17,7 @@ class SynToMysql extends BaseSyncData
             $key = trim($key);
             $updates[] = "$key=values($key)";
         }
-        $sql = sprintf("INSERT INTO %s %s %s ON DUPLICATE KEY UPDATE %s", $this->to, "($this->field)", strtr($this->from, [':fields' => $this->field]), implode(',', $updates));
+        $sql = sprintf("INSERT INTO %s %s select %s from (%s)t ON DUPLICATE KEY UPDATE %s", $this->to, "($this->field)", $this->field, strtr($this->from, [':fields' => $this->field]), implode(',', $updates));
         try {
             getDI('db')->get($this->db)->createCommand($sql)->execute();
         } catch (Throwable $e) {
