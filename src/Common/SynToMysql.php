@@ -8,7 +8,7 @@ use Rabbit\Data\Pipeline\Message;
 
 class SynToMysql extends BaseSyncData
 {
-    public function sync(Message $msg): void
+    public function run(Message $msg): void
     {
         $updates = [];
         foreach (explode(',', $this->field) as $key) {

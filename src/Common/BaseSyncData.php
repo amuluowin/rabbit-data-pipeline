@@ -28,14 +28,4 @@ abstract class BaseSyncData extends AbstractPlugin
             throw new InvalidConfigException('from or to or field is empty!');
         }
     }
-
-    public function run(Message $msg): void
-    {
-        if (!$this->start && empty($msg->data)) {
-            return;
-        }
-        $this->sync($msg);
-    }
-
-    abstract public function sync(Message $msg): void;
 }

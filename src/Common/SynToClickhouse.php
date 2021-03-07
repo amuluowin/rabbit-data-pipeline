@@ -26,7 +26,7 @@ class SynToClickhouse extends BaseSyncData
         }
     }
 
-    public function sync(Message $msg): void
+    public function run(Message $msg): void
     {
         $primary = '';
         foreach (explode(',', $this->primary) as $key) {
