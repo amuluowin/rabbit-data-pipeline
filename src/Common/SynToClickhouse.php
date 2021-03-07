@@ -30,7 +30,7 @@ class SynToClickhouse extends BaseSyncData
     {
         $primary = '';
         foreach (explode(',', $this->primary) as $key) {
-            $primary .= "m.$key,";
+            $primary .= "f.$key,";
         }
         $primary = rtrim($primary, ',');
         $fields = '';
