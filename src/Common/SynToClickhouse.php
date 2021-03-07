@@ -45,7 +45,7 @@ class SynToClickhouse extends BaseSyncData
             $on .= "f.$key=t.$key and ";
         }
         $on = rtrim($on, ' and ');
-        $sql = "INSERT INTO {$this->to}
+        $sql = "INSERT INTO {$this->to} ({$this->field})
         SELECT {$fields},0 AS flag
           FROM {$this->from} f 
           ANTI LEFT JOIN {$this->to} t on $on
