@@ -53,16 +53,15 @@ class SynToClickhouse extends BaseSyncData
         SELECT {$this->primary} FROM {$this->to}
          WHERE flag= 0)
                 ";
-        getDI('click')->get($this->db)->createCommand($sql)->execute();
-
-
-        $sql = "ALTER TABLE {$this->to}
-UPDATE flag= flag+ 1
- WHERE {$this->primary}  in(
-SELECT {$this->primary}
-  FROM {$this->to}
- WHERE flag= 0)  and flag in(0, 1)";
-        $msg->data = getDI('click')->get($this->db)->createCommand($sql)->execute();
-        $this->sink($msg);
+        if (getDI('click')->get($this->db)->createCommand($sql)->execute()) {
+            $sql = "ALTER TABLE {$this->to}
+            UPDATE flag= flag+ 1
+             WHERE {$this->primary}  in(
+            SELECT {$this->primary}
+              FROM {$this->to}
+             WHERE flag= 0)  and flag in(0, 1)";
+            $msg->data = getDI('click')->get($this->db)->createCommand($sql)->execute();
+            $this->sink($msg);
+        }
     }
 }

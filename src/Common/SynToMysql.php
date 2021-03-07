@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Common;
 
+use Rabbit\Base\App;
 use Rabbit\Data\Pipeline\Message;
+use Throwable;
 
 class SynToMysql extends BaseSyncData
 {
@@ -16,7 +18,13 @@ class SynToMysql extends BaseSyncData
             $updates[] = "$key=values($key)";
         }
         $sql = sprintf("INSERT INTO %s %s %s ON DUPLICATE KEY UPDATE %s", $this->to, "($this->field)", strtr($this->from, [':fields' => $this->field]), implode(',', $updates));
-        $msg->data = getDI('db')->get($this->db)->createCommand($sql)->execute();
-        $this->sink($msg);
+        try {
+            getDI('db')->get($this->db)->createCommand($sql)->execute();
+        } catch (Throwable $e) {
+            App::error($e->getMessage());
+        } finally {
+            $msg->data = 1;
+            $this->sink($msg);
+        }
     }
 }
