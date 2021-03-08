@@ -16,6 +16,7 @@ abstract class BaseSyncData extends AbstractPlugin
     protected string $to;
     protected string $field;
     protected string $db;
+    protected string $primary;
 
     public function init(): void
     {
@@ -24,8 +25,9 @@ abstract class BaseSyncData extends AbstractPlugin
             $this->to,
             $this->db,
             $this->field,
-            $this->equal
-        ] = ArrayHelper::getValueByArray($this->config, ['from', 'to', 'db', 'field', 'equal'], ['db' => 'default']);
+            $this->equal,
+            $this->primary
+        ] = ArrayHelper::getValueByArray($this->config, ['from', 'to', 'db', 'field', 'equal', 'primary'], ['db' => 'default']);
         if ($this->from === null || $this->to === null || $this->field === null) {
             throw new InvalidConfigException('from or to or field is empty!');
         }

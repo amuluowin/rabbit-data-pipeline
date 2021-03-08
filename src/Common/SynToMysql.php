@@ -13,11 +13,19 @@ class SynToMysql extends BaseSyncData
 {
     public function run(Message $msg): void
     {
+        $fields = '';
         $updates = [];
+        $primary = empty($this->primary) ? $this->primary : explode(',',  $this->primary);
         foreach (explode(',', $this->field) as $key) {
             $key = trim($key);
+            $fields .= "f.$key,";
+            if (!empty($primary) && in_array($key, $primary)) {
+                continue;
+            }
             $updates[] = "$key=values($key)";
         }
+        $fields = rtrim($fields, ',');
+
         if ($this->equal) {
             $equal = '';
             foreach (explode(',', $this->equal) as $key) {
@@ -26,7 +34,7 @@ class SynToMysql extends BaseSyncData
             $equal = rtrim($equal, ' and ');
             $sql = "INSERT INTO {$this->to} ({$this->field}) SELECT {$this->field} FROM {$this->from} f WHERE NOT EXISTS (SELECT 1 FROM {$this->to} t WHERE $equal) ON DUPLICATE KEY UPDATE " . implode(',', $updates);
         } else {
-            $sql = "INSERT INTO {$this->to} ({$this->field}) SELECT {$this->field} FROM ($this->from)t ON DUPLICATE KEY UPDATE " . implode(',', $updates);
+            $sql = "INSERT INTO {$this->to} ({$this->field}) SELECT {$fields} FROM ($this->from) f ON DUPLICATE KEY UPDATE " . implode(',', $updates);
         }
 
         try {
