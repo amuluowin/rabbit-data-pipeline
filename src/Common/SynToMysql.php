@@ -49,7 +49,7 @@ class SynToMysql extends BaseSyncData
             $sql = "{$this->mode} INTO {$this->to} ({$this->field}) SELECT {$fields} FROM ($this->from) f";
         }
 
-        if ($this->mode === 'INSERT') {
+        if ($this->mode === 'INSERT' && !$this->onlyInsert) {
             $sql .= " ON DUPLICATE KEY UPDATE " . implode(',', $updates);
         }
 

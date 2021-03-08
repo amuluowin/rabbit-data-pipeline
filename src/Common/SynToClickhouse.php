@@ -10,16 +10,15 @@ use Rabbit\Data\Pipeline\Message;
 
 class SynToClickhouse extends BaseSyncData
 {
-    protected bool $onlyInsert;
+
     protected string $updatedAt;
 
     public function init(): void
     {
         parent::init();
         [
-            $this->onlyInsert,
             $this->updatedAt
-        ] = ArrayHelper::getValueByArray($this->config, ['onlyInsert', 'updatedAt'], ['onlyInsert' => false]);
+        ] = ArrayHelper::getValueByArray($this->config, ['updatedAt']);
 
         if ($this->primary === null && $this->updatedAt) {
             throw new InvalidConfigException('primary & updatedAt both empty!');
