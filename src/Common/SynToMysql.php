@@ -11,6 +11,18 @@ use Throwable;
 
 class SynToMysql extends BaseSyncData
 {
+    protected string $mode;
+
+
+    public function init(): void
+    {
+        parent::init();
+        [
+            $this->mode
+        ] = ArrayHelper::getValueByArray($this->config, ['mode'], ['INSERT']);
+        $this->mode = strtoupper($this->mode);
+    }
+
     public function run(Message $msg): void
     {
         $fields = '';
@@ -32,9 +44,13 @@ class SynToMysql extends BaseSyncData
                 $equal .= "f.$key=t.$key and ";
             }
             $equal = rtrim($equal, ' and ');
-            $sql = "INSERT INTO {$this->to} ({$this->field}) SELECT {$this->field} FROM {$this->from} f WHERE NOT EXISTS (SELECT 1 FROM {$this->to} t WHERE $equal) ON DUPLICATE KEY UPDATE " . implode(',', $updates);
+            $sql = "{$this->mode} INTO {$this->to} ({$this->field}) SELECT {$fields} FROM {$this->from} f WHERE NOT EXISTS (SELECT 1 FROM {$this->to} t WHERE $equal)";
         } else {
-            $sql = "INSERT INTO {$this->to} ({$this->field}) SELECT {$fields} FROM ($this->from) f ON DUPLICATE KEY UPDATE " . implode(',', $updates);
+            $sql = "{$this->mode} INTO {$this->to} ({$this->field}) SELECT {$fields} FROM ($this->from) f";
+        }
+
+        if ($this->mode === 'INSERT') {
+            $sql .= " ON DUPLICATE KEY UPDATE " . implode(',', $updates);
         }
 
         try {
