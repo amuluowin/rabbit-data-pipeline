@@ -11,17 +11,21 @@ use Rabbit\Data\Pipeline\Message;
 class SynToClickhouse extends BaseSyncData
 {
     protected string $primary;
+    protected bool $onlyInsert;
+    protected string $updatedAt;
 
     public function init(): void
     {
         parent::init();
         [
             $this->equal,
-            $this->primary
-        ] = ArrayHelper::getValueByArray($this->config, ['equal', 'primary']);
+            $this->primary,
+            $this->onlyInsert,
+            $this->updatedAt
+        ] = ArrayHelper::getValueByArray($this->config, ['equal', 'primary', 'onlyInsert', 'updatedAt'], ['onlyInsert' => false]);
 
-        if ($this->primary === null) {
-            throw new InvalidConfigException('primary field is empty!');
+        if ($this->primary === null && $this->updatedAt) {
+            throw new InvalidConfigException('primary & updatedAt both empty!');
         }
     }
 
@@ -44,22 +48,34 @@ class SynToClickhouse extends BaseSyncData
             $on .= "f.$key=t.$key and ";
         }
         $on = rtrim($on, ' and ');
-        $sql = "INSERT INTO {$this->to} ({$this->field},flag)
-        SELECT {$fields},0 AS flag
-          FROM {$this->from} f 
-          ANTI LEFT JOIN {$this->to} t on $on
-         WHERE ({$primary}) NOT IN(
-        SELECT {$this->primary} FROM {$this->to}
-         WHERE flag= 0)";
+
+        if ($this->updatedAt !== null) {
+            $sql = "INSERT INTO {$this->to} ({$this->field}" . ($this->onlyInsert ? ')' : ',flag)') . "
+            SELECT {$fields}" . ($this->onlyInsert ? '' : ',0 AS flag') . "
+            FROM {$this->from} f where f.{$this->updatedAt}>(SELECT max({$this->updatedAt}) from {$this->to} )";
+        } else {
+            $sql = "INSERT INTO {$this->to} ({$this->field}" . ($this->onlyInsert ? ')' : ',flag)') . "
+            SELECT {$fields}" . ($this->onlyInsert ? '' : ',0 AS flag') . "
+              FROM {$this->from} f 
+              ANTI LEFT JOIN {$this->to} t on $on" . ($this->onlyInsert ? '' : "
+             WHERE ({$primary}) NOT IN(
+            SELECT {$this->primary} FROM {$this->to}
+             WHERE flag= 0)");
+        }
+
+
         getDI('click')->get($this->db)->createCommand($sql)->execute();
-        
-        $sql = "ALTER TABLE {$this->to}
+
+        if (!$this->onlyInsert) {
+            $sql = "ALTER TABLE {$this->to}
             UPDATE flag= flag+ 1
              WHERE {$this->primary}  in(
             SELECT {$this->primary}
               FROM {$this->to}
              WHERE flag= 0)  and flag in(0, 1)";
-        $msg->data = getDI('click')->get($this->db)->createCommand($sql)->execute();
+            $msg->data = getDI('click')->get($this->db)->createCommand($sql)->execute();
+        }
+
         $this->sink($msg);
     }
 }
