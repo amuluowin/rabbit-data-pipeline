@@ -25,8 +25,8 @@ class SynToClickhouse extends BaseSyncData
             $this->updatedAt
         ] = ArrayHelper::getValueByArray($this->config, ['equal', 'primary', 'onlyInsert', 'updatedAt'], ['onlyInsert' => false]);
 
-        if ($this->primary === null) {
-            throw new InvalidConfigException('primary field is empty!');
+        if ($this->primary === null && $this->updatedAt) {
+            throw new InvalidConfigException('primary & updatedAt both empty!');
         }
     }
 
