@@ -11,6 +11,7 @@ use Rabbit\Data\Pipeline\Message;
 
 abstract class BaseSyncData extends AbstractPlugin
 {
+    protected ?string $equal;
     protected string $from;
     protected string $to;
     protected string $field;
@@ -22,8 +23,9 @@ abstract class BaseSyncData extends AbstractPlugin
             $this->from,
             $this->to,
             $this->db,
-            $this->field
-        ] = ArrayHelper::getValueByArray($this->config, ['from', 'to', 'db', 'field'], ['db' => 'default']);
+            $this->field,
+            $this->equal
+        ] = ArrayHelper::getValueByArray($this->config, ['from', 'to', 'db', 'field', 'equal'], ['db' => 'default']);
         if ($this->from === null || $this->to === null || $this->field === null) {
             throw new InvalidConfigException('from or to or field is empty!');
         }

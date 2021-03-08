@@ -10,7 +10,6 @@ use Rabbit\Data\Pipeline\Message;
 
 class SynToClickhouse extends BaseSyncData
 {
-    protected ?string $equal;
     protected string $primary;
 
     public function init(): void
