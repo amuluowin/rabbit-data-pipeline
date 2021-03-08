@@ -24,9 +24,9 @@ class SynToMysql extends BaseSyncData
                 $equal .= "f.$key=t.$key and ";
             }
             $equal = rtrim($equal, ' and ');
-            $sql = "INSERT INTO {$this->to} ({$this->field}) SELECT {$this->field} FROM {$this->from} f WHERE NOT EXISTS (SELECT 1 FROM {$this->to} t WHERE $equal)";
+            $sql = "INSERT INTO {$this->to} ({$this->field}) SELECT {$this->field} FROM {$this->from} f WHERE NOT EXISTS (SELECT 1 FROM {$this->to} t WHERE $equal) ON DUPLICATE KEY UPDATE " . implode(',', $updates);
         } else {
-            $sql = sprintf("INSERT INTO %s %s SELECT %s FROM (%s)t ON DUPLICATE KEY UPDATE %s", $this->to, "($this->field)", $this->field, strtr($this->from, [':fields' => $this->field]), implode(',', $updates));
+            $sql = "INSERT INTO {$this->to} ({$this->field}) SELECT {$this->field} FROM ($this->from)t ON DUPLICATE KEY UPDATE " . implode(',', $updates);
         }
 
         try {
