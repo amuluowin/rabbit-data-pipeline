@@ -11,7 +11,7 @@ use Rabbit\Data\Pipeline\Message;
 class SynToClickhouse extends BaseSyncData
 {
 
-    protected string $updatedAt;
+    protected ?string $updatedAt;
 
     public function init(): void
     {
@@ -20,7 +20,7 @@ class SynToClickhouse extends BaseSyncData
             $this->updatedAt
         ] = ArrayHelper::getValueByArray($this->config, ['updatedAt']);
 
-        if ($this->primary === null && $this->updatedAt) {
+        if ($this->primary === null && $this->updatedAt === null) {
             throw new InvalidConfigException('primary & updatedAt both empty!');
         }
     }
