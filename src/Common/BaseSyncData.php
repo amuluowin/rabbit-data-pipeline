@@ -16,7 +16,7 @@ abstract class BaseSyncData extends AbstractPlugin
     protected string $to;
     protected string $field;
     protected string $db;
-    protected string $primary;
+    protected ?string $primary;
     protected bool $onlyInsert;
 
     public function init(): void
