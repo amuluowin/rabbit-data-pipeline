@@ -17,8 +17,9 @@ class SynToClickhouse extends BaseSyncData
     {
         parent::init();
         [
-            $this->updatedAt
-        ] = ArrayHelper::getValueByArray($this->config, ['updatedAt']);
+            $this->updatedAt,
+            $this->db,
+        ] = ArrayHelper::getValueByArray($this->config, ['updatedAt', 'db'], ['db' => 'click']);
 
         if ($this->primary === null && $this->updatedAt === null) {
             throw new InvalidConfigException('primary & updatedAt both empty!');
@@ -60,7 +61,7 @@ class SynToClickhouse extends BaseSyncData
         }
 
 
-        getDI('click')->get($this->db)->createCommand($sql)->execute();
+        getDI('db')->get($this->db)->createCommand($sql)->execute();
 
         if (!$this->onlyInsert) {
             $sql = "ALTER TABLE {$this->to}
@@ -69,7 +70,7 @@ class SynToClickhouse extends BaseSyncData
             SELECT {$this->primary}
               FROM {$this->to}
              WHERE flag= 0)  and flag in(0, 1)";
-            $msg->data = getDI('click')->get($this->db)->createCommand($sql)->execute();
+            $msg->data = getDI('db')->get($this->db)->createCommand($sql)->execute();
         }
 
         $this->sink($msg);

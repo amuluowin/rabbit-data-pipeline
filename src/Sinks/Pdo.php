@@ -29,7 +29,6 @@ class Pdo extends AbstractPlugin
 {
     protected ?string $tableName;
     protected string $dbName;
-    protected string $driver = 'db';
     protected string $func;
     protected int $retry = 1;
     protected ?int $sleep = null;
@@ -142,7 +141,7 @@ class Pdo extends AbstractPlugin
      */
     protected function saveWithLine(Message $msg): void
     {
-        $db = getDI($this->driver)->get($this->dbName);
+        $db = getDI('db')->get($this->dbName);
         $msg->data = $db->createCommand()->batchInsert($this->tableName, $msg->data['columns'], $msg->data['data'])->execute();
         $this->sink($msg);
     }

@@ -104,10 +104,10 @@ class Clickhouse extends AbstractPlugin
             }
             // 存储数据
             $msg->data = $this->saveWithLine($msg);
-            App::warning("$this->tableName insert succ: $rows");
+            App::warning("$this->tableName insert succ: $msg->data");
 
             // 更新flag 删除锁
-            if ($this->primaryKey && !empty($updateFlagCondition) && $rows > 0 && isset($lock)) {
+            if ($this->primaryKey && !empty($updateFlagCondition) && $msg->data > 0 && isset($lock)) {
                 $this->updateFlag($updateFlagCondition);
                 App::warning("update $this->flagField succ:  $lock");
             }
@@ -135,7 +135,7 @@ class Clickhouse extends AbstractPlugin
             $batch = new BatchInsertCsv(
                 $this->tableName,
                 strval(getDI('idGen')->create()),
-                getDI($this->driver)->get($this->dbName)
+                getDI('db')->get($this->dbName)
             );
             $batch->addColumns($msg->data['columns']);
             foreach ($msg->data['data'] as $item) {
@@ -143,7 +143,7 @@ class Clickhouse extends AbstractPlugin
             }
             $rows = $batch->execute();
         } else {
-            $rows = getDI($this->driver)->get($this->dbName)->insert($this->tableName, $msg->data['columns'], $msg->data['data']);
+            $rows = getDI('db')->get($this->dbName)->insert($this->tableName, $msg->data['columns'], $msg->data['data']);
         }
         App::warning("$this->tableName success: $rows");
         return $rows;
@@ -174,17 +174,15 @@ class Clickhouse extends AbstractPlugin
      */
     protected function updateFlag(array $updateFlagCondition): void
     {
-        $model = new class ($this->driver, $this->tableName, $this->dbName) extends ActiveRecord
+        $model = new class($this->tableName, $this->dbName) extends ActiveRecord
         {
             /**
              *  constructor.
-             * @param string $driver
              * @param string $tableName
              * @param string $db
              */
-            public function __construct(string $driver, string $tableName, string $db)
+            public function __construct(string $tableName, string $db)
             {
-                Context::set(md5(get_called_class() . 'driver'), $driver);
                 Context::set(md5(get_called_class() . 'tableName'), $tableName);
                 Context::set(md5(get_called_class() . 'db'), $db);
             }
@@ -202,7 +200,7 @@ class Clickhouse extends AbstractPlugin
              */
             public static function getDb(): ConnectionInterface
             {
-                return getDI(Context::get(md5(get_called_class() . 'driver')))->get(Context::get(md5(get_called_class() . 'db')));
+                return getDI('db')->get(Context::get(md5(get_called_class() . 'db')));
             }
         };
 
