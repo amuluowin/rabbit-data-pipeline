@@ -216,7 +216,7 @@ class Scheduler implements SchedulerInterface, InitInterface
             }
             if (ArrayHelper::getValue($tmp, 'start') === true) {
                 $target = $this->getTarget($task, $key);
-                $msg = create(Message::class, ['redisKey' => $this->redisKey, 'taskName' => $task, 'taskId' => (string)getDI('idGen')->create()], false);
+                $msg = create(Message::class, ['redisKey' => $this->redisKey, 'taskName' => $task, 'taskId' => (string)getDI('idGen')->nextId()], false);
                 $target->process($msg);
             }
         }

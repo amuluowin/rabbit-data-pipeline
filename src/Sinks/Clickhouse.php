@@ -134,7 +134,7 @@ class Clickhouse extends AbstractPlugin
         if ($this->driver === 'clickhouse') {
             $batch = new BatchInsertCsv(
                 $this->tableName,
-                strval(getDI('idGen')->create()),
+                strval(getDI('idGen')->nextId()),
                 getDI('db')->get($this->dbName)
             );
             $batch->addColumns($msg->data['columns']);
