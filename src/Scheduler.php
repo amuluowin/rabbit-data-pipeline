@@ -80,6 +80,9 @@ class Scheduler implements SchedulerInterface, InitInterface
                     $runTarget->process($msg);
                     $taskResult[$key] = [$target => 'proxy run success'];
                 } else {
+                    if (false === ArrayHelper::getValue($this->config[$key], "singleton", true)) {
+                        $this->config[$key] = $this->parser->parseTask($key);
+                    }
                     $taskResult[$key] = $this->start((string)$key, $params);
                 }
             } catch (Throwable $exception) {
@@ -155,13 +158,14 @@ class Scheduler implements SchedulerInterface, InitInterface
     /**
      * @param string $name
      * @param string $key
+     * @param bool $singleton
      * @return AbstractPlugin
      * @throws DependencyException
      * @throws InvalidConfigException
      * @throws NotFoundException
      * @throws ReflectionException
      */
-    public function getTarget(string $name, string $key): AbstractPlugin
+    public function getTarget(string $name, string $key, bool $singleton = true): AbstractPlugin
     {
         if (null !== $target = ArrayHelper::getValue($this->targets, "$name.$key")) {
             return $target;
@@ -176,6 +180,7 @@ class Scheduler implements SchedulerInterface, InitInterface
         $wait = ArrayHelper::remove($params, 'wait', false);
         $canEmpty = ArrayHelper::remove($params, 'canEmpty', false);
         $errHandler = ArrayHelper::remove($params, 'errHandler');
+        $singleton = ArrayHelper::getValue($this->config[$name], 'singleton', true);
         if (is_string($output)) {
             $output = [$output => true];
         }
@@ -194,7 +199,9 @@ class Scheduler implements SchedulerInterface, InitInterface
             ],
             false
         );
-        $this->targets[$name][$key] = $target;
+        if ($singleton) {
+            $this->targets[$name][$key] = $target;
+        }
         return $target;
     }
 

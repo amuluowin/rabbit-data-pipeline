@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
@@ -67,8 +68,18 @@ class JsonParser implements ConfigParserInterface
             if ($json === false) {
                 throw new InvalidConfigException(error_get_last()['message'] . " path=$this->path");
             }
+            $json = JsonHelper::decode($json, true);
             $config[pathinfo($this->path, PATHINFO_FILENAME)] = JsonHelper::decode($json, true);
         }
         return $config;
+    }
+
+    public function parseTask(string $task): array
+    {
+        $json = file_get_contents($this->path);
+        if ($json === false) {
+            throw new InvalidConfigException(error_get_last()['message'] . " path=$this->path");
+        }
+        return JsonHelper::decode($json, true);
     }
 }

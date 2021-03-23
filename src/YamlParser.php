@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
@@ -70,5 +71,14 @@ class YamlParser implements ConfigParserInterface
             $config[pathinfo($this->path, PATHINFO_FILENAME)] = $item;
         }
         return $config;
+    }
+
+    public function parseTask(string $task): array
+    {
+        $item = yaml_parse_file("{$this->path}/$key.yaml");
+        if ($item === false) {
+            throw new InvalidConfigException(error_get_last()['message'] . " key=$key");
+        }
+        return $item;
     }
 }
