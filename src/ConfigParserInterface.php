@@ -15,5 +15,5 @@ interface ConfigParserInterface
      */
     public function parse(): array;
 
-    public function parseTask(string $task): array;
+    public function parseTask(string $key): array;
 }

@@ -73,7 +73,7 @@ class YamlParser implements ConfigParserInterface
         return $config;
     }
 
-    public function parseTask(string $task): array
+    public function parseTask(string $key): array
     {
         $item = yaml_parse_file("{$this->path}/$key.yaml");
         if ($item === false) {
