@@ -74,11 +74,11 @@ class JsonParser implements ConfigParserInterface
         return $config;
     }
 
-    public function parseTask(string $task): array
+    public function parseTask(string $key): array
     {
-        $json = file_get_contents($this->path);
+        $json = file_get_contents($this->path . "/$key.yaml");
         if ($json === false) {
-            throw new InvalidConfigException(error_get_last()['message'] . " path=$this->path");
+            throw new InvalidConfigException(error_get_last()['message'] . " key=$key");
         }
         return JsonHelper::decode($json, true);
     }
