@@ -48,7 +48,7 @@ class SynToMysql extends BaseSyncData
             $equal = rtrim($equal, ' and ');
             $sql = "{$this->mode} INTO {$this->to} ({$this->field}) SELECT {$fields} FROM {$this->from} f WHERE NOT EXISTS (SELECT 1 FROM {$this->to} t WHERE $equal)" . ($this->where ? "and {$this->where}" : '');
         } else {
-            $sql = "{$this->mode} INTO {$this->to} ({$this->field}) SELECT {$fields} FROM ({$this->from}) f" . ($this->where ? "where {$this->where}" : '');
+            $sql = "{$this->mode} INTO {$this->to} ({$this->field}) SELECT {$fields} FROM ({$this->from}) f" . ($this->where ? " where {$this->where}" : '');
         }
 
         if ($this->mode === 'INSERT' && !$this->onlyInsert) {
