@@ -12,14 +12,16 @@ use Throwable;
 class SynToMysql extends BaseSyncData
 {
     protected string $mode;
+    protected string $where;
 
 
     public function init(): void
     {
         parent::init();
         [
-            $this->mode
-        ] = ArrayHelper::getValueByArray($this->config, ['mode'], ['INSERT']);
+            $this->mode,
+            $this->where,
+        ] = ArrayHelper::getValueByArray($this->config, ['mode', 'where'], ['INSERT', '']);
         $this->mode = strtoupper($this->mode);
     }
 
@@ -44,9 +46,9 @@ class SynToMysql extends BaseSyncData
                 $equal .= "f.$key=t.$key and ";
             }
             $equal = rtrim($equal, ' and ');
-            $sql = "{$this->mode} INTO {$this->to} ({$this->field}) SELECT {$fields} FROM {$this->from} f WHERE NOT EXISTS (SELECT 1 FROM {$this->to} t WHERE $equal)";
+            $sql = "{$this->mode} INTO {$this->to} ({$this->field}) SELECT {$fields} FROM {$this->from} f WHERE NOT EXISTS (SELECT 1 FROM {$this->to} t WHERE $equal)" . ($this->where ? "and {$this->where}" : '');
         } else {
-            $sql = "{$this->mode} INTO {$this->to} ({$this->field}) SELECT {$fields} FROM ($this->from) f";
+            $sql = "{$this->mode} INTO {$this->to} ({$this->field}) SELECT {$fields} FROM ({$this->from}) f" . ($this->where ? "where {$this->where}" : '');
         }
 
         if ($this->mode === 'INSERT' && !$this->onlyInsert) {
