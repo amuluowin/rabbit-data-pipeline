@@ -30,6 +30,8 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected string $scName;
     protected bool $canEmpty = false;
     private ?string $callKey = null;
+
+    public ?string $alarm = null;
     /**
      * AbstractPlugin constructor.
      * @param string $scName

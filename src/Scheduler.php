@@ -180,6 +180,7 @@ class Scheduler implements SchedulerInterface, InitInterface
         $wait = ArrayHelper::remove($params, 'wait', false);
         $canEmpty = ArrayHelper::remove($params, 'canEmpty', false);
         $errHandler = ArrayHelper::remove($params, 'errHandler');
+        $alarm = ArrayHelper::remove($params, 'alarm');
         $singleton = ArrayHelper::getValue($this->config[$name], 'singleton', true);
         if (is_string($output)) {
             $output = [$output => true];
@@ -195,7 +196,8 @@ class Scheduler implements SchedulerInterface, InitInterface
                 'taskName' => $name,
                 'canEmpty' => $canEmpty,
                 'wait' => $wait,
-                'errHandler' => $errHandler
+                'errHandler' => $errHandler,
+                'alarm' => $alarm
             ],
             false
         );
@@ -249,7 +251,11 @@ class Scheduler implements SchedulerInterface, InitInterface
                 $target->process($msg);
             }
         } catch (Throwable $exception) {
-            App::error("「{$msg->taskName}」「{$key}」 {$msg->taskId}" . ExceptionHelper::dumpExceptionToString($exception));
+            $error = "「{$msg->taskName}」「{$key}」 {$msg->taskId}" . ExceptionHelper::dumpExceptionToString($exception);
+            App::error($error);
+            if (isset($target) && $target->alarm && null !== ($ding = ding($target->alarm))) {
+                $ding->text($error);
+            }
             $msg->deleteAllLock();
         }
     }
