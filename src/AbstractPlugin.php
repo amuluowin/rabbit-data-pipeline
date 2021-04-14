@@ -136,9 +136,12 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
         }
         wgeach($outputs, function ($output, $wait) use ($msg) {
             if (empty($msg->data)) {
+                $log = "「{$this->taskName}」 $this->key -> $output; data is empty, %s";
                 if (!$this->canEmpty) {
+                    App::info(sprintf($log, 'canEmpty is false so not sink next'), 'Data');
                     return;
                 }
+                App::info(sprintf($log, 'canEmpty is true so continue sink next'), 'Data');
             } else {
                 App::info("「{$this->taskName}」 $this->key -> $output;", 'Data');
             }
