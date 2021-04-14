@@ -58,7 +58,7 @@ class SynToMysql extends BaseSyncData
         try {
             getDI('db')->get($this->db)->createCommand($sql)->execute();
         } catch (Throwable $e) {
-            App::error($e->getMessage());
+            throw $e;
         } finally {
             $msg->data = 1;
             $this->sink($msg);
