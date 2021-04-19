@@ -11,10 +11,7 @@ use Rabbit\Cron\CronJob;
 use ReflectionException;
 use DI\NotFoundException;
 use DI\DependencyException;
-use Rabbit\DB\Redis\RedisLock;
-use Rabbit\Base\Helper\LockHelper;
 use Rabbit\Base\Helper\ArrayHelper;
-use Rabbit\Base\Contract\InitInterface;
 use Rabbit\Base\Helper\ExceptionHelper;
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Exception\InvalidArgumentException;
@@ -23,7 +20,7 @@ use Rabbit\Base\Exception\InvalidArgumentException;
  * Class Scheduler
  * @package Rabbit\Data\Pipeline
  */
-class Scheduler implements SchedulerInterface, InitInterface
+class Scheduler implements SchedulerInterface
 {
     protected array $targets = [];
     protected ConfigParserInterface $parser;
@@ -49,15 +46,6 @@ class Scheduler implements SchedulerInterface, InitInterface
     public function getConfig(): array
     {
         return $this->config;
-    }
-
-    /**
-     * @return mixed|void
-     * @throws Throwable
-     */
-    public function init(): void
-    {
-        LockHelper::add('redis', new RedisLock(getDI('redis')->get($this->redisKey)));
     }
 
     /**
@@ -142,7 +130,7 @@ class Scheduler implements SchedulerInterface, InitInterface
                 $this->process($key, $params);
             }
         };
-        if ($lock && false === lock('redis', function () use ($func, $key, $expression, &$params) {
+        if ($lock && false === rlock(function () use ($func, $key, $expression, &$params) {
             $func($key, $expression, $params);
         }, false, $this->name . '.' . $key, $lock)) {
             App::warning("$key is running");
