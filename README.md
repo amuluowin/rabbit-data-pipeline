@@ -43,7 +43,6 @@ errHandler: callable
 ------
 ### Common
 * [HttpRequest](./doc/HttpRequest.md)
-* [OrmDB](./doc/OrmDB.md)
 
 ------
 ### TransForms
