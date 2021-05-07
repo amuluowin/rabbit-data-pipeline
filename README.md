@@ -13,6 +13,13 @@ return [
 ];
 ```
 
+## 任务配置
+
+```yaml
+lock: task lock time,default null
+cron: crontab or int,default null.int is later sec, -1 is only run once
+```
+
 ## 通用配置
 
 ```yaml

@@ -119,6 +119,8 @@ class Scheduler implements SchedulerInterface
                         App::info("$key finished once! Go on with {$expression}s later");
                         (int)$expression && sleep((int)$expression);
                     }
+                } elseif ((int)$expression < 0) {
+                    $this->process($key, $params);
                 } else {
                     $this->cron->add($key, [$expression, function () use ($key, &$params) {
                         $this->process($key, $params);
