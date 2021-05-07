@@ -112,12 +112,12 @@ class Scheduler implements SchedulerInterface
         $lock = ArrayHelper::getValue($this->config[$key], 'lock');
         $expression = (string)ArrayHelper::getValue($this->config[$key], 'cron');
         $func = function (string $key, string $expression, array &$params) {
-            if ($this->cron && $expression) {
-                if ((int)$expression > 0) {
+            if ($this->cron && $expression !== '') {
+                if ((int)$expression >= 0) {
                     while (true) {
                         $this->process($key, $params);
                         App::info("$key finished once! Go on with {$expression}s later");
-                        sleep((int)$expression);
+                        (int)$expression && sleep((int)$expression);
                     }
                 } else {
                     $this->cron->add($key, [$expression, function () use ($key, &$params) {
