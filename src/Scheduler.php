@@ -15,6 +15,7 @@ use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Base\Helper\ExceptionHelper;
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Exception\InvalidArgumentException;
+use Rabbit\Cron\CronExpression;
 
 /**
  * Class Scheduler
@@ -113,14 +114,16 @@ class Scheduler implements SchedulerInterface
         $expression = (string)ArrayHelper::getValue($this->config[$key], 'cron');
         $func = function (string $key, string $expression, array &$params) {
             if ($this->cron && $expression !== '') {
-                if ((int)$expression >= 0) {
-                    while (true) {
+                if (is_numeric($expression)) {
+                    if ((int)$expression >= 0) {
+                        while (true) {
+                            $this->process($key, $params);
+                            App::info("$key finished once! Go on with {$expression}s later");
+                            (int)$expression && sleep((int)$expression);
+                        }
+                    } else {
                         $this->process($key, $params);
-                        App::info("$key finished once! Go on with {$expression}s later");
-                        (int)$expression && sleep((int)$expression);
                     }
-                } elseif ((int)$expression < 0) {
-                    $this->process($key, $params);
                 } else {
                     $this->cron->add($key, [$expression, function () use ($key, &$params) {
                         $this->process($key, $params);
