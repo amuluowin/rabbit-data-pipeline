@@ -30,6 +30,7 @@ class Scheduler implements SchedulerInterface
     protected array $senders = [];
     protected string $redisKey = 'default';
     protected ?CronJob $cron = null;
+    protected array $loops = [];
 
     /**
      * Scheduler constructor.
@@ -116,10 +117,11 @@ class Scheduler implements SchedulerInterface
             if ($this->cron && $expression !== '') {
                 if (is_numeric($expression)) {
                     if ((int)$expression >= 0) {
-                        while (true) {
-                            $this->process($key, $params);
-                            App::info("$key finished once! Go on with {$expression}s later");
-                            (int)$expression && sleep((int)$expression);
+                        if (!isset($this->loops[$key])) {
+                            $this->loops[$key] = loop(function () use ($key, &$params, $expression) {
+                                $this->process($key, $params);
+                                App::info("$key finished once! Go on with {$expression}s later");
+                            }, (int)$expression * 1000);
                         }
                     } else {
                         $this->process($key, $params);
