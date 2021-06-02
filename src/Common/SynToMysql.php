@@ -51,6 +51,10 @@ class SynToMysql extends BaseSyncData
             $sql = "{$this->mode} INTO {$this->to} ({$this->field}) SELECT {$fields} FROM ({$this->from}) f" . ($this->where ? " where {$this->where}" : '');
         }
 
+        if ($this->batch) {
+            $sql .= " limit {$this->batch} ";
+        }
+
         if ($this->mode === 'INSERT' && !$this->onlyInsert) {
             $sql .= " ON DUPLICATE KEY UPDATE " . implode(',', $updates);
         }

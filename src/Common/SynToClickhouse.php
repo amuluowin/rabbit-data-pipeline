@@ -42,22 +42,32 @@ class SynToClickhouse extends BaseSyncData
         $onAll = $this->equal ?? $this->field;
         $on = '';
         foreach (explode(',', $onAll) as $key) {
-            $on .= "f.$key=t.$key and ";
+            if (str_ends_with($key, ')')) {
+                $func = substr($key, 0, strpos($key, '('));
+                $params = explode(',', substr($key, strpos($key, '(') + 1, strpos($key, ')') - strpos($key, '(') - 1));
+                $params[0] = "f.{$params[0]}";
+                $str = implode(',', $params);
+                $on .= "$func({$str})";
+                $str = str_replace('f.', 'k.', $str);
+                $on .= " = $func({$str}) and ";
+            } else {
+                $on .= "f.$key=t.$key and ";
+            }
         }
         $on = rtrim($on, ' and ');
 
         if ($this->updatedAt !== null) {
             $sql = "INSERT INTO {$this->to} ({$this->field}" . ($this->onlyInsert ? ')' : ',flag)') . "
             SELECT {$fields}" . ($this->onlyInsert ? '' : ',0 AS flag') . "
-            FROM {$this->from} f where f.{$this->updatedAt}>(SELECT max({$this->updatedAt}) from {$this->to} )";
+            FROM {$this->from} f where f.{$this->updatedAt} > (SELECT max({$this->updatedAt}) from {$this->to} )";
         } else {
             $sql = "INSERT INTO {$this->to} ({$this->field}" . ($this->onlyInsert ? ')' : ',flag)') . "
             SELECT {$fields}" . ($this->onlyInsert ? '' : ',0 AS flag') . "
               FROM {$this->from} f 
               ANTI LEFT JOIN {$this->to} t on $on" . ($this->onlyInsert ? '' : "
-             WHERE ({$primary}) NOT IN(
+             WHERE ({$primary}) NOT IN (
             SELECT {$this->primary} FROM {$this->to}
-             WHERE flag= 0)");
+             WHERE flag = 0)");
         }
 
 
@@ -65,11 +75,11 @@ class SynToClickhouse extends BaseSyncData
 
         if (!$this->onlyInsert) {
             $sql = "ALTER TABLE {$this->to}
-            UPDATE flag= flag+ 1
-             WHERE {$this->primary}  in(
+            UPDATE flag = flag + 1
+             WHERE {$this->primary}  in (
             SELECT {$this->primary}
               FROM {$this->to}
-             WHERE flag= 0)  and flag in(0, 1)";
+             WHERE flag = 0)  and flag in (0, 1)";
             $msg->data = getDI('db')->get($this->db)->createCommand($sql)->execute();
         }
 
