@@ -126,7 +126,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      * @param Message $msg
      * @throws Throwable
      */
-    protected function sink(Message $msg): void
+    public function sink(Message $msg): void
     {
         $func = $msg->opt[$this->callKey] ?? null;
         if ($func !== null && is_callable($func)) {
