@@ -10,29 +10,28 @@ use Rabbit\Server\ServerHelper;
 use Rabbit\Server\CommonHandler;
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Data\Pipeline\Message;
+use Rabbit\Server\IPCMessage;
 
 class WorkerSender implements ISender
 {
-    /**
-     * @param string $address
-     * @param string $target
-     * @param AbstractPlugin $pre
-     * @param $data
-     * @return array|null
-     * @throws Throwable
-     */
-    public function send(string $target, Message $msg, string $address = null, float $wait = 0): ?array
+    public function send(string $target, Message $msg, string $address, float $wait = 0): ?array
     {
-        $tmp = ['scheduler->next', [$msg, $target, $wait]];
+        $ipc = new IPCMessage([
+            'data' => ['scheduler->next', [$msg, $target, $wait]],
+            'wait' => $wait,
+            'to' => $address === null ? -1 : (int)$address
+        ]);
         if (null === $server = ServerHelper::getServer()) {
             App::warning("Not running in server, use local process");
-            $msg !== null && CommonHandler::handler($this, $tmp);
-            return null;
-        }
-        if (!$server instanceof Server) {
+            $ipc = CommonHandler::handler($this, $ipc);
+        } elseif (!$server instanceof Server) {
             throw new InvalidConfigException("only use for swoole_server");
+        } else {
+            $ipc = $server->pipeHandler->sendMessage($ipc);
         }
-        $server->pipeHandler->sendMessage($tmp, (int)$address, $wait);
-        return null;
+        if ($ipc->error !== null) {
+            throw new $ipc->error;
+        }
+        return $ipc->data;
     }
 }

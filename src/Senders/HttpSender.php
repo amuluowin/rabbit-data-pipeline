@@ -7,36 +7,18 @@ namespace Rabbit\Data\Pipeline\Senders;
 use Rabbit\Base\App;
 use Rabbit\Data\Pipeline\Message;
 use Rabbit\HttpClient\Client;
-use Throwable;
 
-/**
- * Class HttpSender
- * @package Rabbit\Data\Pipeline
- */
 class HttpSender implements ISender
 {
-    /** @var Client */
     protected Client $client;
-    /** @var string */
     protected string $route = '/schedule/run';
 
-    /**
-     * HttpSender constructor.
-     */
     public function __construct()
     {
         $this->client = new Client(['usePool' => true]);
     }
 
-    /**
-     * @param string $address
-     * @param string $target
-     * @param AbstractPlugin $pre
-     * @param $data
-     * @return array|null
-     * @throws Throwable
-     */
-    public function send(string $target, Message $msg, string $address = null, float $wait = 0): ?array
+    public function send(string $target, Message $msg, string $address, float $wait = 0)
     {
         $response = $this->client->request([
             'uri' => $address . $this->route,
@@ -54,7 +36,7 @@ class HttpSender implements ISender
             'timeout' => $wait > 0 ? $wait : -1
         ]);
         if ($response->getStatusCode() === 200) {
-            App::info("send $msg->taskName $target success");
+            App::debug("send $msg->taskName $target success");
             return $response->jsonArray();
         }
         App::error("send $msg->taskName $target failed " . (string)$response->getBody());
