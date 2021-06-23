@@ -7,7 +7,6 @@ namespace Rabbit\Data\Pipeline\Common;
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
-use Rabbit\Data\Pipeline\Message;
 
 abstract class BaseSyncData extends AbstractPlugin
 {

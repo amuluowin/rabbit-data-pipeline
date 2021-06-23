@@ -12,6 +12,7 @@ class SynToClickhouse extends BaseSyncData
 {
 
     protected ?string $updatedAt;
+    protected bool $truncate = false;
 
     public function init(): void
     {
@@ -19,10 +20,14 @@ class SynToClickhouse extends BaseSyncData
         [
             $this->updatedAt,
             $this->db,
-        ] = ArrayHelper::getValueByArray($this->config, ['updatedAt', 'db'], ['db' => 'click']);
+            $this->truncate,
+        ] = ArrayHelper::getValueByArray($this->config, ['updatedAt', 'db', 'truncate'], ['db' => 'click', 'truncate' => $this->truncate]);
 
         if ($this->primary === null && $this->updatedAt === null) {
             throw new InvalidConfigException('primary & updatedAt both empty!');
+        }
+        if ($this->truncate) {
+            $this->onlyInsert = true;
         }
     }
 
@@ -55,6 +60,10 @@ class SynToClickhouse extends BaseSyncData
             }
         }
         $on = rtrim($on, ' and ');
+
+        if ($this->truncate) {
+            getDI('db')->get($this->db)->createCommand("truncate table {$this->to}")->execute();
+        }
 
         if ($this->updatedAt !== null) {
             $sql = "INSERT INTO {$this->to} ({$this->field}" . ($this->onlyInsert ? ')' : ',flag)') . "
