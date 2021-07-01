@@ -53,7 +53,7 @@ class SynToClickhouse extends BaseSyncData
                 $params[0] = "f.{$params[0]}";
                 $str = implode(',', $params);
                 $on .= "$func({$str})";
-                $str = str_replace('f.', 'k.', $str);
+                $str = str_replace('f.', 't.', $str);
                 $on .= " = $func({$str}) and ";
             } else {
                 $on .= "f.$key=t.$key and ";
