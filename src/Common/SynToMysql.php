@@ -42,7 +42,7 @@ class SynToMysql extends BaseSyncData
 
         if ($this->equal) {
             $equal = '';
-            foreach (explode(',', $this->equal) as $key) {
+            foreach (explode(';', $this->equal) as $key) {
                 $equal .= "f.$key=t.$key and ";
             }
             $equal = rtrim($equal, ' and ');

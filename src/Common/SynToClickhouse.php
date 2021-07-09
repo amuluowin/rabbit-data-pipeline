@@ -46,8 +46,10 @@ class SynToClickhouse extends BaseSyncData
 
         $onAll = $this->equal ?? $this->field;
         $on = '';
-        foreach (explode(',', $onAll) as $key) {
-            if (str_ends_with($key, ')')) {
+        foreach (explode(';', $onAll) as $key) {
+            if (str_contains($key, '=')) {
+                $on .= "$key and ";
+            } elseif (str_ends_with($key, ')')) {
                 $func = substr($key, 0, strpos($key, '('));
                 $params = explode(',', substr($key, strpos($key, '(') + 1, strpos($key, ')') - strpos($key, '(') - 1));
                 $params[0] = "f.{$params[0]}";
