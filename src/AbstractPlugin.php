@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline;
 
+use Closure;
 use Psr\SimpleCache\CacheInterface;
 use Rabbit\Base\App;
 use Rabbit\Base\Contract\InitInterface;
@@ -30,6 +31,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     protected string $scName;
     protected bool $canEmpty = false;
     private ?string $callKey = null;
+    private Closure $func;
 
     public ?string $alarm = null;
     /**
@@ -41,6 +43,19 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     {
         $this->config = $config;
         $this->scName = $scName;
+        $this->func = function (string $output, Message $msg) {
+            if (empty($msg->data)) {
+                $log = "「{$this->taskName}」 $this->key -> $output; data is empty, %s";
+                if (!$this->canEmpty) {
+                    App::info(sprintf($log, 'canEmpty is false so not sink next'), 'Data');
+                    return;
+                }
+                App::info(sprintf($log, 'canEmpty is true so continue sink next'), 'Data');
+            } else {
+                App::info("「{$this->taskName}」 $this->key -> $output;", 'Data');
+            }
+            $this->getScheduler()->next($msg, $output);
+        };
     }
 
     public function getCallKey(): ?string
@@ -134,18 +149,13 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
         } else {
             $outputs = $this->output;
         }
-        wgeach($outputs, function ($output, $wait) use ($msg) {
-            if (empty($msg->data)) {
-                $log = "「{$this->taskName}」 $this->key -> $output; data is empty, %s";
-                if (!$this->canEmpty) {
-                    App::info(sprintf($log, 'canEmpty is false so not sink next'), 'Data');
-                    return;
-                }
-                App::info(sprintf($log, 'canEmpty is true so continue sink next'), 'Data');
-            } else {
-                App::info("「{$this->taskName}」 $this->key -> $output;", 'Data');
-            }
-            $this->getScheduler()->next($msg, $output);
-        });
+
+        if (count($outputs) > 1) {
+            wgeach($outputs, function ($output, $wait) use ($msg) {
+                call_user_func($this->func, $output, $msg);
+            });
+        } else {
+            call_user_func($this->func, current(array_keys($outputs)), $msg);
+        }
     }
 }
