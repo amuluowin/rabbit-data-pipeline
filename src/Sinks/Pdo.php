@@ -9,13 +9,10 @@ use Rabbit\Base\App;
 use Rabbit\DB\Exception;
 use DI\NotFoundException;
 use DI\DependencyException;
-use Rabbit\Base\Core\Context;
 use Rabbit\DB\MakePdoConnection;
 use Rabbit\ActiveRecord\ARHelper;
 use Rabbit\Data\Pipeline\Message;
-use Rabbit\DB\ConnectionInterface;
 use Rabbit\Base\Helper\ArrayHelper;
-use Rabbit\ActiveRecord\ActiveRecord;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 use Rabbit\ActiveRecord\BaseActiveRecord;
 use Rabbit\Base\Exception\NotSupportedException;
@@ -156,7 +153,7 @@ class Pdo extends AbstractPlugin
     protected function saveWithCondition(Message $msg, array $updates, array $condition): void
     {
         $model = $this->getModel($msg);
-        $msg->data = $model::updateAll($updates, $condition);
+        $msg->data = $model->updateAll($updates, $condition);
         if (!$msg->data) {
             App::warning("$this->tableName update failed");
         }
@@ -175,7 +172,7 @@ class Pdo extends AbstractPlugin
         $func = $this->func;
         $msg->data = ARHelper::$func($model, $msg->data);
         if (empty($msg->data)) {
-            throw new Exception("save to " . $model::tableName() . ' failed!');
+            throw new Exception("save to " . $model->tableName() . ' failed!');
         }
         $this->sink($msg);
     }
@@ -194,35 +191,6 @@ class Pdo extends AbstractPlugin
         }
         $tableName = $msg->opt['tableName'] ?? $this->tableName;
         $dbname = $msg->opt['dbName'] ?? $this->dbName;
-        return new class($tableName, $dbname) extends ActiveRecord
-        {
-            /**
-             *  constructor.
-             * @param string $tableName
-             * @param string $dbName
-             */
-            public function __construct(string $tableName, string $dbName)
-            {
-                Context::set(md5(get_called_class() . 'tableName'), $tableName);
-                Context::set(md5(get_called_class() . 'dbName'), $dbName);
-            }
-
-            /**
-             * @return mixed|string
-             */
-            public static function tableName(): string
-            {
-                return Context::get(md5(get_called_class() . 'tableName'));
-            }
-
-            /**
-             * @return ConnectionInterface
-             * @throws Throwable
-             */
-            public static function getDb(): ConnectionInterface
-            {
-                return getDI('db')->get(Context::get(md5(get_called_class() . 'dbName')));
-            }
-        };
+        return ARHelper::getModel($tableName, $dbname);
     }
 }

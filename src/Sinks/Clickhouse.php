@@ -7,11 +7,9 @@ namespace Rabbit\Data\Pipeline\Sinks;
 use Throwable;
 use Rabbit\Base\App;
 use Rabbit\DB\Expression;
-use Rabbit\Base\Core\Context;
 use Rabbit\Base\Core\Exception;
 use Rabbit\Data\Pipeline\Message;
 use Rabbit\Base\Helper\ArrayHelper;
-use Rabbit\Pool\ConnectionInterface;
 use Rabbit\DB\ClickHouse\ActiveRecord;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 use Rabbit\DB\ClickHouse\BatchInsertCsv;
@@ -183,28 +181,12 @@ class Clickhouse extends AbstractPlugin
              */
             public function __construct(string $tableName, string $db)
             {
-                Context::set(md5(get_called_class() . 'tableName'), $tableName);
-                Context::set(md5(get_called_class() . 'db'), $db);
-            }
-
-            /**
-             * @return mixed|string
-             */
-            public static function tableName(): string
-            {
-                return Context::get(md5(get_called_class() . 'tableName'));
-            }
-
-            /**
-             * @return ConnectionInterface
-             */
-            public static function getDb(): ConnectionInterface
-            {
-                return getDI('db')->get(Context::get(md5(get_called_class() . 'db')));
+                $this->tableName = $tableName;
+                $this->db = getDI('db')->get($db);
             }
         };
 
-        $res = $model::updateAll([$this->flagField => new Expression("{$this->flagField}+1")], array_merge([
+        $res = $model->updateAll([$this->flagField => new Expression("{$this->flagField}+1")], array_merge([
             $this->flagField => [0, 1]
         ], $updateFlagCondition));
         if (!empty($res) && $res !== true) {
