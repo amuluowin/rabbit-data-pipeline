@@ -172,7 +172,6 @@ class Scheduler implements SchedulerInterface
         }
         $output = ArrayHelper::remove($params, 'output', []);
         $start = ArrayHelper::remove($params, 'start', false);
-        $wait = ArrayHelper::remove($params, 'wait', false);
         $canEmpty = ArrayHelper::remove($params, 'canEmpty', false);
         $errHandler = ArrayHelper::remove($params, 'errHandler');
         $alarm = ArrayHelper::remove($params, 'alarm');
