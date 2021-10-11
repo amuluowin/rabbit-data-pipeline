@@ -189,7 +189,6 @@ class Scheduler implements SchedulerInterface
                 'start' => $start,
                 'taskName' => $name,
                 'canEmpty' => $canEmpty,
-                'wait' => $wait,
                 'errHandler' => $errHandler,
                 'alarm' => $alarm
             ],
