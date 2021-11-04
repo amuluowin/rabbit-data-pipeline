@@ -23,7 +23,7 @@ class WorkerSender implements ISender
         ]);
         if (null === $server = ServerHelper::getServer()) {
             App::warning("Not running in server, use local process");
-            $ipc = create(CommonHandler::class)->handler($this, $ipc);
+            $ipc = create(CommonHandler::class)->handle($this, $ipc);
         } elseif (!$server instanceof Server) {
             throw new InvalidConfigException("only use for swoole_server");
         } else {
