@@ -33,8 +33,8 @@ abstract class BaseSyncData extends AbstractPlugin
             $this->batch,
             $this->sql,
         ] = ArrayHelper::getValueByArray($this->config, ['from', 'to', 'db', 'field', 'equal', 'primary', 'onlyInsert', 'batch', 'sql'], ['db' => 'default', 'onlyInsert' => false]);
-        if ($this->from === null || $this->to === null || $this->field === null) {
-            throw new InvalidConfigException('from or to or field is empty!');
+        if (($this->from === null || $this->to === null || $this->field === null) && $this->sql === null) {
+            throw new InvalidConfigException('(from or to or field) & sql is empty!');
         }
     }
 }
