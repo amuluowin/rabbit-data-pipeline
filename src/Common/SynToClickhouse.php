@@ -13,6 +13,7 @@ class SynToClickhouse extends BaseSyncData
 
     protected ?string $updatedAt;
     protected bool $truncate = false;
+    protected ?string $selectTo = null;
 
     public function init(): void
     {
@@ -21,7 +22,8 @@ class SynToClickhouse extends BaseSyncData
             $this->updatedAt,
             $this->db,
             $this->truncate,
-        ] = ArrayHelper::getValueByArray($this->config, ['updatedAt', 'db', 'truncate'], ['db' => 'click', 'truncate' => $this->truncate]);
+            $this->selectTo,
+        ] = ArrayHelper::getValueByArray($this->config, ['updatedAt', 'db', 'truncate', 'selectTo'], ['db' => 'click', 'truncate' => $this->truncate]);
 
         if ($this->primary === null && $this->updatedAt === null) {
             throw new InvalidConfigException('primary & updatedAt both empty!');
@@ -72,10 +74,11 @@ class SynToClickhouse extends BaseSyncData
             SELECT {$fields}" . ($this->onlyInsert ? '' : ',0 AS flag') . "
             FROM {$this->from} f where f.{$this->updatedAt} > (SELECT max({$this->updatedAt}) from {$this->to} )";
         } else {
+            $to = $this->selectTo ?? $this->to;
             $sql = "INSERT INTO {$this->to} ({$this->field}" . ($this->onlyInsert ? ')' : ',flag)') . "
             SELECT {$fields}" . ($this->onlyInsert ? '' : ',0 AS flag') . "
               FROM {$this->from} f 
-              ANTI LEFT JOIN {$this->to} t on $on" . ($this->onlyInsert ? '' : "
+              ANTI LEFT JOIN {$to} t on $on" . ($this->onlyInsert ? '' : "
              WHERE ({$primary}) NOT IN (
             SELECT {$this->primary} FROM {$this->to}
              WHERE flag = 0)");
