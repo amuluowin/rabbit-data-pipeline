@@ -11,12 +11,12 @@ use Rabbit\Data\Pipeline\AbstractPlugin;
 abstract class BaseSyncData extends AbstractPlugin
 {
     protected ?string $equal;
-    protected string $from;
-    protected string $to;
-    protected string $field;
-    protected string $db;
+    protected ?string $from;
+    protected ?string $to;
+    protected ?string $field;
+    protected string $db = 'default';
     protected ?string $primary;
-    protected bool $onlyInsert;
+    protected bool $onlyInsert = false;
     protected ?int $batch;
     protected ?string $sql = null;
 
@@ -32,7 +32,7 @@ abstract class BaseSyncData extends AbstractPlugin
             $this->onlyInsert,
             $this->batch,
             $this->sql,
-        ] = ArrayHelper::getValueByArray($this->config, ['from', 'to', 'db', 'field', 'equal', 'primary', 'onlyInsert', 'batch', 'sql'], ['db' => 'default', 'onlyInsert' => false]);
+        ] = ArrayHelper::getValueByArray($this->config, ['from', 'to', 'db', 'field', 'equal', 'primary', 'onlyInsert', 'batch', 'sql'], ['db' => $this->db, 'onlyInsert' => $this->onlyInsert]);
         if (($this->from === null || $this->to === null || $this->field === null) && $this->sql === null) {
             throw new InvalidConfigException('(from or to or field) & sql is empty!');
         }
