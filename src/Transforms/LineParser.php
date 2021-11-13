@@ -210,8 +210,11 @@ class LineParser extends AbstractPlugin
         $columns = array_merge($columns, array_keys($comField));
         $this->idKey && ($columns[] = $this->idKey);
         foreach ($this->map as $col => $new) {
-            $index = array_search($col, $columns, true);
-            $columns[$index] = $new;
+            if (is_int($col)) {
+                $columns[$col] = $new;
+            } else {
+                $columns[array_search($col, $columns, true)] = $new;
+            }
         }
         if ($this->outModel) {
             $msg->data = [];
