@@ -36,6 +36,7 @@ class LineParser extends AbstractPlugin
     protected ?string $sheet = null;
     protected array $map = [];
     protected array $addField = [];
+    protected bool $outModel = true;
 
     const SUPPORT_EXT = [
         'xls',
@@ -70,6 +71,7 @@ class LineParser extends AbstractPlugin
             $this->exclude,
             $this->map,
             $this->addField,
+            $this->outModel,
         ] = ArrayHelper::getValueByArray(
             $this->config,
             [
@@ -90,7 +92,8 @@ class LineParser extends AbstractPlugin
                 'include',
                 'exclude',
                 'map',
-                'addField'
+                'addField',
+                'outModel'
             ],
             [
                 PHP_EOL,
@@ -110,7 +113,8 @@ class LineParser extends AbstractPlugin
                 [],
                 [],
                 [],
-                []
+                [],
+                $this->outModel
             ]
         );
         if (!$this->fileType || !in_array($this->fileType, self::SUPPORT_EXT)) {
@@ -130,10 +134,15 @@ class LineParser extends AbstractPlugin
      */
     public function run(Message $msg): void
     {
+        foreach ($this->addField as $field => &$value) {
+            if (is_string($value) && str_contains($value, 'return')) {
+                $value = eval($value);
+            }
+        }
         $comField = $this->addField;
         $field = $columns = $rows = [];
         if (isset($msg->opt['comField']) && is_array($msg->opt['comField'])) {
-            $comField = array_merge($this->addField, $msg->opt['comField']);
+            $comField = array_merge($comField, $msg->opt['comField']);
         }
         $i = 1;
         if (is_file($msg->data)) {
@@ -204,7 +213,14 @@ class LineParser extends AbstractPlugin
             $index = array_search($col, $columns, true);
             $columns[$index] = $new;
         }
-        $msg->data = ['columns' => &$columns, 'data' => &$rows];
+        if ($this->outModel) {
+            $msg->data = [];
+            foreach ($rows as $row) {
+                $msg->data[] = array_combine($columns, $row);
+            }
+        } else {
+            $msg->data = ['columns' => &$columns, 'data' => &$rows];
+        }
         $this->sink($msg);
     }
 
@@ -244,7 +260,6 @@ class LineParser extends AbstractPlugin
     private function dealInclude(array &$line): void
     {
         if ($this->include) {
-            $tmpCols = [];
             foreach ($this->include as $index => $deal) {
                 $deal && is_string($deal) && ($line[$index] = eval('$col=$line[$index];' . $deal));
             }
