@@ -84,6 +84,9 @@ class SynToClickhouse extends BaseSyncData
              WHERE flag = 0)");
         }
 
+        if ($this->batch) {
+            $sql .= " limit {$this->batch} ";
+        }
 
         getDI('db')->get($this->db)->createCommand($sql)->execute();
 
