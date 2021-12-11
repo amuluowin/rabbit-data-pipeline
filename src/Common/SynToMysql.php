@@ -48,7 +48,7 @@ class SynToMysql extends BaseSyncData
                 foreach (explode(';', $this->equal) as $key) {
                     $equal .= "f.$key=t.$key and ";
                 }
-                $equal = rtrim($equal, ' and ');
+                $equal = substr($equal, 0, -5);
                 $sql = "{$this->mode} INTO {$this->to} ({$this->field}) SELECT {$fields} FROM {$this->from} f WHERE NOT EXISTS (SELECT 1 FROM {$this->to} t WHERE $equal)" . ($this->where ? " and {$this->where}" : '');
             } else {
                 $sql = "{$this->mode} INTO {$this->to} ({$this->field}) SELECT {$fields} FROM ({$this->from}) f" . ($this->where ? " where {$this->where}" : '');

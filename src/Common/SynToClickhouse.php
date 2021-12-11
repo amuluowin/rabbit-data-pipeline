@@ -48,7 +48,7 @@ class SynToClickhouse extends BaseSyncData
 
         $onAll = $this->equal ?? $this->field;
         $on = '';
-        foreach (explode(';', $onAll) as $key) {
+        foreach (array_filter(explode(';', $onAll)) as $key) {
             if (str_contains($key, '=')) {
                 $on .= "$key and ";
             } elseif (str_ends_with($key, ')')) {
@@ -63,7 +63,7 @@ class SynToClickhouse extends BaseSyncData
                 $on .= "f.$key=t.$key and ";
             }
         }
-        $on = rtrim($on, ' and ');
+        $on = substr($on, 0, -5);
 
         if ($this->truncate) {
             getDI('db')->get($this->db)->createCommand("truncate table {$this->to}")->execute();
