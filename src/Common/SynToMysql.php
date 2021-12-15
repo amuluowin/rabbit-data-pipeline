@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Common;
 
-use Rabbit\Base\App;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\Message;
 use Throwable;
