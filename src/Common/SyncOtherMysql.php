@@ -10,6 +10,7 @@ use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 use Rabbit\Data\Pipeline\Message;
 use Rabbit\DB\Expression;
+use Rabbit\DB\Mysql\Connection;
 use Rabbit\DB\Query;
 
 class SyncOtherMysql extends AbstractPlugin
@@ -44,7 +45,7 @@ class SyncOtherMysql extends AbstractPlugin
     public function run(Message $msg): void
     {
         loop(function () use ($msg) {
-            $query = (new Query(getDI('db')->get($this->from['db'])))->from([$this->from['table']]);
+            $query = (new Query(getDI('db')->get($this->from['db'])))->from([$this->from['table']])->shareType(Connection::SHARE_ARRAY);
             if ($this->size > 0) {
                 $query->limit($this->size);
             }
