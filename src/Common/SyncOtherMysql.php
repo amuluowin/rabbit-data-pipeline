@@ -20,6 +20,7 @@ class SyncOtherMysql extends AbstractPlugin
     protected array $to = [];
     protected array $incr = [];
     protected array $replace = [];
+    protected array $exclude = [];
     public function init(): void
     {
         parent::init();
@@ -29,10 +30,11 @@ class SyncOtherMysql extends AbstractPlugin
             $this->from,
             $this->to,
             $this->replace,
+            $this->exclude,
         ] = ArrayHelper::getValueByArray(
             $this->config,
-            ['size', 'sleep', 'from', 'to', 'replace'],
-            [$this->size, $this->sleep, $this->from, $this->to, $this->replace]
+            ['size', 'sleep', 'from', 'to', 'replace', 'exclude'],
+            [$this->size, $this->sleep, $this->from, $this->to, $this->replace, $this->exclude]
         );
         if (empty($this->from) || empty($this->to)) {
             throw new InvalidArgumentException("from or to is empty");
@@ -60,10 +62,13 @@ class SyncOtherMysql extends AbstractPlugin
 
     private function sync(array &$data): void
     {
-        if ($this->replace) {
+        if ($this->replace || $this->exclude) {
             foreach ($data as &$item) {
                 foreach ($this->replace as $key => $value) {
                     $item[$value] = $item[$key];
+                    unset($item[$key]);
+                }
+                foreach ($this->exclude as $key) {
                     unset($item[$key]);
                 }
             }
