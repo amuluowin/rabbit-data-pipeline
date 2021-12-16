@@ -46,15 +46,18 @@ class SyncOtherMysql extends AbstractPlugin
 
     public function run(Message $msg): void
     {
-        loop(function () use ($msg) {
+        loop(function () {
             $query = (new Query(getDI('db')->get($this->from['db'])))->from([$this->from['table']])->shareType(Connection::SHARE_ARRAY);
-            if ($this->size > 0) {
-                $query->limit($this->size * $this->parallel);
-            }
             if ($this->from['max'] ?? false && $this->to['max'] ?? false) {
-                $query->filterWhere(['>', $this->from['max'], (new Query(getDI('db')->get($this->to['db'])))->select([new Expression("max({$this->to['max']})")])->from([$this->to['table']])->scalar()]);
-                while ($data = $query->all()) {
+                if ($this->size > 0) {
+                    $query->limit($this->size * $this->parallel);
+                }
+                $query->filterWhere(['>', $this->from['max'], (new Query(getDI('db')->get($this->to['db'])))->select([new Expression("max({$this->to['max']})")])->from([$this->to['table']])->scalar()])
+                    ->orderBy([$this->from['max'] => SORT_ASC]);
+                $i = 0;
+                while ($data = $query->offset($i * $this->size * $this->parallel)->all()) {
                     $this->sync($data);
+                    $i++;
                 }
             } else {
                 $data = $query->all();
