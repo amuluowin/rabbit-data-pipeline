@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Rabbit\Data\Pipeline\Common;
 
 use Rabbit\ActiveRecord\ARHelper;
+use Rabbit\Base\App;
 use Rabbit\Base\Exception\InvalidArgumentException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
@@ -22,6 +23,7 @@ class SyncOtherMysql extends AbstractPlugin
     protected array $incr = [];
     protected array $replace = [];
     protected array $exclude = [];
+    protected int $parallel = 10;
     public function init(): void
     {
         parent::init();
@@ -47,7 +49,7 @@ class SyncOtherMysql extends AbstractPlugin
         loop(function () use ($msg) {
             $query = (new Query(getDI('db')->get($this->from['db'])))->from([$this->from['table']])->shareType(Connection::SHARE_ARRAY);
             if ($this->size > 0) {
-                $query->limit($this->size);
+                $query->limit($this->size * $this->parallel);
             }
             if ($this->from['max'] ?? false && $this->to['max'] ?? false) {
                 $query->filterWhere(['>', $this->from['max'], (new Query(getDI('db')->get($this->to['db'])))->select([new Expression("max({$this->to['max']})")])->from([$this->to['table']])->scalar()]);
@@ -58,6 +60,7 @@ class SyncOtherMysql extends AbstractPlugin
                 $data = $query->all();
                 $this->sync($data);
             }
+            App::info("sync from {$this->from['db']}.{$this->from['table']} to {$this->to['db']}.{$this->to['table']}");
         }, $this->sleep * 1000);
     }
 
@@ -69,11 +72,8 @@ class SyncOtherMysql extends AbstractPlugin
                     $item[$value] = $item[$key];
                     unset($item[$key]);
                 }
-                foreach ($this->exclude as $key) {
-                    unset($item[$key]);
-                }
             }
         }
-        ARHelper::update(ARHelper::getModel($this->to['table'], $this->to['db']), $data);
+        ARHelper::update(ARHelper::getModel($this->to['table'], $this->to['db']), $data, when: $this->exclude);
     }
 }
