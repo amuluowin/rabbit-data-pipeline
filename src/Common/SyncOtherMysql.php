@@ -39,8 +39,8 @@ class SyncOtherMysql extends AbstractPlugin
             ['size', 'sleep', 'from', 'to', 'replace', 'exclude'],
             [$this->size, $this->sleep, $this->from, $this->to, $this->replace, $this->exclude]
         );
-        if (empty($this->from) || empty($this->to)) {
-            throw new InvalidArgumentException("from or to is empty");
+        if (empty($this->from) || empty($this->to) || empty($this->parallel)) {
+            throw new InvalidArgumentException("from or to or parallel is empty");
         }
     }
 
@@ -74,7 +74,11 @@ class SyncOtherMysql extends AbstractPlugin
                 }
             }
         }
-        $data = array_chunk($data, $this->size);
-        wgeach($data, fn (int $i, array $items) => ARHelper::update(ARHelper::getModel($this->to['table'], $this->to['db']), $items, when: $this->exclude));
+        if ($this->size > 0) {
+            $data = array_chunk($data, $this->size);
+            wgeach($data, fn (int $i, array $items) => ARHelper::update(ARHelper::getModel($this->to['table'], $this->to['db']), $items, when: $this->exclude));
+        } else {
+            ARHelper::update(ARHelper::getModel($this->to['table'], $this->to['db']), $data, when: $this->exclude);
+        }
     }
 }
