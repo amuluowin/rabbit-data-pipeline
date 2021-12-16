@@ -74,6 +74,7 @@ class SyncOtherMysql extends AbstractPlugin
                 }
             }
         }
-        ARHelper::update(ARHelper::getModel($this->to['table'], $this->to['db']), $data, when: $this->exclude);
+        $data = array_chunk($data, $this->size);
+        wgeach($data, fn (int $i, array $items) => ARHelper::update(ARHelper::getModel($this->to['table'], $this->to['db']), $items, when: $this->exclude));
     }
 }
