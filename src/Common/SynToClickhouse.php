@@ -10,7 +10,6 @@ use Rabbit\Data\Pipeline\Message;
 
 class SynToClickhouse extends BaseSyncData
 {
-
     protected ?string $updatedAt;
     protected bool $truncate = false;
     protected ?string $selectTo = null;
@@ -25,8 +24,8 @@ class SynToClickhouse extends BaseSyncData
             $this->selectTo,
         ] = ArrayHelper::getValueByArray($this->config, ['updatedAt', 'db', 'truncate', 'selectTo'], ['db' => 'click', 'truncate' => $this->truncate]);
 
-        if ($this->primary === null && $this->updatedAt === null) {
-            throw new InvalidConfigException('primary & updatedAt both empty!');
+        if ($this->onlyInsert === null && $this->primary === null && $this->updatedAt === null) {
+            throw new InvalidConfigException('onlyInsert & primary & updatedAt empty!');
         }
         if ($this->truncate) {
             $this->onlyInsert = true;
@@ -36,10 +35,12 @@ class SynToClickhouse extends BaseSyncData
     public function run(Message $msg): void
     {
         $primary = '';
-        foreach (explode(',', $this->primary) as $key) {
-            $primary .= "f.$key,";
+        if ($this->primary) {
+            foreach (explode(',', $this->primary) as $key) {
+                $primary .= "f.$key,";
+            }
+            $primary = rtrim($primary, ',');
         }
-        $primary = rtrim($primary, ',');
         $fields = '';
         foreach (explode(',', $this->field) as $key) {
             $fields .= "f.$key,";
@@ -72,7 +73,7 @@ class SynToClickhouse extends BaseSyncData
         if ($this->updatedAt !== null) {
             $sql = "INSERT INTO {$this->to} ({$this->field}" . ($this->onlyInsert ? ')' : ',flag)') . "
             SELECT {$fields}" . ($this->onlyInsert ? '' : ',0 AS flag') . "
-            FROM {$this->from} f where f.{$this->updatedAt} > (SELECT max({$this->updatedAt}) from {$this->to} )";
+            FROM {$this->from} f " . (str_contains($this->updatedAt, 'where') ? $this->updatedAt : "where f.{$this->updatedAt} > (SELECT max({$this->updatedAt}) from {$this->to} )");
         } else {
             $to = $this->selectTo ?? $this->to;
             $sql = "INSERT INTO {$this->to} ({$this->field}" . ($this->onlyInsert ? ')' : ',flag)') . "
