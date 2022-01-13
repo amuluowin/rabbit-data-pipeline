@@ -95,9 +95,11 @@ class HttpRequest extends AbstractPlugin
             'timeout' => $msg->opt['requestTimeOut'] ?? $this->timeout
         ];
         if ($this->driver === 'saber') {
-            $options = array_merge([
-                'use_pool' => $this->usePool
-            ], $options, $msg->data);
+            $options = [
+                'use_pool' => $this->usePool,
+                ...$options,
+                ...$msg->data
+            ];
             if ($this->isLog) {
                 $options = ArrayHelper::merge($options, [
                     "before" => [function (RequestInterface $request) use ($request_id) {

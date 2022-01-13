@@ -66,7 +66,7 @@ class Scheduler implements SchedulerInterface
             try {
                 if ($target && isset($this->config[$key][$target])) {
                     $runTarget = $this->getTarget($key, $target);
-                    $msg = create(Message::class, array_merge(['redis' => getDI('redis')->get($this->redisKey)], $params), false);
+                    $msg = create(Message::class, ['redis' => getDI('redis')->get($this->redisKey), ...$params], false);
                     $runTarget->process($msg);
                     $taskResult[$key] = [$target => 'proxy run success'];
                 } else {
@@ -97,7 +97,7 @@ class Scheduler implements SchedulerInterface
     {
         $taskResult = [];
         wgeach($tasks, function (int $i, string $key) use (&$taskResult, $params) {
-            $taskResult = array_merge($taskResult, $this->run($key, null, $params));
+            $taskResult = [...$taskResult, ...$this->run($key, null, $params)];
         }, $wait);
         return $taskResult;
     }

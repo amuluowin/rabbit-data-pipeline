@@ -186,11 +186,11 @@ class Clickhouse extends AbstractPlugin
             }
         };
 
-        $res = $model->updateAll([$this->flagField => new Expression("{$this->flagField}+1")], array_merge([
-            $this->flagField => [0, 1]
-        ], $updateFlagCondition));
+        $res = $model->updateAll([$this->flagField => new Expression("{$this->flagField}+1")], [
+            $this->flagField => [0, 1], ...$updateFlagCondition
+        ]);
         if (!empty($res) && $res !== true) {
-            throw new Exception($res);
+            throw new Exception((string)$res);
         }
     }
 }

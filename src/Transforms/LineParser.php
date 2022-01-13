@@ -142,7 +142,7 @@ class LineParser extends AbstractPlugin
         $comField = $this->addField;
         $field = $columns = $rows = [];
         if (isset($msg->opt['comField']) && is_array($msg->opt['comField'])) {
-            $comField = array_merge($comField, $msg->opt['comField']);
+            $comField = [...$comField, ...$msg->opt['comField']];
         }
         $i = 1;
         if (is_file($msg->data)) {
@@ -169,7 +169,7 @@ class LineParser extends AbstractPlugin
                             $line = fgets($fp);
                             $line = explode($this->explode, trim($line));
                         } else {
-                            $line = fgetcsv($fp, $this->delimiter, $this->enclosure, $this->escape);
+                            $line = fgetcsv($fp, null, $this->delimiter, $this->enclosure, $this->escape);
                         }
                         if ($line && ($i === $this->headLine || ($this->field && $i === $this->fieldLine) || in_array($i, $this->dataLine) || $i >= max($this->dataLine))) {
                             $this->makeData($i, $field, $comField, $line, $columns, $rows);
@@ -207,7 +207,7 @@ class LineParser extends AbstractPlugin
         if (empty($columns)) {
             $columns = $this->columns;
         }
-        $columns = array_merge($columns, array_keys($comField));
+        $columns = [...$columns, ...array_keys($comField)];
         $this->idKey && ($columns[] = $this->idKey);
         foreach ($this->map as $col => $new) {
             if (is_int($col)) {
@@ -251,7 +251,7 @@ class LineParser extends AbstractPlugin
         } else {
             $this->dealInclude($line);
             array_splice($line, 0, 0, array_values($field));
-            $line = array_merge($line, array_values($comField));
+            $line = [...$line, ...array_values($comField)];
             $this->idKey && ($line[] = getDI('idGen')->nextId());
             $rows[] = $line;
         }
