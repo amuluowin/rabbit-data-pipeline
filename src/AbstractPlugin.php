@@ -20,7 +20,6 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
 {
     public string $taskName;
     public string $key;
-    protected array $config = [];
     public array $output = [];
     protected bool $start = false;
     protected ?CacheInterface $cache;
@@ -28,7 +27,6 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
     const CALL_PREFIX = 'outputs';
     protected ?array $errHandler;
     protected ?array $lockKey = [];
-    protected string $scName;
     protected bool $canEmpty = false;
     private ?string $callKey = null;
     private Closure $func;
@@ -39,10 +37,8 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      * @param string $scName
      * @param array $config
      */
-    public function __construct(string $scName, array $config)
+    final public function __construct(protected readonly string $scName, protected readonly array $config)
     {
-        $this->config = $config;
-        $this->scName = $scName;
         $this->func = function (string $output, Message $msg) {
             if (empty($msg->data)) {
                 $log = "「{$this->taskName}」 $this->key -> $output; data is empty, %s";

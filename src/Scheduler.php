@@ -24,7 +24,6 @@ use Rabbit\Cron\CronExpression;
 class Scheduler implements SchedulerInterface
 {
     protected array $targets = [];
-    protected ConfigParserInterface $parser;
     protected string $name = 'scheduler';
     protected array $config = [];
     protected array $senders = [];
@@ -32,13 +31,8 @@ class Scheduler implements SchedulerInterface
     protected ?CronJob $cron = null;
     protected array $loops = [];
 
-    /**
-     * Scheduler constructor.
-     * @param ConfigParserInterface $parser
-     */
-    public function __construct(ConfigParserInterface $parser)
+    public function __construct(protected readonly ConfigParserInterface $parser)
     {
-        $this->parser = $parser;
         $this->config = $this->parser->parse();
     }
     /**

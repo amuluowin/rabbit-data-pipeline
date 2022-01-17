@@ -14,20 +14,11 @@ use Rabbit\Base\Helper\JsonHelper;
  */
 class JsonParser implements ConfigParserInterface
 {
-    /** @var string */
-    protected string $path;
-
-    /**
-     * JsonParser constructor.
-     * @param string $path
-     * @throws InvalidConfigException
-     */
-    public function __construct(string $path)
+    public function __construct(protected readonly string $path)
     {
         if (!is_dir($path) && !file_exists($path)) {
             throw new InvalidConfigException("The path must be dir or file");
         }
-        $this->path = $path;
     }
 
     /**

@@ -13,30 +13,13 @@ use Rabbit\Base\Helper\FileHelper;
  */
 class YamlParser implements ConfigParserInterface
 {
-    /** @var string */
-    protected string $path;
-    /** @var array|string[] */
     protected array $exts = ['yaml', 'yml'];
 
-    /**
-     * YamlParser constructor.
-     * @param string $path
-     * @throws InvalidConfigException
-     */
-    public function __construct(string $path)
+    public function __construct(public readonly string $path)
     {
         if (!is_dir($path) && !file_exists($path)) {
             throw new InvalidConfigException("The path must be dir or file");
         }
-        $this->path = $path;
-    }
-
-    /**
-     * @return string
-     */
-    public function getPath(): string
-    {
-        return $this->path;
     }
 
     /**
