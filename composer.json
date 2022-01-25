@@ -16,8 +16,8 @@
     "rabbit/httpclient": "dev-master",
     "rabbit/db-redis": "dev-master",
     "rabbit/ding-robot": "dev-master",
-    "ext-json": "*",
-    "ext-yaml": "*"
+    "symfony/yaml": "^6.0",
+    "ext-json": "*"
   },
   "require-dev": {
     "rabbit/web": "dev-master",

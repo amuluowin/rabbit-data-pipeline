@@ -6,6 +6,7 @@ namespace Rabbit\Data\Pipeline;
 
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\FileHelper;
+use Symfony\Component\Yaml\Parser;
 
 /**
  * Class YamlParser
@@ -15,11 +16,14 @@ class YamlParser implements ConfigParserInterface
 {
     protected array $exts = ['yaml', 'yml'];
 
+    protected Parser $parser;
+
     public function __construct(public readonly string $path)
     {
         if (!is_dir($path) && !file_exists($path)) {
             throw new InvalidConfigException("The path must be dir or file");
         }
+        $this->parser = new Parser();
     }
 
     /**
@@ -38,7 +42,7 @@ class YamlParser implements ConfigParserInterface
                     if (!in_array(pathinfo($path, PATHINFO_EXTENSION), $this->exts)) {
                         return false;
                     }
-                    $yaml = yaml_parse_file($path);
+                    $yaml = $this->parser->parseFile($path);
                     if ($yaml === false) {
                         throw new InvalidConfigException(error_get_last()['message'] . " path=$path");
                     }
@@ -47,7 +51,7 @@ class YamlParser implements ConfigParserInterface
                 }
             ]);
         } else {
-            $item = yaml_parse_file($this->path);
+            $item = $this->parser->parseFile($this->path);
             if ($item === false) {
                 throw new InvalidConfigException(error_get_last()['message'] . " path=$this->path");
             }
@@ -58,7 +62,7 @@ class YamlParser implements ConfigParserInterface
 
     public function parseTask(string $key): array
     {
-        $item = yaml_parse_file("{$this->path}/$key.yaml");
+        $item = $this->parser->parseFile("{$this->path}/$key.yaml");
         if ($item === false) {
             throw new InvalidConfigException(error_get_last()['message'] . " key=$key");
         }
