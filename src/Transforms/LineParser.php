@@ -160,7 +160,7 @@ class LineParser extends AbstractPlugin
                     $i++;
                 }
             } else {
-                FileHelper::fgetsExt($msg->data, function ($fp) use ($comField, &$i, &$field, &$columns, &$rows, $msg): void {
+                FileHelper::fgetsExt($msg->data, function ($fp) use ($comField, &$i, &$field, &$columns, &$rows): void {
                     while (!feof($fp)) {
                         if ($this->endLine && $i >= $this->endLine) {
                             break;
