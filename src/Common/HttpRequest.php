@@ -102,7 +102,7 @@ class HttpRequest extends AbstractPlugin
             ];
             if ($this->isLog) {
                 $options = ArrayHelper::merge($options, [
-                    "before" => [function (RequestInterface $request) use ($request_id) {
+                    "before" => [function (RequestInterface $request) use ($request_id): void {
                         $uri = $request->getUri();
                         App::info(
                             sprintf(
@@ -115,13 +115,13 @@ class HttpRequest extends AbstractPlugin
                             "http"
                         );
                     }],
-                    'after' => [function (ResponseInterface $response) use ($request_id) {
+                    'after' => [function (ResponseInterface $response) use ($request_id): void {
                         App::info("Request $request_id finish");
                     }]
                 ]);
             }
             if ($this->retry) {
-                $options['retry'] = function (Request $request) use ($throttleTime) {
+                $options['retry'] = function (Request $request) use ($throttleTime): mixed {
                     return call_user_func($this->retry, $request, $throttleTime);
                 };
             }

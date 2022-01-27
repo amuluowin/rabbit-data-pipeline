@@ -90,7 +90,7 @@ class Scheduler implements SchedulerInterface
     public function multi(array $tasks, int $wait = -1, array $params = []): array
     {
         $taskResult = [];
-        wgeach($tasks, function (int $i, string $key) use (&$taskResult, $params) {
+        wgeach($tasks, function (int $i, string $key) use (&$taskResult, $params): void {
             $taskResult = [...$taskResult, ...$this->run($key, null, $params)];
         }, $wait);
         return $taskResult;
@@ -107,12 +107,12 @@ class Scheduler implements SchedulerInterface
         $result = '';
         $lock = ArrayHelper::getValue($this->config[$key], 'lock');
         $expression = (string)ArrayHelper::getValue($this->config[$key], 'cron');
-        $func = function (string $key, string $expression, array &$params) {
+        $func = function (string $key, string $expression, array &$params): void {
             if ($this->cron && $expression !== '') {
                 if (is_numeric($expression)) {
                     if ((int)$expression >= 0) {
                         if (!isset($this->loops[$key])) {
-                            $this->loops[$key] = loop(function () use ($key, &$params, $expression) {
+                            $this->loops[$key] = loop(function () use ($key, &$params, $expression): void {
                                 $this->process($key, $params);
                                 App::info("$key finished once! Go on with {$expression}s later");
                             }, (int)$expression * 1000);
@@ -121,7 +121,7 @@ class Scheduler implements SchedulerInterface
                         $this->process($key, $params);
                     }
                 } else {
-                    $this->cron->add($key, [$expression, function () use ($key, &$params) {
+                    $this->cron->add($key, [$expression, function () use ($key, &$params): void {
                         $this->process($key, $params);
                     }]);
                     $this->cron->run($key);
@@ -131,7 +131,7 @@ class Scheduler implements SchedulerInterface
                 $this->process($key, $params);
             }
         };
-        if ($lock && false === rlock(function () use ($func, $key, $expression, &$params) {
+        if ($lock && false === rlock(function () use ($func, $key, $expression, &$params): void {
             $func($key, $expression, $params);
         }, false, $this->name . '.' . $key, $lock)) {
             App::warning("$key is running");

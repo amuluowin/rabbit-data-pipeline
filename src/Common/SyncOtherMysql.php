@@ -46,7 +46,7 @@ class SyncOtherMysql extends AbstractPlugin
 
     public function run(Message $msg): void
     {
-        loop(function () {
+        loop(function (): void {
             $query = (new Query(getDI('db')->get($this->from['db'])))->from([$this->from['table']])->shareType(Connection::SHARE_ARRAY);
             if ($this->from['max'] ?? false && $this->to['max'] ?? false) {
                 if ($this->size > 0) {
@@ -79,7 +79,7 @@ class SyncOtherMysql extends AbstractPlugin
         }
         if ($this->size > 0) {
             $data = array_chunk($data, $this->size);
-            wgeach($data, fn (int $i, array $items) => ARHelper::update(ARHelper::getModel($this->to['table'], $this->to['db']), $items, when: $this->exclude));
+            wgeach($data, fn (int $i, array $items): array => ARHelper::update(ARHelper::getModel($this->to['table'], $this->to['db']), $items, when: $this->exclude));
         } else {
             ARHelper::update(ARHelper::getModel($this->to['table'], $this->to['db']), $data, when: $this->exclude);
         }

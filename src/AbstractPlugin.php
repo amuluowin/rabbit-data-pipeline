@@ -39,7 +39,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      */
     final public function __construct(protected readonly string $scName, protected readonly array $config)
     {
-        $this->func = function (string $output, Message $msg) {
+        $this->func = function (string $output, Message $msg): void {
             if (empty($msg->data)) {
                 $log = "「{$this->taskName}」 $this->key -> $output; data is empty, %s";
                 if (!$this->canEmpty) {
@@ -148,7 +148,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
 
         $num = count($outputs);
         if ($num > 1) {
-            wgeach($outputs, function ($output, $wait) use ($msg) {
+            wgeach($outputs, function (string $output, bool|int|float $wait) use ($msg): void {
                 call_user_func($this->func, $output, $msg);
             });
         } elseif ($num === 1) {

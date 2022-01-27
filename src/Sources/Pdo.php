@@ -115,7 +115,7 @@ class Pdo extends AbstractPlugin
             $this->sql = ArrayHelper::merge([self::CACHE_KEY => $this->duration], $this->sql);
             if ($batchNum) {
                 foreach (DBHelper::Search(new Query(getDI('db')->get($this->dbName)), $this->sql)->batch($batchNum) as $list) {
-                    wgeach($list, function (int $key, array $datum) use ($msg) {
+                    wgeach($list, function (int $key, array $datum) use ($msg): void {
                         $tmp = clone $msg;
                         $tmp->data = $datum;
                         $this->send($tmp);
