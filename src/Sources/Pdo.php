@@ -114,7 +114,7 @@ class Pdo extends AbstractPlugin
             $batchNum = ArrayHelper::remove($this->sql, 'batch');
             $this->sql = ArrayHelper::merge([self::CACHE_KEY => $this->duration], $this->sql);
             if ($batchNum) {
-                foreach (DBHelper::Search(new Query(getDI('db')->get($this->dbName)), $this->sql)->batch($batchNum) as $list) {
+                foreach (DBHelper::Search(new Query(service('db')->get($this->dbName)), $this->sql)->batch($batchNum) as $list) {
                     wgeach($list, function (int $key, array $datum) use ($msg): void {
                         $tmp = clone $msg;
                         $tmp->data = $datum;
@@ -122,12 +122,12 @@ class Pdo extends AbstractPlugin
                     });
                 }
             } else {
-                $msg->data = DBHelper::PubSearch(new Query(getDI('db')->get($this->dbName)), $this->sql, $this->query);
+                $msg->data = DBHelper::PubSearch(new Query(service('db')->get($this->dbName)), $this->sql, $this->query);
                 $this->send($msg);
             }
         } else {
             $params = $this->makeParams($msg);
-            $msg->data = getDI('db')->get($this->dbName)->createCommand($this->sql, $params)->cache($this->duration, $this->cache->getDriver($this->cacheDriver))->{$this->query}();
+            $msg->data = service('db')->get($this->dbName)->createCommand($this->sql, $params)->cache($this->duration, $this->cache->getDriver($this->cacheDriver))->{$this->query}();
             $this->send($msg);
         }
     }

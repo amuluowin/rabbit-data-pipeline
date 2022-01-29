@@ -67,7 +67,7 @@ class SynToClickhouse extends BaseSyncData
         $on = substr($on, 0, -5);
 
         if ($this->truncate) {
-            getDI('db')->get($this->db)->createCommand("truncate table {$this->to}")->execute();
+            service('db')->get($this->db)->createCommand("truncate table {$this->to}")->execute();
         }
 
         if ($this->updatedAt !== null) {
@@ -89,7 +89,7 @@ class SynToClickhouse extends BaseSyncData
             $sql .= " limit {$this->batch} ";
         }
 
-        getDI('db')->get($this->db)->createCommand($sql)->execute();
+        service('db')->get($this->db)->createCommand($sql)->execute();
 
         if (!$this->onlyInsert) {
             $sql = "ALTER TABLE {$this->to}
@@ -98,7 +98,7 @@ class SynToClickhouse extends BaseSyncData
             SELECT {$this->primary}
               FROM {$this->to}
              WHERE flag = 0)  and flag in (0, 1)";
-            $msg->data = getDI('db')->get($this->db)->createCommand($sql)->execute();
+            $msg->data = service('db')->get($this->db)->createCommand($sql)->execute();
         }
 
         $this->sink($msg);

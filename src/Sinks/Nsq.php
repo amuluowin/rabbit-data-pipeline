@@ -78,7 +78,7 @@ class Nsq extends AbstractPlugin
         }
         $this->createConnection($dsn, $dsnd, $pool);
         /** @var Producer $nsq */
-        $nsq = getDI('nsq')->getProducer($this->name);
+        $nsq = service('nsq')->getProducer($this->name);
         $nsq->makeTopic($this->topic);
     }
 
@@ -89,7 +89,7 @@ class Nsq extends AbstractPlugin
     public function run(Message $msg): void
     {
         /** @var Producer $nsq */
-        $nsq = getDI('nsq')->getProducer($this->name);
+        $nsq = service('nsq')->getProducer($this->name);
         if (!is_array($msg->data)) {
             $nsq->publish($this->topic, (string)$msg->data);
             return;

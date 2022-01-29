@@ -138,7 +138,7 @@ class Pdo extends AbstractPlugin
      */
     protected function saveWithLine(Message $msg): void
     {
-        $db = getDI('db')->get($this->dbName);
+        $db = service('db')->get($this->dbName);
         $msg->data = $db->createCommand()->batchInsert($this->tableName, $msg->data['columns'], $msg->data['data'])->execute();
         $this->sink($msg);
     }

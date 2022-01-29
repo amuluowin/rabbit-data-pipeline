@@ -252,7 +252,7 @@ class LineParser extends AbstractPlugin
             $this->dealInclude($line);
             array_splice($line, 0, 0, array_values($field));
             $line = [...$line, ...array_values($comField)];
-            $this->idKey && ($line[] = getDI('idGen')->nextId());
+            $this->idKey && ($line[] = service('idGen')->nextId());
             $rows[] = $line;
         }
     }

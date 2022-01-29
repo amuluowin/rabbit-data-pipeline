@@ -84,7 +84,7 @@ class Message extends BaseObject
     public function getLock(string $key = null, float $ext = 60): bool
     {
         $key ?: $this->taskId;
-        if ((bool)getDI('redis')->get($this->redisKey)->set($key, true, ['NX', 'EX' => $ext])) {
+        if ((bool)service('redis')->get($this->redisKey)->set($key, true, ['NX', 'EX' => $ext])) {
             $this->opt['Locks'][] = $key;
             return true;
         }
@@ -111,7 +111,7 @@ class Message extends BaseObject
     public function deleteLock(string $key = null): int
     {
         $key ?: $this->taskId;
-        if ($flag = getDI('redis')->get($this->redisKey)->del($key)) {
+        if ($flag = service('redis')->get($this->redisKey)->del($key)) {
             App::warning("「{$this->taskName}」 Delete Lock: " . $key);
         }
         return (int)$flag;

@@ -101,7 +101,7 @@ class Nsq extends AbstractPlugin
             }
             $this->topics[$topic]['isRunning'] = true;
             /** @var Consumer $nsq */
-            $nsq = getDI('nsq')->get($topic['name']);
+            $nsq = service('nsq')->get($topic['name']);
             [$name, $channel] = explode(':', $topic);
             $nsq->subscribe($name, $channel, [
                 'rdy' => $config['rdy'] ?? swoole_cpu_num(),

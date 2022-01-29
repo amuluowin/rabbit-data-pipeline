@@ -11,7 +11,7 @@ class ProcessSender implements ISender
 {
     public function send(string $target, Message $msg, string $address, float $wait = 0): ?array
     {
-        $socketHandle = getDI('socketHandle');
+        $socketHandle = service('socketHandle');
         $ipc = new IPCMessage([
             'data' => ['scheduler->next', [$msg, $target, $wait]],
             'wait' => $wait,

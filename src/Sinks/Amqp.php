@@ -62,12 +62,12 @@ class Amqp extends AbstractPlugin
         if (!$name) {
             $name = uniqid();
             /** @var BaseManager $amqp */
-            $amqp = getDI('amqp');
+            $amqp = service('amqp');
             $amqp->add([
                 $name => create([
-                    'class' => BasePool::class,
+                    '{}' => BasePool::class,
                     'poolConfig' => create([
-                        'class' => BasePoolProperties::class,
+                        '{}' => BasePoolProperties::class,
                         'config' => [
                             'queue' => $queue,
                             'exchange' => $exchange,
@@ -89,7 +89,7 @@ class Amqp extends AbstractPlugin
     public function run(Message $msg): void
     {
         /** @var BaseManager $amqp */
-        $amqp = getDI('amqp');
+        $amqp = service('amqp');
         $conn = $amqp->get($this->name)->get();
         $conn->basic_publish(new AMQPMessage($msg->data, $this->properties));
     }

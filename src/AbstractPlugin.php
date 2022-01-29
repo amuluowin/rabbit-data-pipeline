@@ -65,7 +65,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      */
     public function init(): void
     {
-        $this->cache = getDI(self::CACHE_KEY);
+        $this->cache = service(self::CACHE_KEY);
         $this->lockKey = $this->config['lockKey'] ?? [];
         $this->callKey = self::CALL_PREFIX . '.' . $this->key;
     }
@@ -76,7 +76,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      */
     public function getScheduler(): SchedulerInterface
     {
-        return getDI($this->scName);
+        return service($this->scName);
     }
 
     /**

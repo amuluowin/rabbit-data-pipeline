@@ -59,12 +59,12 @@ class Amqp extends AbstractPlugin
         if (!$name) {
             $name = uniqid();
             /** @var BaseManager $amqp */
-            $amqp = getDI('amqp');
+            $amqp = service('amqp');
             $amqp->add([
                 $name => create([
-                    'class' => BasePool::class,
+                    '{}' => BasePool::class,
                     'poolConfig' => create([
-                        'class' => BasePoolProperties::class,
+                        '{}' => BasePoolProperties::class,
                         'config' => [
                             'queue' => $queue,
                             'exchange' => $exchange,

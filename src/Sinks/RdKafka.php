@@ -48,7 +48,7 @@ class RdKafka extends AbstractPlugin
         }
         $name = md5($dsn);
         /** @var KafkaManager $manager */
-        $manager = getDI('kafka');
+        $manager = service('kafka');
         $manager->add([
             $name => [
                 'type' => 'producer',

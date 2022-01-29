@@ -64,7 +64,7 @@ class SynToMysql extends BaseSyncData
 
 
         try {
-            getDI('db')->get($this->db)->createCommand($sql)->execute();
+            service('db')->get($this->db)->createCommand($sql)->execute();
         } catch (Throwable $e) {
             throw $e;
         } finally {

@@ -132,8 +132,8 @@ class Clickhouse extends AbstractPlugin
         if ($this->driver === 'clickhouse') {
             $batch = new BatchInsertCsv(
                 $this->tableName,
-                strval(getDI('idGen')->nextId()),
-                getDI('db')->get($this->dbName)
+                strval(service('idGen')->nextId()),
+                service('db')->get($this->dbName)
             );
             $batch->addColumns($msg->data['columns']);
             foreach ($msg->data['data'] as $item) {
@@ -141,7 +141,7 @@ class Clickhouse extends AbstractPlugin
             }
             $rows = $batch->execute();
         } else {
-            $rows = getDI('db')->get($this->dbName)->insert($this->tableName, $msg->data['columns'], $msg->data['data']);
+            $rows = service('db')->get($this->dbName)->insert($this->tableName, $msg->data['columns'], $msg->data['data']);
         }
         App::warning("$this->tableName success: $rows");
         return $rows;
@@ -182,7 +182,7 @@ class Clickhouse extends AbstractPlugin
             public function __construct(string $tableName, string $db)
             {
                 $this->tableName = $tableName;
-                $this->db = getDI('db')->get($db);
+                $this->db = service('db')->get($db);
             }
         };
 
