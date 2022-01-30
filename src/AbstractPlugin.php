@@ -65,7 +65,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
      */
     public function init(): void
     {
-        $this->cache = service(self::CACHE_KEY);
+        $this->cache = create(self::CACHE_KEY);
         $this->lockKey = $this->config['lockKey'] ?? [];
         $this->callKey = self::CALL_PREFIX . '.' . $this->key;
     }
