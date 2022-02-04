@@ -8,19 +8,12 @@ use Exception;
 use Throwable;
 use Rabbit\Base\App;
 use Rabbit\Cron\CronJob;
-use ReflectionException;
-use DI\NotFoundException;
-use DI\DependencyException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Base\Helper\ExceptionHelper;
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Exception\InvalidArgumentException;
 use Rabbit\Cron\CronExpression;
 
-/**
- * Class Scheduler
- * @package Rabbit\Data\Pipeline
- */
 class Scheduler implements SchedulerInterface
 {
     protected array $targets = [];
@@ -35,24 +28,12 @@ class Scheduler implements SchedulerInterface
     {
         $this->config = $this->parser->parse();
     }
-    /**
-     * @author Albert <63851587@qq.com>
-     * @return array
-     */
+
     public function getConfig(): array
     {
         return $this->config;
     }
 
-    /**
-     * @param string|null $key
-     * @param string|null $target
-     * @param array $params
-     * @throws DependencyException
-     * @throws InvalidConfigException
-     * @throws NotFoundException
-     * @throws Throwable
-     */
     public function run(string $key, string $target = null, array $params = []): array
     {
         $taskResult = [];
@@ -79,14 +60,6 @@ class Scheduler implements SchedulerInterface
         return $taskResult;
     }
 
-    /**
-     * @Author Albert 63851587@qq.com
-     * @DateTime 2020-11-03
-     * @param array $tasks
-     * @param integer $wait
-     * @param array $params
-     * @return array
-     */
     public function multi(array $tasks, int $wait = -1, array $params = []): array
     {
         $taskResult = [];
@@ -96,12 +69,6 @@ class Scheduler implements SchedulerInterface
         return $taskResult;
     }
 
-    /**
-     * @author Albert <63851587@qq.com>
-     * @param string $key
-     * @param array $params
-     * @return string
-     */
     private function start(string $key, array &$params): string
     {
         $result = '';
@@ -144,16 +111,6 @@ class Scheduler implements SchedulerInterface
         return $result;
     }
 
-    /**
-     * @param string $name
-     * @param string $key
-     * @param bool $singleton
-     * @return AbstractPlugin
-     * @throws DependencyException
-     * @throws InvalidConfigException
-     * @throws NotFoundException
-     * @throws ReflectionException
-     */
     public function getTarget(string $name, string $key, bool $singleton = true): AbstractPlugin
     {
         if (null !== $target = ArrayHelper::getValue($this->targets, "$name.$key")) {
@@ -194,15 +151,6 @@ class Scheduler implements SchedulerInterface
         return $target;
     }
 
-    /**
-     * @param string $task
-     * @param array|null $params
-     * @throws DependencyException
-     * @throws InvalidConfigException
-     * @throws NotFoundException
-     * @throws ReflectionException
-     * @throws Throwable
-     */
     public function process(string $task, array $params = []): void
     {
         /** @var AbstractPlugin $target */
@@ -218,11 +166,6 @@ class Scheduler implements SchedulerInterface
         }
     }
 
-    /**
-     * @param Message $msg
-     * @param string $key
-     * @throws Throwable
-     */
     public function next(Message $msg, string $key, float $wait = 0): void
     {
         try {

@@ -14,8 +14,41 @@
 
 ```php
 return [
-    'amqp' => DI\create(BaseManager::class)->constructor(DI\add([
-    ]))
+    'amqp' => 'amqp' => [
+        '{}' => BaseManager::class,
+        '()' => [
+            arrdef([
+                'default' => [
+                    '{}' => BasePool::class,
+                    '()' => [
+                        [
+                            '{}' => BasePoolProperties::class,
+                            'minActive' => 5,
+                            'maxActive' => 6,
+                            'config' => [
+                                'dsn' => config('amqp.dsn'),
+                                'queue' => 'msgs',
+                                'exchange' => 'router',
+                                'queueDeclare' => [
+                                    false,
+                                    true,
+                                    false,
+                                    false
+                                ],
+                                'exchangeDeclare' => [
+                                    AMQPExchangeType::DIRECT,
+                                    false,
+                                    true,
+                                    false
+                                ]
+                            ]
+                        ]
+                    ],
+                    'objClass' => Connection::class
+                ]
+            ])
+        ]
+    ]
 ];
 ```
 

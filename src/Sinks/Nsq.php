@@ -4,36 +4,19 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
 
-use DI\DependencyException;
-use DI\NotFoundException;
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 use Rabbit\Data\Pipeline\Message;
 use Rabbit\Nsq\Producer;
 use Rabbit\Nsq\MakeNsqConnection;
-use ReflectionException;
-use Throwable;
 
-/**
- * Class Nsq
- * @package Rabbit\Data\Pipeline\Sinks
- */
 class Nsq extends AbstractPlugin
 {
     protected ?string $topic;
 
     protected string $name;
-    /**
-     * @param string $class
-     * @param string $dsn
-     * @param string $dsnd
-     * @param array $pool
-     * @throws DependencyException
-     * @throws NotFoundException
-     * @throws ReflectionException
-     * @throws Throwable
-     */
+
     protected function createConnection(string $dsn, string $dsnd, array $pool): void
     {
         [
@@ -50,14 +33,6 @@ class Nsq extends AbstractPlugin
         MakeNsqConnection::addConnection($this->name, $dsn, $dsnd, 'producer', $poolConfig);
     }
 
-    /**
-     * @return mixed|void
-     * @throws DependencyException
-     * @throws InvalidConfigException
-     * @throws NotFoundException
-     * @throws ReflectionException
-     * @throws Throwable
-     */
     public function init(): void
     {
         parent::init();
@@ -82,10 +57,6 @@ class Nsq extends AbstractPlugin
         $nsq->makeTopic($this->topic);
     }
 
-    /**
-     * @param Message $msg
-     * @throws Throwable
-     */
     public function run(Message $msg): void
     {
         /** @var Producer $nsq */

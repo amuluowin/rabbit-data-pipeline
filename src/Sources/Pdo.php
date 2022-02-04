@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sources;
 
-use DI\DependencyException;
-use DI\NotFoundException;
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
@@ -13,13 +11,7 @@ use Rabbit\Data\Pipeline\Message;
 use Rabbit\DB\DBHelper;
 use Rabbit\DB\MakePdoConnection;
 use Rabbit\DB\Query;
-use ReflectionException;
-use Throwable;
 
-/**
- * Class Pdo
- * @package Rabbit\Data\Pipeline\Sources
- */
 class Pdo extends AbstractPlugin
 {
     protected $sql;
@@ -30,15 +22,6 @@ class Pdo extends AbstractPlugin
     protected array $params = [];
     protected string $cacheDriver = 'memory';
 
-    /**
-     * @param string $class
-     * @param string $dsn
-     * @param array $pool
-     * @param array $retryHandler
-     * @throws DependencyException
-     * @throws NotFoundException
-     * @throws Throwable
-     */
     protected function createConnection(string $class, string $dsn, array $pool, array $retryHandler): void
     {
         [
@@ -54,12 +37,6 @@ class Pdo extends AbstractPlugin
         MakePdoConnection::addConnection($class, $this->dbName, $dsn, $poolConfig, $retryHandler);
     }
 
-    /**
-     * @return mixed|void
-     * @throws DependencyException
-     * @throws NotFoundException
-     * @throws Throwable
-     */
     public function init(): void
     {
         parent::init();
@@ -101,13 +78,6 @@ class Pdo extends AbstractPlugin
         }
     }
 
-    /**
-     * @param Message $msg
-     * @throws DependencyException
-     * @throws NotFoundException
-     * @throws Throwable
-     * @throws ReflectionException
-     */
     public function run(Message $msg): void
     {
         if (is_array($this->sql)) {
@@ -132,10 +102,6 @@ class Pdo extends AbstractPlugin
         }
     }
 
-    /**
-     * @param Message $msg
-     * @return array
-     */
     protected function makeParams(Message $msg): array
     {
         $params = [];
@@ -158,10 +124,6 @@ class Pdo extends AbstractPlugin
         return $params;
     }
 
-    /**
-     * @param Message $msg
-     * @throws Throwable
-     */
     protected function send(Message $msg): void
     {
         if (ArrayHelper::isIndexed($msg->data) && $this->each) {

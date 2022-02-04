@@ -15,7 +15,9 @@
 
 ```php
 return [
-    'kafka' => DI\create(KafkaManager::class)
+    'kafka' => [
+      '{}' => KafkaManager::class
+    ]
 ];
 ```
 

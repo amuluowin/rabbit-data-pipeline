@@ -6,10 +6,22 @@
 
 ```php
 return [
-    'scheduler' => DI\create(Scheduler::class)
-        ->constructor(
-            DI\create(YamlParser::class)->constructor(App::getAlias('@yaml'))
-        )
+        'scheduler' => [
+        '{}' => Scheduler::class,
+        '()' => [
+            [
+                '{}' => YamlParser::class,
+                '()' => [
+                    App::getAlias('@yaml')
+                ]
+            ]
+        ],
+        'senders' => arrdef([
+            'worker' => definition(WorkerSender::class),
+            'process' => definition(ProcessSender::class)
+        ]),
+        'cron' => definition('cron')
+    ]
 ];
 ```
 

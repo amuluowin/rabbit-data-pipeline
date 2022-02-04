@@ -4,24 +4,16 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
 
-use Throwable;
 use Rabbit\Base\App;
 use Rabbit\DB\Exception;
-use DI\NotFoundException;
-use DI\DependencyException;
 use Rabbit\DB\MakePdoConnection;
 use Rabbit\ActiveRecord\ARHelper;
 use Rabbit\Data\Pipeline\Message;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 use Rabbit\ActiveRecord\BaseActiveRecord;
-use Rabbit\Base\Exception\NotSupportedException;
 use Rabbit\Base\Exception\InvalidConfigException;
 
-/**
- * Class Pdo
- * @package Rabbit\Data\Pipeline\Sinks
- */
 class Pdo extends AbstractPlugin
 {
     protected ?string $tableName;
@@ -31,14 +23,6 @@ class Pdo extends AbstractPlugin
     protected ?int $sleep = null;
     protected array $retryCode = [];
 
-    /**
-     * @param string $class
-     * @param string $dsn
-     * @param array $pool
-     * @throws DependencyException
-     * @throws NotFoundException
-     * @throws Throwable
-     */
     private function createConnection(string $class, string $dsn, array $pool): void
     {
         [
@@ -54,12 +38,6 @@ class Pdo extends AbstractPlugin
         MakePdoConnection::addConnection($class, $this->dbName, $dsn, $poolConfig);
     }
 
-    /**
-     * @return mixed|void
-     * @throws DependencyException
-     * @throws NotFoundException
-     * @throws Throwable
-     */
     public function init(): void
     {
         parent::init();
@@ -98,10 +76,6 @@ class Pdo extends AbstractPlugin
         }
     }
 
-    /**
-     * @param Message $msg
-     * @throws Throwable
-     */
     public function run(Message $msg): void
     {
         [
@@ -132,10 +106,6 @@ class Pdo extends AbstractPlugin
         }
     }
 
-    /**
-     * @param Message $msg
-     * @throws Throwable
-     */
     protected function saveWithLine(Message $msg): void
     {
         $db = service('db')->get($this->dbName);
@@ -143,13 +113,6 @@ class Pdo extends AbstractPlugin
         $this->sink($msg);
     }
 
-    /**
-     * @param Message $msg
-     * @param array $updates
-     * @param array $condition
-     * @throws NotSupportedException
-     * @throws Throwable
-     */
     protected function saveWithCondition(Message $msg, array $updates, array $condition): void
     {
         $model = $this->getModel($msg);
@@ -160,12 +123,6 @@ class Pdo extends AbstractPlugin
         $this->sink($msg);
     }
 
-    /**
-     * @param Message $msg
-     * @throws Exception
-     * @throws Throwable
-     * @throws NotSupportedException
-     */
     protected function saveWithModel(Message $msg): void
     {
         $model = $this->getModel($msg);
@@ -177,9 +134,6 @@ class Pdo extends AbstractPlugin
         $this->sink($msg);
     }
 
-    /**
-     * @return BaseActiveRecord
-     */
     protected function getModel(Message $msg): BaseActiveRecord
     {
         if (isset($msg->opt['model'])) {

@@ -15,7 +15,9 @@
 * db组件配置
 
 ```php
-'db' => DI\create(Manager::class)
+'db' => [
+  '{}' => Manager::class
+]
 ```
 
 * 插件配置

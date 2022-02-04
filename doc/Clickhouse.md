@@ -13,8 +13,12 @@
 * 组件配置
 
 ```php
-'clickhouse' => DI\create(BaseManager::class),
-'click' => DI\create(Manager::class)
+'clickhouse' => [
+  '{}' => BaseManager::class
+],
+'click' => [
+  '{}' => Manager::class
+]
 ```
 
 * 插件配置

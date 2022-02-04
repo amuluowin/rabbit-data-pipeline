@@ -14,7 +14,9 @@
 
 ```php
 return [
-    'nsq' => DI\create(BaseManager::class)
+    'nsq' => [
+      '{}' => BaseManager::class
+    ]
 ];
 ```
 
