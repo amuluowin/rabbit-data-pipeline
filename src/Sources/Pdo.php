@@ -14,7 +14,7 @@ use Rabbit\DB\Query;
 
 class Pdo extends AbstractPlugin
 {
-    protected $sql;
+    protected string|array $sql;
     protected string $dbName;
     protected int $duration;
     protected string $query;
