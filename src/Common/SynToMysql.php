@@ -12,7 +12,7 @@ class SynToMysql extends BaseSyncData
 {
     protected string $mode;
     protected string $where;
-
+    protected string $exField;
 
     public function init(): void
     {
@@ -20,7 +20,8 @@ class SynToMysql extends BaseSyncData
         [
             $this->mode,
             $this->where,
-        ] = ArrayHelper::getValueByArray($this->config, ['mode', 'where'], ['INSERT', '']);
+            $this->exField
+        ] = ArrayHelper::getValueByArray($this->config, ['mode', 'where', 'exField'], ['INSERT', '', '']);
         $this->mode = strtoupper($this->mode);
     }
 
@@ -32,10 +33,11 @@ class SynToMysql extends BaseSyncData
             $fields = '';
             $updates = [];
             $primary = empty($this->primary) ? $this->primary : explode(',',  $this->primary);
+            $exField = array_map(fn (string $val): string => trim($val), explode(',', $this->exField));
             foreach (explode(',', $this->field) as $key) {
                 $key = trim($key);
                 $fields .= "f.$key,";
-                if (!empty($primary) && in_array($key, $primary)) {
+                if ((!empty($primary) && in_array($key, $primary)) || in_array($key, $exField)) {
                     continue;
                 }
                 $updates[] = "$key=values($key)";
