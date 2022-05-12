@@ -47,6 +47,7 @@ class SyncOtherMysql extends AbstractPlugin
     public function run(Message $msg): void
     {
         loop(function (): void {
+            $data = [];
             $query = (new Query(service('db')->get($this->from['db'])))->from([$this->from['table']])->shareType(Connection::SHARE_ARRAY);
             if ($this->from['max'] ?? false && $this->to['max'] ?? false) {
                 if ($this->size > 0) {
@@ -63,7 +64,8 @@ class SyncOtherMysql extends AbstractPlugin
                 $data = $query->all();
                 $this->sync($data);
             }
-            App::info("sync from {$this->from['db']}.{$this->from['table']} to {$this->to['db']}.{$this->to['table']}");
+            $count = count($data);
+            App::info("sync from {$this->from['db']}.{$this->from['table']} to {$this->to['db']}.{$this->to['table']} with {$count} rows");
         }, $this->sleep * 1000);
     }
 
