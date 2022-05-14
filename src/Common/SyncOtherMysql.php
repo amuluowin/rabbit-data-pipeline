@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Rabbit\Data\Pipeline\Common;
 
 use Rabbit\ActiveRecord\ARHelper;
+use Rabbit\ActiveRecord\BaseRecord;
 use Rabbit\Base\App;
 use Rabbit\Base\Exception\InvalidArgumentException;
 use Rabbit\Base\Helper\ArrayHelper;
@@ -81,9 +82,9 @@ class SyncOtherMysql extends AbstractPlugin
         }
         if ($this->size > 0) {
             $data = array_chunk($data, $this->size);
-            wgeach($data, fn (int $i, array $items): array => ARHelper::update(ARHelper::getModel($this->to['table'], $this->to['db']), $items, when: $this->exclude));
+            wgeach($data, fn (int $i, array $items): array => ARHelper::update(BaseRecord::build($this->to['table'], $this->to['db']), $items, when: $this->exclude));
         } else {
-            ARHelper::update(ARHelper::getModel($this->to['table'], $this->to['db']), $data, when: $this->exclude);
+            ARHelper::update(BaseRecord::build($this->to['table'], $this->to['db']), $data, when: $this->exclude);
         }
     }
 }

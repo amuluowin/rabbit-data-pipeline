@@ -12,6 +12,7 @@ use Rabbit\Data\Pipeline\Message;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\AbstractPlugin;
 use Rabbit\ActiveRecord\BaseActiveRecord;
+use Rabbit\ActiveRecord\BaseRecord;
 use Rabbit\Base\Exception\InvalidConfigException;
 
 class Pdo extends AbstractPlugin
@@ -145,6 +146,6 @@ class Pdo extends AbstractPlugin
         }
         $tableName = $msg->opt['tableName'] ?? $this->tableName;
         $dbname = $msg->opt['dbName'] ?? $this->dbName;
-        return ARHelper::getModel($tableName, $dbname);
+        return BaseRecord::build($tableName, $dbname);
     }
 }
