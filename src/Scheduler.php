@@ -98,9 +98,9 @@ class Scheduler implements SchedulerInterface
                 $this->process($key, $params);
             }
         };
-        if ($lock && false === rlock(function () use ($func, $key, $expression, &$params): void {
+        if ($lock && false === rlock($this->name . '.' . $key, function () use ($func, $key, $expression, &$params): void {
             $func($key, $expression, $params);
-        }, false, $this->name . '.' . $key, $lock)) {
+        }, false, $lock)) {
             App::warning("$key is running");
             $result = "$key is running";
         } else {
