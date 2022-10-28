@@ -15,7 +15,6 @@
     "rabbit/cache": "dev-master",
     "rabbit/httpclient": "dev-master",
     "rabbit/db-redis": "dev-master",
-    "rabbit/ding-robot": "dev-master",
     "symfony/yaml": "^6.0",
     "ext-json": "*"
   },

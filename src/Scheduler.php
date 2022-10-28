@@ -183,9 +183,6 @@ class Scheduler implements SchedulerInterface
         } catch (Throwable $exception) {
             $error = "「{$msg->taskName}」「{$key}」 {$msg->taskId}" . ExceptionHelper::dumpExceptionToString($exception);
             App::error($error);
-            if (isset($target) && $target->alarm && null !== ($ding = ding($target->alarm))) {
-                $ding->text($error);
-            }
             $msg->deleteAllLock();
         }
     }
