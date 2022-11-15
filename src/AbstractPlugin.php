@@ -43,12 +43,12 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
             if (empty($msg->data)) {
                 $log = "「{$this->taskName}」 $this->key -> $output; data is empty, %s";
                 if (!$this->canEmpty) {
-                    App::info(sprintf($log, 'canEmpty is false so not sink next'), 'Data');
+                    App::info(sprintf($log, 'canEmpty is false so not sink next'));
                     return;
                 }
-                App::info(sprintf($log, 'canEmpty is true so continue sink next'), 'Data');
+                App::info(sprintf($log, 'canEmpty is true so continue sink next'));
             } else {
-                App::info("「{$this->taskName}」 $this->key -> $output;", 'Data');
+                App::info("「{$this->taskName}」 $this->key -> $output;");
             }
             $this->getScheduler()->next($msg, $output);
         };

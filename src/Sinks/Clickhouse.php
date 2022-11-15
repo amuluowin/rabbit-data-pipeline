@@ -110,7 +110,7 @@ class Clickhouse extends AbstractPlugin
                 App::warning("update $this->flagField succ:  $lock");
             }
         } catch (Throwable $e) {
-            App::error($e);
+            App::error($e->getMessage());
             throw $e;
         } finally {
             $msg->deleteLock($lock);

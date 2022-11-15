@@ -111,8 +111,7 @@ class HttpRequest extends AbstractPlugin
                                 $request->getMethod(),
                                 $uri->getScheme() . "://" . $uri->getHost() . $uri->getPath(),
                                 (string)$request->getBody()
-                            ),
-                            "http"
+                            )
                         );
                     }],
                     'after' => [function (ResponseInterface $response) use ($request_id): void {

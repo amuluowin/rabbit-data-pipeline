@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Sinks;
@@ -92,7 +93,7 @@ class File extends AbstractPlugin
             case 'csv':
                 if (false === $fp = fopen($fileName, 'w+')) {
                     App::error("can not open file $fileName");
-                    return;
+                    return $fileName;
                 }
                 try {
                     foreach (ArrayHelper::toArray($data) as $item) {
