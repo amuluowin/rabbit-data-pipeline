@@ -147,12 +147,13 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
         }
 
         $num = count($outputs);
+        $func = $this->func;
         if ($num > 1) {
-            wgeach($outputs, function (string $output, bool|int|float $wait) use ($msg): void {
-                call_user_func($this->func, $output, $msg);
+            wgeach($outputs, function (string $output, bool|int|float $wait) use ($msg, $func): void {
+                $func($output, $msg);
             });
         } elseif ($num === 1) {
-            call_user_func($this->func, current(array_keys($outputs)), $msg);
+            $func(current(array_keys($outputs)), $msg);
         }
     }
 }
