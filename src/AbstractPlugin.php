@@ -121,7 +121,7 @@ abstract class AbstractPlugin extends BaseObject implements InitInterface
             try {
                 $handle = array_shift($errHandler);
                 if (is_callable($handle)) {
-                    call_user_func($handle, $this, $exception);
+                    $handle($this, $exception);
                 } else {
                     throw $exception;
                 }
