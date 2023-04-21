@@ -17,6 +17,7 @@ abstract class BaseSyncData extends AbstractPlugin
     protected string $db = 'default';
     protected ?string $primary;
     protected bool $onlyInsert = false;
+    protected ?bool $onlyUpdate = null;
     protected ?int $batch;
     protected ?string $sql = null;
 
@@ -30,11 +31,12 @@ abstract class BaseSyncData extends AbstractPlugin
             $this->equal,
             $this->primary,
             $this->onlyInsert,
+            $this->onlyUpdate,
             $this->batch,
             $this->sql,
-        ] = ArrayHelper::getValueByArray($this->config, ['from', 'to', 'db', 'field', 'equal', 'primary', 'onlyInsert', 'batch', 'sql'], ['db' => $this->db, 'onlyInsert' => $this->onlyInsert]);
-        if (($this->from === null || $this->to === null || $this->field === null) && $this->sql === null) {
-            throw new InvalidConfigException('(from or to or field) & sql is empty!');
+        ] = ArrayHelper::getValueByArray($this->config, ['from', 'to', 'db', 'field', 'equal', 'primary', 'onlyInsert', 'onlyUpdate', 'batch', 'sql'], ['db' => $this->db, 'onlyInsert' => $this->onlyInsert, 'onlyUpdate' => $this->onlyUpdate]);
+        if (($this->from === null || $this->to === null || $this->field === null) && $this->sql === null && $this->onlyUpdate === null) {
+            throw new InvalidConfigException('(from or to or field) & sql & onlyUpdate is empty!');
         }
     }
 }

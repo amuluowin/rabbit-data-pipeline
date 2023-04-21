@@ -21,7 +21,7 @@ class Message extends BaseObject
     const STATUS_START = 1;
     const STATUS_RUNING = 2;
     const STATUS_END = 99;
-    public $data;
+    public mixed $data;
     public string $taskName;
     public string $taskId;
     public array $opt = [];
