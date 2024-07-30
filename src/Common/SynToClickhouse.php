@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Rabbit\Data\Pipeline\Common;
 
+use Rabbit\Base\App;
 use Rabbit\Base\Exception\InvalidConfigException;
 use Rabbit\Base\Helper\ArrayHelper;
 use Rabbit\Data\Pipeline\Message;
@@ -100,7 +101,7 @@ class SynToClickhouse extends BaseSyncData
                  WHERE {$this->primary}  in (
                 SELECT {$this->primary}
                   FROM {$this->to}
-                 WHERE {$this->flag} = 0)  and {$this->flag} in (0, 1)";
+                 WHERE {$this->flag} = 0)";
                 $msg->data = service('db')->get($this->db)->createCommand($sql)->execute();
             }
         } elseif ($msg->data) {
@@ -112,7 +113,8 @@ class SynToClickhouse extends BaseSyncData
                  WHERE {$primary}  in (
                 SELECT {$primary}
                   FROM {$to}
-                 WHERE {$flag} = 0)  and {$flag} in (0, 1)";
+                 WHERE {$flag} = 0)";
+            App::info($sql);
             $msg->data = service('db')->get($this->db)->createCommand($sql)->execute();
         }
 
